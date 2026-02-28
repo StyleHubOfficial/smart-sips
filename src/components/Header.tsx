@@ -1,17 +1,22 @@
 import { useState, useEffect } from "react";
-import { Monitor, Maximize, Moon, Sun, Clock } from "lucide-react";
+import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "motion/react";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNotificationStore } from "../store/useNotificationStore";
 
 interface HeaderProps {
   isSmartPanelMode: boolean;
   setIsSmartPanelMode: (mode: boolean) => void;
+  onOpenLogin: () => void;
 }
 
-export default function Header({ isSmartPanelMode, setIsSmartPanelMode }: HeaderProps) {
+export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin }: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const { isAuthenticated, logout } = useAuthStore();
+  const addNotification = useNotificationStore((state) => state.addNotification);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -62,6 +67,29 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode }: Header
         </div>
 
         <div className="flex items-center gap-2">
+          {isAuthenticated ? (
+            <button 
+              onClick={() => {
+                logout();
+                addNotification('info', 'Logged out successfully');
+              }}
+              className="p-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium hidden sm:block">Logout</span>
+            </button>
+          ) : (
+            <button 
+              onClick={onOpenLogin}
+              className="p-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-[#00F0FF]/20 hover:text-[#00F0FF] transition-all duration-300 flex items-center gap-2"
+              title="Teacher Login"
+            >
+              <LogIn className="w-5 h-5" />
+              <span className="text-sm font-medium hidden sm:block">Login</span>
+            </button>
+          )}
+
           <button 
             onClick={() => setIsSmartPanelMode(!isSmartPanelMode)}
             className={`p-2.5 rounded-xl transition-all duration-300 ${isSmartPanelMode ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}

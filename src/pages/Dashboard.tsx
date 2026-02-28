@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
-import { motion } from "motion/react";
-import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save } from "lucide-react";
 import { format } from "date-fns";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNotificationStore } from "../store/useNotificationStore";
+import axios from "axios";
 
 interface DashboardProps {
   isSmartPanelMode: boolean;
@@ -32,6 +35,19 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   const [selectedClass, setSelectedClass] = useState("All");
   const [selectedSubject, setSelectedSubject] = useState("All");
   const [selectedType, setSelectedType] = useState("All");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    teacher: "",
+    className: "",
+    subject: "",
+    description: "",
+    fileType: ""
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const { isAuthenticated } = useAuthStore();
+  const addNotification = useNotificationStore((state) => state.addNotification);
 
   useEffect(() => {
     fetchContent();
@@ -49,6 +65,82 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
       console.error("Failed to fetch content", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (public_id: string, resource_type: string) => {
+    if (!window.confirm("Are you sure you want to delete this content?")) return;
+    
+    setDeletingId(public_id);
+    try {
+      const res = await axios.delete(`/api/content?public_id=${encodeURIComponent(public_id)}&resource_type=${resource_type}`);
+      if (res.data.success) {
+        setContent(content.filter(item => item.public_id !== public_id));
+        addNotification('success', 'Content deleted successfully');
+      }
+    } catch (error) {
+      console.error("Failed to delete", error);
+      addNotification('error', 'Failed to delete content');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleEditClick = (item: ContentItem) => {
+    const meta = item.context?.custom || {};
+    setEditFormData({
+      title: meta.title || item.public_id,
+      teacher: meta.teacher || "",
+      className: meta.class || "Class 10",
+      subject: meta.subject || "Mathematics",
+      description: meta.description || "",
+      fileType: meta.fileType || "PDF"
+    });
+    setEditingItem(item);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    setSavingEdit(true);
+    try {
+      const res = await axios.put("/api/content", {
+        public_id: editingItem.public_id,
+        resource_type: editingItem.resource_type,
+        ...editFormData
+      });
+
+      if (res.data.success) {
+        // Update local state
+        setContent(content.map(item => {
+          if (item.public_id === editingItem.public_id) {
+            return {
+              ...item,
+              context: {
+                ...item.context,
+                custom: {
+                  ...item.context?.custom,
+                  title: editFormData.title,
+                  teacher: editFormData.teacher,
+                  class: editFormData.className,
+                  subject: editFormData.subject,
+                  description: editFormData.description,
+                  fileType: editFormData.fileType
+                }
+              }
+            };
+          }
+          return item;
+        }));
+        addNotification('success', 'Content updated successfully');
+        setEditingItem(null);
+      }
+    } catch (error) {
+      console.error("Failed to update", error);
+      addNotification('error', 'Failed to update content');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -184,14 +276,51 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center py-20 text-center"
+          className="flex flex-col items-center justify-center py-32 text-center"
         >
-          <div className="w-32 h-32 mb-6 rounded-full bg-white/5 flex items-center justify-center border border-white/10 relative">
-             <div className="absolute inset-0 rounded-full border border-[#00F0FF]/30 animate-ping"></div>
-             <FileText className="w-12 h-12 text-gray-500" />
+          <div className="relative w-48 h-48 mb-8">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full border border-dashed border-[#00F0FF]/30"
+            />
+            <motion.div 
+              animate={{ rotate: -360 }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-4 rounded-full border border-[#B026FF]/30"
+            />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-center border border-white/10 backdrop-blur-md shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+                <FileText className="w-10 h-10 text-[#00F0FF] opacity-80" />
+              </div>
+            </div>
+            
+            {/* Floating particles */}
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ 
+                  y: [0, -20, 0], 
+                  opacity: [0, 1, 0],
+                  scale: [0.5, 1, 0.5]
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  delay: i * 0.6,
+                  ease: "easeInOut"
+                }}
+                className="absolute w-2 h-2 rounded-full bg-[#00F0FF]"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  boxShadow: "0 0 10px #00F0FF"
+                }}
+              />
+            ))}
           </div>
-          <h3 className="text-2xl font-display font-medium text-gray-300 mb-2">No Content Found</h3>
-          <p className="text-gray-500">Try adjusting your filters or upload new content.</p>
+          <h3 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-3">No Content Found</h3>
+          <p className="text-gray-500 max-w-md">The digital vault is empty. Adjust your filters or upload new educational resources to populate the dashboard.</p>
         </motion.div>
       ) : (
         <motion.div 
@@ -220,10 +349,30 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                   show: { opacity: 1, y: 0 }
                 }}
                 whileHover={{ y: -8, scale: 1.02 }}
-                className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 transition-all duration-300 relative flex flex-col"
+                className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                 
+                {isAuthenticated && (
+                  <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+                    <button 
+                      onClick={() => handleEditClick(item)}
+                      className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(item.public_id, item.resource_type)}
+                      disabled={deletingId === item.public_id}
+                      className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+                      title="Delete"
+                    >
+                      {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
+
                 <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
                   {item.resource_type === 'image' ? (
                     <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
@@ -241,7 +390,12 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                 </div>
 
                 <div className="p-5 flex-1 flex flex-col relative z-10">
-                  <h3 className="font-display font-semibold text-lg mb-1 truncate text-white group-hover:text-[#00F0FF] transition-colors">{title}</h3>
+                  <div className="flex items-start gap-3 mb-1">
+                    <div className="mt-1 opacity-70">
+                      {getFileIcon(fileType)}
+                    </div>
+                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
+                  </div>
                   <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject} • {meta.class}</p>
                   
                   <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
@@ -272,6 +426,126 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           })}
         </motion.div>
       )}
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingItem && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingItem(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass-panel rounded-3xl p-8 w-full max-w-2xl relative z-10 border border-white/10 shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] overflow-y-auto"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
+              
+              <button 
+                onClick={() => setEditingItem(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-8 relative z-10">
+                <h2 className="text-2xl font-display font-bold text-white mb-2 flex items-center gap-3">
+                  <Edit2 className="w-6 h-6 text-[#00F0FF]" />
+                  Edit Content Details
+                </h2>
+                <p className="text-gray-400 text-sm">Update metadata for this resource</p>
+              </div>
+
+              <form onSubmit={handleSaveEdit} className="space-y-5 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Content Title</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={editFormData.title}
+                      onChange={e => setEditFormData({...editFormData, title: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Teacher Name</label>
+                    <input 
+                      required
+                      type="text" 
+                      value={editFormData.teacher}
+                      onChange={e => setEditFormData({...editFormData, teacher: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
+                    <select 
+                      value={editFormData.className}
+                      onChange={e => setEditFormData({...editFormData, className: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="Class 10">Class 10</option>
+                      <option value="Class 11">Class 11</option>
+                      <option value="Class 12">Class 12</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</label>
+                    <select 
+                      value={editFormData.subject}
+                      onChange={e => setEditFormData({...editFormData, subject: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="Mathematics">Mathematics</option>
+                      <option value="Physics">Physics</option>
+                      <option value="Chemistry">Chemistry</option>
+                      <option value="Biology">Biology</option>
+                      <option value="Computer Science">Computer Science</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Description</label>
+                  <textarea 
+                    value={editFormData.description}
+                    onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all resize-none h-24"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-4 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingItem(null)}
+                    className="px-6 py-3 rounded-xl font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={savingEdit}
+                    className="px-8 py-3 rounded-xl font-display font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.02] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {savingEdit ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -46,6 +46,46 @@ async function startServer() {
     }
   });
 
+  // Delete content
+  app.delete("/api/content", async (req, res) => {
+    try {
+      const { public_id, resource_type } = req.query;
+      
+      if (!public_id) {
+        return res.status(400).json({ error: "Missing public_id" });
+      }
+
+      await cloudinary.uploader.destroy(public_id as string, { resource_type: resource_type as string || 'image' });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      res.status(500).json({ error: "Failed to delete content" });
+    }
+  });
+
+  // Edit content metadata
+  app.put("/api/content", async (req, res) => {
+    try {
+      const { public_id, title, teacher, subject, className, description, fileType, resource_type } = req.body;
+
+      if (!public_id) {
+        return res.status(400).json({ error: "Missing public_id" });
+      }
+
+      const contextStr = `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}`;
+
+      await cloudinary.api.update(public_id, {
+        resource_type: resource_type || 'image',
+        context: contextStr
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating content:", error);
+      res.status(500).json({ error: "Failed to update content" });
+    }
+  });
+
   // Upload new content
   app.post("/api/upload", upload.single("file"), async (req, res) => {
     try {

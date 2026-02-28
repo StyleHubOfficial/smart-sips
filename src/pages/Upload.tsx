@@ -1,13 +1,22 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2 } from "lucide-react";
+import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2, PlayCircle, Eye, Lock } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import axios from "axios";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNotificationStore } from "../store/useNotificationStore";
 
-export default function Upload() {
+interface UploadProps {
+  onOpenLogin: () => void;
+}
+
+export default function Upload({ onOpenLogin }: UploadProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const { isAuthenticated } = useAuthStore();
+  const addNotification = useNotificationStore((state) => state.addNotification);
   
   const [formData, setFormData] = useState({
     title: "",
@@ -17,6 +26,16 @@ export default function Upload() {
     description: "",
     fileType: "PDF"
   });
+
+  useEffect(() => {
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -43,7 +62,7 @@ export default function Upload() {
     if (!file) return;
 
     setUploading(true);
-    setError(null);
+    setProgress(0);
 
     const data = new FormData();
     data.append("file", file);
@@ -52,17 +71,22 @@ export default function Upload() {
     });
 
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: data,
+      const res = await axios.post("/api/upload", data, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setProgress(percentCompleted);
+          }
+        },
       });
 
-      if (!res.ok) throw new Error("Upload failed");
-
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
+      if (res.data.success) {
+        addNotification('success', 'File uploaded successfully!');
         setFile(null);
+        setProgress(0);
         setFormData({
           title: "",
           teacher: "",
@@ -71,13 +95,40 @@ export default function Upload() {
           description: "",
           fileType: "PDF"
         });
-      }, 3000);
-    } catch (err) {
-      setError("Failed to upload file. Please try again.");
+      } else {
+        throw new Error(res.data.error || "Upload failed");
+      }
+    } catch (err: any) {
+      console.error(err);
+      addNotification('error', err.response?.data?.error || err.message || "Failed to upload file");
     } finally {
       setUploading(false);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="p-6 md:p-10 max-w-4xl mx-auto pb-32 flex flex-col items-center justify-center min-h-[60vh] text-center"
+      >
+        <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10 relative">
+          <div className="absolute inset-0 rounded-full border border-[#00F0FF]/30 animate-ping"></div>
+          <Lock className="w-10 h-10 text-gray-500" />
+        </div>
+        <h2 className="text-3xl font-display font-bold mb-4">Authentication Required</h2>
+        <p className="text-gray-400 mb-8 max-w-md">You need to be logged in as a teacher to upload content to the Sunrise Classroom Panel.</p>
+        <button 
+          onClick={onOpenLogin}
+          className="px-8 py-3 rounded-xl font-display font-bold tracking-wide transition-all duration-300 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.02]"
+        >
+          Login to Continue
+        </button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div 
@@ -163,73 +214,103 @@ export default function Upload() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-300 uppercase tracking-wider">File Upload</label>
-            <div 
-              {...getRootProps()} 
-              className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300 ${
-                isDragActive ? 'border-[#00F0FF] bg-[#00F0FF]/5' : 'border-white/20 hover:border-white/40 hover:bg-white/5'
-              } ${file ? 'border-[#B026FF]/50 bg-[#B026FF]/5' : ''}`}
-            >
-              <input {...getInputProps()} />
-              <AnimatePresence mode="wait">
-                {file ? (
-                  <motion.div 
-                    key="file"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center mb-4 border border-[#00F0FF]/30">
-                      <FileIcon className="w-8 h-8 text-[#00F0FF]" />
-                    </div>
-                    <p className="text-lg font-medium text-white mb-1">{file.name}</p>
-                    <p className="text-sm text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB • {formData.fileType}</p>
-                  </motion.div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-300 uppercase tracking-wider">File Upload</label>
+              {file && (
+                <button 
+                  type="button" 
+                  onClick={() => setFile(null)}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Remove File
+                </button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div 
+                {...getRootProps()} 
+                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 h-64 flex flex-col items-center justify-center ${
+                  isDragActive ? 'border-[#00F0FF] bg-[#00F0FF]/5' : 'border-white/20 hover:border-white/40 hover:bg-white/5'
+                } ${file ? 'border-[#B026FF]/50 bg-[#B026FF]/5' : ''}`}
+              >
+                <input {...getInputProps()} />
+                <AnimatePresence mode="wait">
+                  {file ? (
+                    <motion.div 
+                      key="file"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center mb-4 border border-[#00F0FF]/30">
+                        <FileIcon className="w-8 h-8 text-[#00F0FF]" />
+                      </div>
+                      <p className="text-lg font-medium text-white mb-1 truncate max-w-[200px]">{file.name}</p>
+                      <p className="text-sm text-gray-400">{(file.size / 1024 / 1024).toFixed(2)} MB • {formData.fileType}</p>
+                    </motion.div>
+                  ) : (
+                    <motion.div 
+                      key="empty"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="flex flex-col items-center"
+                    >
+                      <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/10 group-hover:border-[#00F0FF]/50 transition-colors">
+                        <UploadCloud className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-lg font-medium text-white mb-1">Drag & drop your file here</p>
+                      <p className="text-sm text-gray-500">or click to browse from your computer</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* File Preview Area */}
+              <div className="h-64 rounded-2xl border border-white/10 bg-black/40 overflow-hidden relative flex items-center justify-center">
+                {file && previewUrl ? (
+                  <>
+                    {file.type.includes('image') ? (
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                    ) : file.type.includes('video') ? (
+                      <video src={previewUrl} controls className="w-full h-full object-contain" />
+                    ) : file.type.includes('pdf') ? (
+                      <iframe src={previewUrl} className="w-full h-full border-none" title="PDF Preview" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500">
+                        <Eye className="w-12 h-12 mb-3 opacity-50" />
+                        <p>Preview not available for this file type</p>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <motion.div 
-                    key="empty"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 border border-white/10 group-hover:border-[#00F0FF]/50 transition-colors">
-                      <UploadCloud className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-lg font-medium text-white mb-1">Drag & drop your file here</p>
-                    <p className="text-sm text-gray-500">or click to browse from your computer</p>
-                  </motion.div>
+                  <div className="flex flex-col items-center justify-center text-gray-600">
+                    <Eye className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="text-sm">File preview will appear here</p>
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
           </div>
 
-          <AnimatePresence>
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-xl flex items-center gap-3"
-              >
-                <XCircle className="w-5 h-5" />
-                <p className="text-sm">{error}</p>
-              </motion.div>
-            )}
-            
-            {success && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-green-500/10 border border-green-500/50 text-green-400 px-4 py-3 rounded-xl flex items-center gap-3"
-              >
-                <CheckCircle className="w-5 h-5" />
-                <p className="text-sm">File uploaded successfully!</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {uploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Uploading to Cloudinary...</span>
+                <span className="text-[#00F0FF] font-mono">{progress}%</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ ease: "linear" }}
+                />
+              </div>
+            </div>
+          )}
 
           <button 
             type="submit"

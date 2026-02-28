@@ -4,11 +4,14 @@ import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
+import Notifications from "./components/Notifications";
+import LoginModal from "./components/LoginModal";
 import { useState, useEffect } from "react";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(true);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -44,19 +47,22 @@ export default function App() {
         <div className="relative z-10 flex flex-col h-screen">
           <Header 
             isSmartPanelMode={isSmartPanelMode} 
-            setIsSmartPanelMode={setIsSmartPanelMode} 
+            setIsSmartPanelMode={setIsSmartPanelMode}
+            onOpenLogin={() => setIsLoginModalOpen(true)}
           />
           
           <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
             <AnimatePresence mode="wait">
               <Routes>
                 <Route path="/" element={<Dashboard isSmartPanelMode={isSmartPanelMode} />} />
-                <Route path="/upload" element={<Upload />} />
+                <Route path="/upload" element={<Upload onOpenLogin={() => setIsLoginModalOpen(true)} />} />
               </Routes>
             </AnimatePresence>
           </main>
 
           <Navigation />
+          <Notifications />
+          <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
         </div>
       </div>
     </BrowserRouter>
