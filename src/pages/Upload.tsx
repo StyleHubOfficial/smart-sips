@@ -71,6 +71,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     });
 
     try {
+      console.log("Starting upload for:", file.name);
       const res = await axios.post("/api/upload", data, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -83,24 +84,32 @@ export default function Upload({ onOpenLogin }: UploadProps) {
         },
       });
 
-      if (res.data.success) {
+      console.log("Upload response received:", res.status, res.data);
+
+      if (res.data && res.data.success) {
         addNotification('success', 'File uploaded successfully!');
-        setFile(null);
-        setProgress(0);
-        setFormData({
-          title: "",
-          teacher: "",
-          className: "Class 10",
-          subject: "Mathematics",
-          description: "",
-          fileType: "PDF"
-        });
+        
+        // Small delay before resetting to prevent UI glitches during transition
+        setTimeout(() => {
+          setFile(null);
+          setProgress(0);
+          setFormData({
+            title: "",
+            teacher: "",
+            className: "Class 10",
+            subject: "Mathematics",
+            description: "",
+            fileType: "PDF"
+          });
+        }, 500);
       } else {
-        throw new Error(res.data.error || "Upload failed");
+        const errorMsg = res.data?.error || "Upload failed - Server returned success:false";
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
-      console.error(err);
-      addNotification('error', err.response?.data?.error || err.message || "Failed to upload file");
+      console.error("Upload error details:", err);
+      const errorMessage = err.response?.data?.error || err.message || "Failed to upload file";
+      addNotification('error', errorMessage);
     } finally {
       setUploading(false);
     }
