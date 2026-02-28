@@ -103,19 +103,13 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           });
         }, 500);
       } else {
-        const errorData = res.data?.error;
-        const errorMsg = typeof errorData === 'string' 
-          ? errorData 
-          : (errorData?.message || "Upload failed - Server returned success:false");
+        const errorMsg = res.data?.error || "Upload failed - Server returned success:false";
         throw new Error(errorMsg);
       }
     } catch (err: any) {
       console.error("Upload error details:", err);
-      const errorData = err.response?.data?.error;
-      const errorMessage = typeof errorData === 'string' 
-        ? errorData 
-        : (errorData?.message || err.message || "Failed to upload file");
-      addNotification('error', String(errorMessage));
+      const errorMessage = err.response?.data?.error || err.message || "Failed to upload file";
+      addNotification('error', errorMessage);
     } finally {
       setUploading(false);
     }

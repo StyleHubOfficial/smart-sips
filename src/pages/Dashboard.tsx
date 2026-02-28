@@ -57,16 +57,12 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
     try {
       setLoading(true);
       const res = await fetch("/api/content");
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
       const data = await res.json();
       if (data.resources) {
         setContent(data.resources);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to fetch content", error);
-      addNotification('error', `Failed to load content: ${error.message}`);
     } finally {
       setLoading(false);
     }
