@@ -23,23 +23,9 @@
         "receiverId": { "type": "string" },
         "text": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
-        "participants": { "type": "array", "items": { "type": "string" } }
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] }
       },
-      "required": ["senderId", "text", "timestamp", "participants"]
-    },
-    "Notification": {
-      "title": "Notification",
-      "description": "Represents a site-wide notification.",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "message": { "type": "string" },
-        "senderRole": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "isActive": { "type": "boolean" }
-      },
-      "required": ["title", "message", "senderRole", "timestamp"]
+      "required": ["senderId", "receiverId", "text", "timestamp"]
     }
   },
   "firestore": {
@@ -50,10 +36,6 @@
     "/messages/{messageId}": {
       "schema": { "$ref": "Message" },
       "description": "Chat messages."
-    },
-    "/notifications/{notificationId}": {
-      "schema": { "$ref": "Notification" },
-      "description": "Site-wide notifications."
     }
   }
 }

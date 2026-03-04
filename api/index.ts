@@ -129,18 +129,11 @@ async function startServer() {
     try {
       const timestamp = Math.round((new Date).getTime() / 1000);
       const folder = "sunrise_classroom";
-      const { context } = req.query;
       
-      const paramsToSign: any = {
+      const signature = cloudinary.utils.api_sign_request({
         timestamp: timestamp,
         folder: folder,
-      };
-
-      if (context) {
-        paramsToSign.context = context;
-      }
-      
-      const signature = cloudinary.utils.api_sign_request(paramsToSign, process.env.CLOUDINARY_API_SECRET || "YMIVl-hidOuXm0yYkzq7xX0raKg");
+      }, process.env.CLOUDINARY_API_SECRET || "YMIVl-hidOuXm0yYkzq7xX0raKg");
 
       res.json({ 
         signature, 

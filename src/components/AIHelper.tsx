@@ -44,11 +44,7 @@ export default function AIHelper() {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsLoading(true);
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Missing Gemini API Key");
-      }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
       
       const prompt = `You are a helpful, professional AI assistant for the 'Sunrise Classroom Panel', an educational platform.
       The user is currently logged in as a: ${role}.
@@ -61,13 +57,9 @@ export default function AIHelper() {
       });
 
       setMessages(prev => [...prev, { role: 'model', text: response.text || "I'm sorry, I couldn't process that." }]);
-    } catch (error: any) {
+    } catch (error) {
       console.error("AI Error:", error);
-      let errorMsg = "Sorry, I'm having trouble connecting right now. Please try again later.";
-      if (error.message.includes("Missing Gemini API Key")) {
-        errorMsg = "AI Configuration Error: API Key is missing. Please check Vercel environment variables.";
-      }
-      setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now. Please try again later." }]);
     } finally {
       setIsLoading(false);
     }

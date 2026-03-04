@@ -55,45 +55,20 @@ service cloud.firestore {
           (request.auth.token.email == "santrak116@gmail.com" && request.auth.token.email_verified == true));
     }
 
-    function isDeveloper() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'developer' ||
-          (request.auth.token.email == "santrak116@gmail.com" && request.auth.token.email_verified == true));
-    }
-
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin() || isDeveloper());
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
       allow create: if isAuthenticated() && isOwner(userId) && hasRequiredFields(['uid', 'email', 'role']);
       allow update: if isAuthenticated() && isOwner(userId) && request.resource.data.role == resource.data.role;
     }
 
     match /messages/{messageId} {
-      allow read: if isAuthenticated() && (
-        isAdmin() || 
-        isDeveloper() ||
-        request.auth.uid == resource.data.senderId || 
-        request.auth.uid == resource.data.receiverId ||
-        (resource.data.keys().hasAny(['participants']) && request.auth.uid in resource.data.participants)
-      );
-      allow create: if isAuthenticated() && (
-        request.auth.uid == request.resource.data.senderId
-      );
-      allow update: if isAuthenticated() && (
-        isAdmin() || 
-        isDeveloper() ||
-        request.auth.uid == resource.data.senderId || 
-        request.auth.uid == resource.data.receiverId ||
-        (resource.data.keys().hasAny(['participants']) && request.auth.uid in resource.data.participants)
-      );
-    }
-
-    match /notifications/{notificationId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin() || isDeveloper();
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.senderId);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.receiverId);
     }
   }
 }

@@ -1,28 +1,172 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { UploadCloud, MessageSquare, Bell, Activity, Shield, Users, Send, Check, CheckCheck, Clock, FileText, List } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { UploadCloud, MessageSquare, Bell, Activity, Shield, Users, Clock, Send, Check, CheckCheck } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useAppStore } from '../store/useAppStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { Navigate } from 'react-router-dom';
 import Upload from './Upload';
-import ContentManager from '../components/ContentManager';
-import { useFirebaseMessages } from '../hooks/useFirebaseMessages';
-import { useFirebaseNotifications } from '../hooks/useFirebaseNotifications';
 import Analytics from './Analytics';
 
 export default function Manage() {
   const { role, isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'content' | 'messages' | 'notifications' | 'status' | 'maintenance' | 'profile' | 'analytics'>('content');
-  const [contentSubTab, setContentSubTab] = useState<'list' | 'upload'>('list');
+  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance' | 'profile' | 'analytics'>('upload');
   
   const { 
+    messages, addMessage, markMessagesAsRead, 
+    notifications, addSiteNotification, deleteSiteNotification,
     maintenanceAlerts, setMaintenanceAlert, removeMaintenanceAlert,
     onlineTimes, setOnlineTime
   } = useAppStore();
   
   const addToast = useNotificationStore(state => state.addNotification);
-  const { addNotification: broadcastNotification } = useFirebaseNotifications();
+
+  const [messageInput, setMessageInput] = useState('');
+  const [selectedReceiver, setSelectedReceiver] = useState('teacher');
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMsg, setNotifMsg] = useState('');
+  const [onlineTimeInput, setOnlineTimeInput] = useState(onlineTimes[role] || '');
+  const [maintSection, setMaintSection] = useState('');
+  const [maintMsg, setMaintMsg] = useState('');
+
+  if (!isAuthenticated || (role !== 'admin' && role !== 'developer')) {
+    return <Navigate to="/" />;
+  }
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) return;
+    addMessage({
+      senderRole: role,
+      receiverRole: selectedReceiver,
+      text: messageInput.trim()
+    });
+    setMessageInput('');
+  };
+
+  const handleSendNotification = () => {
+    if (!notifTitle.trim() || !notifMsg.trim()) return;
+    addSiteNotification({
+      title: notifTitle.trim(),
+      message: notifMsg.trim(),
+      senderRole: role
+    });
+    setNotifTitle('');
+    setNotifMsg('');
+    addToast('success', 'Notification broadcasted successfully');
+  };
+
+  const handleSetOnlineTime = () => {
+    setOnlineTime(role, onlineTimeInput);
+    addToast('success', 'Online time updated');
+  };
+
+  const handleAddMaintenance = () => {
+    if (!maintSection.trim() || !maintMsg.trim()) return;
+    setMaintenanceAlert({
+      id: Date.now().toString(),
+      section: maintSection.trim(),
+      message: maintMsg.trim(),
+      isActive: true
+    });
+    setMaintSection('');
+    setMaintMsg('');
+    addToast('success', 'Maintenance alert added');
+  };
+
+  const currentChatMessages = messages.filter(m => 
+    (m.senderRole === role && m.receiverRole === selectedReceiver) || 
+    (m.senderRole === selectedReceiver && m.receiverRole === role)
+  );
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+    >
+      <div className="mb-10 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
+          <Shield className="w-8 h-8 text-[#00F0FF]" />
+        </div>
+        <div>
+          <h2 className="text-3xl md:text-5xl font-display font-bold">
+            {role === 'developer' ? 'Developer' : 'Admin'} <span className="text-gradient">Manage</span>
+          </h2>
+          <p className="text-gray-400">Control panel and communications</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
+        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <UploadCloud className="w-4 h-4" /> Upload Content
+        </button>
+        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <MessageSquare className="w-4 h-4" /> Messages
+        </button>
+        <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <Bell className="w-4 h-4" /> Notifications
+        </button>
+        <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <Activity className="w-4 h-4" /> System Status
+        </button>
+        <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'profile' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <Users className="w-4 h-4" /> Profile
+        </button>
+        {role === 'developer' && (
+          <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+            <Shield className="w-4 h-4" /> Maintenance
+          </button>
+        )}
+      </div>
+
+      {/* Tab Content */}
+      <div className="min-h-[500px]">
+        {activeTab === 'profile' && (
+          <div className="glass-panel rounded-2xl p-8 border border-white/10 max-w-2xl">
+            <h3 className="text-2xl font-bold mb-6">Profile</h3>
+            <div className="flex items-center gap-6 mb-8">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center text-3xl font-bold text-white">
+                {role[0].toUpperCase()}
+              </div>
+              <div>
+                <h4 className="text-xl font-bold capitalize">{role}</h4>
+                <p className="text-gray-400">Badge: <span className="text-[#00F0FF] font-bold">Verified {role}</span></p>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                localStorage.clear();
+                window.location.reload();
+              }}
+              className="px-6 py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all border border-red-500/30"
+            >
+              Reset App (Clear History)
+            </button>
+          </div>
+        )}
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { UploadCloud, MessageSquare, Bell, Activity, Shield, Users, Send, Check, CheckCheck } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
+import { useAppStore } from '../store/useAppStore';
+import { useNotificationStore } from '../store/useNotificationStore';
+import { Navigate } from 'react-router-dom';
+import Upload from './Upload';
+import { useFirebaseMessages } from '../hooks/useFirebaseMessages';
+
+export default function Manage() {
+  const { role, isAuthenticated } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance' | 'profile'>('upload');
+  
+  const { 
+    notifications, addSiteNotification,
+    maintenanceAlerts, setMaintenanceAlert, removeMaintenanceAlert,
+    onlineTimes, setOnlineTime
+  } = useAppStore();
+  
+  const addToast = useNotificationStore(state => state.addNotification);
 
   const [selectedReceiver, setSelectedReceiver] = useState('teacher');
   const { messages: currentChatMessages, sendMessage } = useFirebaseMessages(role, selectedReceiver);
@@ -44,17 +188,16 @@ export default function Manage() {
     setMessageInput('');
   };
 
-  const handleSendNotification = async () => {
+  const handleSendNotification = () => {
     if (!notifTitle.trim() || !notifMsg.trim()) return;
-    try {
-      await broadcastNotification(notifTitle.trim(), notifMsg.trim());
-      setNotifTitle('');
-      setNotifMsg('');
-      addToast('success', 'Notification broadcasted successfully');
-    } catch (error) {
-      console.error(error);
-      addToast('error', 'Failed to broadcast notification');
-    }
+    addSiteNotification({
+      title: notifTitle.trim(),
+      message: notifMsg.trim(),
+      senderRole: role
+    });
+    setNotifTitle('');
+    setNotifMsg('');
+    addToast('success', 'Notification broadcasted successfully');
   };
 
   const handleSetOnlineTime = () => {
@@ -96,8 +239,8 @@ export default function Manage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
-        <button onClick={() => setActiveTab('content')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'content' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <FileText className="w-4 h-4" /> Content
+        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <UploadCloud className="w-4 h-4" /> Upload Content
         </button>
         <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <MessageSquare className="w-4 h-4" /> Messages
@@ -107,9 +250,6 @@ export default function Manage() {
         </button>
         <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <Activity className="w-4 h-4" /> System Status
-        </button>
-        <button onClick={() => setActiveTab('analytics')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'analytics' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <Activity className="w-4 h-4" /> Analytics
         </button>
         <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'profile' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <Users className="w-4 h-4" /> Profile
@@ -123,33 +263,6 @@ export default function Manage() {
 
       {/* Tab Content */}
       <div className="min-h-[500px]">
-        {activeTab === 'content' && (
-          <div className="space-y-6">
-            <div className="flex gap-4 mb-6">
-              <button 
-                onClick={() => setContentSubTab('list')} 
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentSubTab === 'list' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                Manage Content
-              </button>
-              <button 
-                onClick={() => setContentSubTab('upload')} 
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${contentSubTab === 'upload' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                Upload New
-              </button>
-            </div>
-
-            {contentSubTab === 'list' ? (
-              <ContentManager />
-            ) : (
-              <div className="-mx-6 md:-mx-10 -mt-10">
-                <Upload onOpenLogin={() => {}} />
-              </div>
-            )}
-          </div>
-        )}
-
         {activeTab === 'profile' && (
           <div className="glass-panel rounded-2xl p-8 border border-white/10 max-w-2xl">
             <h3 className="text-2xl font-bold mb-6">Profile</h3>
@@ -173,11 +286,9 @@ export default function Manage() {
             </button>
           </div>
         )}
-
-
-        {activeTab === 'analytics' && (
+        {activeTab === 'upload' && (
           <div className="-mx-6 md:-mx-10 -mt-10">
-            <Analytics />
+            <Upload onOpenLogin={() => {}} />
           </div>
         )}
 
