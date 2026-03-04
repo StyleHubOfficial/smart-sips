@@ -40,13 +40,6 @@ export default function Upload({ onOpenLogin }: UploadProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const selectedFile = acceptedFiles[0];
-      
-      // Vercel Serverless Functions have a 4.5MB limit for request bodies
-      if (selectedFile.size > 4.5 * 1024 * 1024) {
-        addNotification('error', 'File too large! Vercel limit is 4.5MB. Please upload a smaller file.');
-        return;
-      }
-
       setFile(selectedFile);
       
       // Auto-detect file type
@@ -57,7 +50,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
       else if (type.includes("presentation") || type.includes("powerpoint")) setFormData(prev => ({ ...prev, fileType: "PPT" }));
       else setFormData(prev => ({ ...prev, fileType: "Other" }));
     }
-  }, [addNotification]);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,
@@ -71,15 +64,28 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     setUploading(true);
     setProgress(0);
 
-    const data = new FormData();
-    data.append("file", file);
-    Object.entries(formData).forEach(([key, value]) => {
-      data.append(key, String(value));
-    });
-
     try {
-      console.log("Starting upload for:", file.name);
-      const res = await axios.post("/api/upload", data, {
+      console.log("Starting direct upload for:", file.name);
+      
+      // 1. Get signature from backend
+      const signRes = await axios.get("/api/sign-upload");
+      const { signature, timestamp, cloudName, apiKey, folder } = signRes.data;
+
+      // 2. Prepare FormData for Cloudinary
+      const data = new FormData();
+      data.append("file", file);
+      data.append("api_key", apiKey);
+      data.append("timestamp", timestamp);
+      data.append("signature", signature);
+      data.append("folder", folder);
+      
+      // Add context metadata
+      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
+      data.append("context", contextStr);
+
+      // 3. Upload directly to Cloudinary
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+      const res = await axios.post(uploadUrl, data, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -93,7 +99,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
 
       console.log("Upload response received:", res.status, res.data);
 
-      if (res.data && res.data.success) {
+      if (res.data && res.data.public_id) {
         addNotification('success', 'File uploaded successfully!');
         
         // Small delay before resetting to prevent UI glitches during transition
@@ -110,18 +116,11 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           });
         }, 500);
       } else {
-        const errorData = res.data?.error;
-        const errorMsg = typeof errorData === 'string' 
-          ? errorData 
-          : (errorData?.message || "Upload failed - Server returned success:false");
-        throw new Error(errorMsg);
+        throw new Error("Upload failed - No public_id returned");
       }
     } catch (err: any) {
       console.error("Upload error details:", err);
-      const errorData = err.response?.data?.error;
-      const errorMessage = typeof errorData === 'string' 
-        ? errorData 
-        : (errorData?.message || err.message || "Failed to upload file");
+      const errorMessage = err.response?.data?.error?.message || err.message || "Failed to upload file";
       addNotification('error', String(errorMessage));
     } finally {
       setUploading(false);
@@ -203,6 +202,15 @@ export default function Upload({ onOpenLogin }: UploadProps) {
                 onChange={e => setFormData({...formData, className: e.target.value})}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
+                <option value="Class 1">Class 1</option>
+                <option value="Class 2">Class 2</option>
+                <option value="Class 3">Class 3</option>
+                <option value="Class 4">Class 4</option>
+                <option value="Class 5">Class 5</option>
+                <option value="Class 6">Class 6</option>
+                <option value="Class 7">Class 7</option>
+                <option value="Class 8">Class 8</option>
+                <option value="Class 9">Class 9</option>
                 <option value="Class 10">Class 10</option>
                 <option value="Class 11">Class 11</option>
                 <option value="Class 12">Class 12</option>
@@ -221,6 +229,13 @@ export default function Upload({ onOpenLogin }: UploadProps) {
                 <option value="Chemistry">Chemistry</option>
                 <option value="Biology">Biology</option>
                 <option value="Computer Science">Computer Science</option>
+                <option value="English">English</option>
+                <option value="Hindi">Hindi</option>
+                <option value="History">History</option>
+                <option value="Geography">Geography</option>
+                <option value="Economics">Economics</option>
+                <option value="Accountancy">Accountancy</option>
+                <option value="Business Studies">Business Studies</option>
               </select>
             </div>
           </div>

@@ -2,10 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
+import DeveloperDashboard from "./pages/DeveloperDashboard";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
+import AIHelper from "./components/AIHelper";
 import { useState, useEffect } from "react";
 
 export default function App() {
@@ -22,7 +24,7 @@ export default function App() {
 
   if (showEntryAnimation) {
     return (
-      <div className="fixed inset-0 bg-[#0E0E12] flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-[var(--color-background)] flex items-center justify-center z-50">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] blur-[100px] opacity-30 animate-pulse"></div>
           <h1 className="text-4xl md:text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 animate-fade-in-up">
@@ -36,7 +38,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className={`min-h-screen bg-[#0E0E12] text-white relative overflow-hidden ${isSmartPanelMode ? 'text-lg' : ''}`}>
+      <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative overflow-hidden ${isSmartPanelMode ? 'text-lg' : ''}`}>
         {/* Animated background grid lines */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
         
@@ -56,12 +58,14 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Dashboard isSmartPanelMode={isSmartPanelMode} />} />
                 <Route path="/upload" element={<Upload onOpenLogin={() => setIsLoginModalOpen(true)} />} />
+                <Route path="/developer" element={<DeveloperDashboard />} />
               </Routes>
             </AnimatePresence>
           </main>
 
           <Navigation />
           <Notifications />
+          <AIHelper />
           <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
         </div>
       </div>

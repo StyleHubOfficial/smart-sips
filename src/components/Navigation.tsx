@@ -1,8 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud } from "lucide-react";
+import { LayoutDashboard, UploadCloud, Shield } from "lucide-react";
 import { motion } from "motion/react";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function Navigation() {
+  const { role } = useAuthStore();
+
   return (
     <motion.nav 
       initial={{ y: 100, opacity: 0 }}
@@ -32,6 +35,21 @@ export default function Navigation() {
           <UploadCloud className="w-6 h-6" />
           <span className="text-[10px] font-medium uppercase tracking-wider">Upload</span>
         </NavLink>
+
+        {role === 'developer' && (
+          <>
+            <div className="w-[1px] h-8 bg-white/10"></div>
+            <NavLink 
+              to="/developer" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-green-400 scale-110 drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+            >
+              <Shield className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Dev Panel</span>
+            </NavLink>
+          </>
+        )}
       </div>
     </motion.nav>
   );
