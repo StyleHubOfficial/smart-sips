@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, Bot, User, Loader2, Lightbulb, Check, CheckCheck, Clock } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2, Lightbulb } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useAuthStore } from '../store/useAuthStore';
-import { useNotificationStore } from '../store/useNotificationStore';
 import { useAppStore } from '../store/useAppStore';
 import ReactMarkdown from 'react-markdown';
+import { useFirebaseMessages } from '../hooks/useFirebaseMessages';
 
 export default function AIHelper() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,8 +18,8 @@ export default function AIHelper() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { role } = useAuthStore();
-  const addNotification = useNotificationStore(state => state.addNotification);
-  const { messages: chatMessages, addMessage, markMessagesAsRead, onlineTimes } = useAppStore();
+  const { onlineTimes } = useAppStore();
+  const { messages: currentChatMessages, sendMessage } = useFirebaseMessages(role, mode);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,13 +27,7 @@ export default function AIHelper() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, chatMessages, isOpen, mode]);
-
-  useEffect(() => {
-    if (isOpen && mode !== 'ai') {
-      markMessagesAsRead(role, mode);
-    }
-  }, [isOpen, mode, chatMessages.length, markMessagesAsRead, role]);
+  }, [messages, currentChatMessages, isOpen, mode]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -42,11 +36,7 @@ export default function AIHelper() {
     setInput('');
 
     if (mode === 'admin' || mode === 'developer') {
-      addMessage({
-        senderRole: role,
-        receiverRole: mode,
-        text: userMsg
-      });
+      await sendMessage(userMsg);
       return;
     }
 
@@ -54,7 +44,11 @@ export default function AIHelper() {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("Missing Gemini API Key");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       const prompt = `You are a helpful, professional AI assistant for the 'Sunrise Classroom Panel', an educational platform.
       The user is currently logged in as a: ${role}.
@@ -67,18 +61,17 @@ export default function AIHelper() {
       });
 
       setMessages(prev => [...prev, { role: 'model', text: response.text || "I'm sorry, I couldn't process that." }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting right now. Please try again later. Make sure VITE_GEMINI_API_KEY is set in your Vercel environment variables." }]);
+      let errorMsg = "Sorry, I'm having trouble connecting right now. Please try again later.";
+      if (error.message.includes("Missing Gemini API Key")) {
+        errorMsg = "AI Configuration Error: API Key is missing. Please check Vercel environment variables.";
+      }
+      setMessages(prev => [...prev, { role: 'model', text: errorMsg }]);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const currentChatMessages = chatMessages.filter(m => 
-    (m.senderRole === role && m.receiverRole === mode) || 
-    (m.senderRole === mode && m.receiverRole === role)
-  );
 
   return (
     <>
@@ -174,11 +167,6 @@ export default function AIHelper() {
                         <div className="mb-1">{msg.text}</div>
                         <div className={`text-[10px] flex items-center justify-end gap-1 ${isMe ? 'text-[#00F0FF]/70' : 'text-gray-500'}`}>
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {isMe && (
-                            msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-[#00F0FF]" /> : 
-                            msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-gray-400" /> :
-                            <Check className="w-3 h-3 text-gray-400" />
-                          )}
                         </div>
                       </div>
                     </motion.div>

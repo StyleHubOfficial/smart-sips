@@ -8,6 +8,7 @@ import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
+import NotificationBanner from "./components/NotificationBanner";
 import { useState, useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { auth } from "./firebase";
@@ -64,6 +65,7 @@ export default function App() {
               setIsSmartPanelMode={setIsSmartPanelMode}
               onOpenLogin={() => setIsLoginModalOpen(true)}
             />
+            <NotificationBanner />
             
             <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
               <AnimatePresence mode="wait">

@@ -26,6 +26,19 @@
         "status": { "type": "string", "enum": ["sent", "delivered", "read"] }
       },
       "required": ["senderId", "receiverId", "text", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Represents a site-wide notification.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["title", "message", "senderRole", "timestamp"]
     }
   },
   "firestore": {
@@ -36,6 +49,10 @@
     "/messages/{messageId}": {
       "schema": { "$ref": "Message" },
       "description": "Chat messages."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "Notification" },
+      "description": "Site-wide notifications."
     }
   }
 }
