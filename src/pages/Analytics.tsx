@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Activity, Users, UploadCloud, MessageSquare, Bell } from 'lucide-react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuthStore } from '../store/useAuthStore';
 
 export default function Analytics() {
   const [stats, setStats] = useState({
@@ -12,13 +13,42 @@ export default function Analytics() {
     notifications: 0
   });
   const [loading, setLoading] = useState(true);
+  const { role } = useAuthStore();
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const msgsSnap = await getDocs(collection(db, 'messages'));
-        const notifsSnap = await getDocs(collection(db, 'notifications'));
+        // Only admins/devs can read users and messages collections
+        const canReadSensitive = role === 'admin' || role === 'developer';
+        
+        let usersCount = 0;
+        let msgsCount = 0;
+        let notifsCount = 0;
+
+        if (canReadSensitive) {
+          try {
+            const usersSnap = await getDocs(collection(db, 'users'));
+            usersCount = usersSnap.size;
+          } catch (e) {
+            console.error("Users fetch error", e);
+          }
+
+          try {
+            const msgsSnap = await getDocs(collection(db, 'messages'));
+            msgsCount = msgsSnap.size;
+          } catch (e) {
+            console.error("Messages fetch error", e);
+          }
+        }
+
+        // Notifications might be readable by everyone depending on rules, 
+        // but let's wrap it too just in case
+        try {
+          const notifsSnap = await getDocs(collection(db, 'notifications'));
+          notifsCount = notifsSnap.size;
+        } catch (e) {
+          console.error("Notifications fetch error", e);
+        }
         
         let contentCount = 0;
         try {
@@ -32,10 +62,10 @@ export default function Analytics() {
         }
         
         setStats({
-          users: usersSnap.size,
+          users: usersCount,
           content: contentCount,
-          messages: msgsSnap.size,
-          notifications: notifsSnap.size
+          messages: msgsCount,
+          notifications: notifsCount
         });
       } catch (error) {
         console.error("Failed to fetch stats", error);
@@ -44,7 +74,7 @@ export default function Analytics() {
       }
     };
     fetchStats();
-  }, []);
+  }, [role]);
 
   return (
     <motion.div 
