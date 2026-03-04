@@ -23,9 +23,10 @@
         "receiverId": { "type": "string" },
         "text": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["sent", "delivered", "read"] }
+        "status": { "type": "string", "enum": ["sent", "delivered", "read"] },
+        "participants": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["senderId", "receiverId", "text", "timestamp"]
+      "required": ["senderId", "text", "timestamp", "participants"]
     },
     "Notification": {
       "title": "Notification",

@@ -9,10 +9,18 @@ export function useFirebaseMessages(role: string, selectedReceiver: string) {
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    const q = query(
-      collection(db, 'messages'),
-      orderBy('timestamp', 'asc')
-    );
+    let q;
+    if (role === 'admin' || role === 'developer') {
+      // Admins/Devs can see all messages (or filter by receiverRole if needed)
+      // For now, fetch all to support the "Support Inbox" view
+      q = query(collection(db, 'messages'));
+    } else {
+      // Regular users only see messages they are part of
+      q = query(
+        collection(db, 'messages'),
+        where('participants', 'array-contains', auth.currentUser.uid)
+      );
+    }
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: ChatMessage[] = [];
@@ -30,6 +38,10 @@ export function useFirebaseMessages(role: string, selectedReceiver: string) {
           } as ChatMessage);
         }
       });
+      
+      // Sort by timestamp asc
+      msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      
       setMessages(msgs);
     });
 
@@ -38,12 +50,15 @@ export function useFirebaseMessages(role: string, selectedReceiver: string) {
 
   const sendMessage = async (text: string) => {
     if (!auth.currentUser) return;
+    
     await addDoc(collection(db, 'messages'), {
+      senderId: auth.currentUser.uid,
       senderRole: role,
       receiverRole: selectedReceiver,
       text,
       timestamp: serverTimestamp(),
-      status: 'sent'
+      status: 'sent',
+      participants: [auth.currentUser.uid]
     });
   };
 
