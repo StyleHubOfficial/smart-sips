@@ -6,11 +6,10 @@ import { useAppStore } from '../store/useAppStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { Navigate } from 'react-router-dom';
 import Upload from './Upload';
-import Analytics from './Analytics';
 
 export default function Manage() {
   const { role, isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance' | 'profile' | 'analytics'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance'>('upload');
   
   const { 
     messages, addMessage, markMessagesAsRead, 
@@ -111,9 +110,6 @@ export default function Manage() {
         <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <Activity className="w-4 h-4" /> System Status
         </button>
-        <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'profile' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <Users className="w-4 h-4" /> Profile
-        </button>
         {role === 'developer' && (
           <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
             <Shield className="w-4 h-4" /> Maintenance
@@ -123,169 +119,6 @@ export default function Manage() {
 
       {/* Tab Content */}
       <div className="min-h-[500px]">
-        {activeTab === 'profile' && (
-          <div className="glass-panel rounded-2xl p-8 border border-white/10 max-w-2xl">
-            <h3 className="text-2xl font-bold mb-6">Profile</h3>
-            <div className="flex items-center gap-6 mb-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center text-3xl font-bold text-white">
-                {role[0].toUpperCase()}
-              </div>
-              <div>
-                <h4 className="text-xl font-bold capitalize">{role}</h4>
-                <p className="text-gray-400">Badge: <span className="text-[#00F0FF] font-bold">Verified {role}</span></p>
-              </div>
-            </div>
-            <button 
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              className="px-6 py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all border border-red-500/30"
-            >
-              Reset App (Clear History)
-            </button>
-          </div>
-        )}
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { UploadCloud, MessageSquare, Bell, Activity, Shield, Users, Send, Check, CheckCheck } from 'lucide-react';
-import { useAuthStore } from '../store/useAuthStore';
-import { useAppStore } from '../store/useAppStore';
-import { useNotificationStore } from '../store/useNotificationStore';
-import { Navigate } from 'react-router-dom';
-import Upload from './Upload';
-import { useFirebaseMessages } from '../hooks/useFirebaseMessages';
-
-export default function Manage() {
-  const { role, isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance' | 'profile'>('upload');
-  
-  const { 
-    notifications, addSiteNotification,
-    maintenanceAlerts, setMaintenanceAlert, removeMaintenanceAlert,
-    onlineTimes, setOnlineTime
-  } = useAppStore();
-  
-  const addToast = useNotificationStore(state => state.addNotification);
-
-  const [selectedReceiver, setSelectedReceiver] = useState('teacher');
-  const { messages: currentChatMessages, sendMessage } = useFirebaseMessages(role, selectedReceiver);
-  const [messageInput, setMessageInput] = useState('');
-
-  const [notifTitle, setNotifTitle] = useState('');
-  const [notifMsg, setNotifMsg] = useState('');
-  const [onlineTimeInput, setOnlineTimeInput] = useState(onlineTimes[role] || '');
-  const [maintSection, setMaintSection] = useState('');
-  const [maintMsg, setMaintMsg] = useState('');
-
-  if (!isAuthenticated || (role !== 'admin' && role !== 'developer')) {
-    return <Navigate to="/" />;
-  }
-
-  const handleSendMessage = async () => {
-    if (!messageInput.trim()) return;
-    await sendMessage(messageInput.trim());
-    setMessageInput('');
-  };
-
-  const handleSendNotification = () => {
-    if (!notifTitle.trim() || !notifMsg.trim()) return;
-    addSiteNotification({
-      title: notifTitle.trim(),
-      message: notifMsg.trim(),
-      senderRole: role
-    });
-    setNotifTitle('');
-    setNotifMsg('');
-    addToast('success', 'Notification broadcasted successfully');
-  };
-
-  const handleSetOnlineTime = () => {
-    setOnlineTime(role, onlineTimeInput);
-    addToast('success', 'Online time updated');
-  };
-
-  const handleAddMaintenance = () => {
-    if (!maintSection.trim() || !maintMsg.trim()) return;
-    setMaintenanceAlert({
-      id: Date.now().toString(),
-      section: maintSection.trim(),
-      message: maintMsg.trim(),
-      isActive: true
-    });
-    setMaintSection('');
-    setMaintMsg('');
-    addToast('success', 'Maintenance alert added');
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-    >
-      <div className="mb-10 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
-          <Shield className="w-8 h-8 text-[#00F0FF]" />
-        </div>
-        <div>
-          <h2 className="text-3xl md:text-5xl font-display font-bold">
-            {role === 'developer' ? 'Developer' : 'Admin'} <span className="text-gradient">Manage</span>
-          </h2>
-          <p className="text-gray-400">Control panel and communications</p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
-        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <UploadCloud className="w-4 h-4" /> Upload Content
-        </button>
-        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <MessageSquare className="w-4 h-4" /> Messages
-        </button>
-        <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <Bell className="w-4 h-4" /> Notifications
-        </button>
-        <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <Activity className="w-4 h-4" /> System Status
-        </button>
-        <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'profile' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <Users className="w-4 h-4" /> Profile
-        </button>
-        {role === 'developer' && (
-          <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-            <Shield className="w-4 h-4" /> Maintenance
-          </button>
-        )}
-      </div>
-
-      {/* Tab Content */}
-      <div className="min-h-[500px]">
-        {activeTab === 'profile' && (
-          <div className="glass-panel rounded-2xl p-8 border border-white/10 max-w-2xl">
-            <h3 className="text-2xl font-bold mb-6">Profile</h3>
-            <div className="flex items-center gap-6 mb-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center text-3xl font-bold text-white">
-                {role[0].toUpperCase()}
-              </div>
-              <div>
-                <h4 className="text-xl font-bold capitalize">{role}</h4>
-                <p className="text-gray-400">Badge: <span className="text-[#00F0FF] font-bold">Verified {role}</span></p>
-              </div>
-            </div>
-            <button 
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              className="px-6 py-3 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all border border-red-500/30"
-            >
-              Reset App (Clear History)
-            </button>
-          </div>
-        )}
         {activeTab === 'upload' && (
           <div className="-mx-6 md:-mx-10 -mt-10">
             <Upload onOpenLogin={() => {}} />
@@ -300,14 +133,14 @@ export default function Manage() {
                 <h3 className="font-bold text-lg">Chats</h3>
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {['teacher', 'admin', 'developer'].filter(r => r !== role).map(r => (
+                {['teacher', 'admin', 'developer', 'Group A', 'Group B'].filter(r => r !== role).map(r => (
                   <button 
                     key={r}
                     onClick={() => setSelectedReceiver(r)}
                     className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${selectedReceiver === r ? 'bg-[#00F0FF]/20 text-white' : 'text-gray-400 hover:bg-white/5'}`}
                   >
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-5 h-5" />
+                      {r.includes('Group') ? <Users className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
                     </div>
                     <div className="capitalize font-medium truncate">{r}</div>
                   </button>
@@ -320,10 +153,11 @@ export default function Manage() {
               <div className="p-4 border-b border-white/10 bg-black/40 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
-                    <MessageSquare className="w-5 h-5 text-[#00F0FF]" />
+                    {selectedReceiver.includes('Group') ? <Users className="w-5 h-5 text-[#00F0FF]" /> : <MessageSquare className="w-5 h-5 text-[#00F0FF]" />}
                   </div>
                   <div>
                     <h3 className="font-bold capitalize">{selectedReceiver}</h3>
+                    <p className="text-xs text-gray-400">{onlineTimes[selectedReceiver] ? `Available: ${onlineTimes[selectedReceiver]}` : 'Online'}</p>
                   </div>
                 </div>
               </div>
