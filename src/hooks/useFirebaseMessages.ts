@@ -43,10 +43,12 @@ export function useFirebaseMessages(role: string, selectedReceiver: string) {
       msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
       
       setMessages(msgs);
+    }, (error) => {
+      console.error("Message subscription error:", error);
     });
 
     return () => unsubscribe();
-  }, [role, selectedReceiver]);
+  }, [role, selectedReceiver, auth.currentUser]); // Re-run when auth changes
 
   const sendMessage = async (text: string) => {
     if (!auth.currentUser) return;

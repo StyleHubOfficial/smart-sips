@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { useAuthStore } from '../store/useAuthStore';
 
 export interface Notification {
@@ -18,6 +18,11 @@ export function useFirebaseNotifications() {
   const { role } = useAuthStore();
 
   useEffect(() => {
+    if (!auth.currentUser) {
+      setLoading(false);
+      return;
+    }
+
     const q = query(
       collection(db, 'notifications'),
       where('isActive', '==', true)
@@ -38,10 +43,13 @@ export function useFirebaseNotifications() {
 
       setNotifications(notifs);
       setLoading(false);
+    }, (error) => {
+      console.error("Notification subscription error:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [role]); // Re-run when role changes (which usually happens on login)
 
   const addNotification = async (title: string, message: string) => {
     if (role !== 'admin' && role !== 'developer') {
