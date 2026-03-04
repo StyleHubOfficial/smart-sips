@@ -111,7 +111,7 @@ export default function AIHelper() {
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-sm">
-                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Dev)'}
+                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Developer)'}
                   </h3>
                   <p className="text-[10px] text-[#00F0FF]">
                     {mode === 'ai' ? 'Online' : onlineTimes[mode] ? `Available: ${onlineTimes[mode]}` : 'Online'}

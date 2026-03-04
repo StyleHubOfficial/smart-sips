@@ -10,12 +10,21 @@ import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
 import { useState, useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
+import { auth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { isSimpleMode } = useAppStore();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth state changed:", user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
