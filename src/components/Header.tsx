@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut } from "lucide-react";
+import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useTheme } from "../context/ThemeContext";
+import { useAppStore } from "../store/useAppStore";
 
 interface HeaderProps {
   isSmartPanelMode: boolean;
@@ -18,6 +19,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useTheme();
+  const { isSimpleMode, toggleSimpleMode } = useAppStore();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -99,6 +101,14 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
             <Monitor className="w-5 h-5" />
           </button>
           
+          <button 
+            onClick={toggleSimpleMode}
+            className={`p-2.5 rounded-xl transition-all duration-300 ${isSimpleMode ? 'bg-yellow-500/20 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
+            title="Simple UI Mode"
+          >
+            <Zap className="w-5 h-5" />
+          </button>
+
           <button 
             onClick={handleFullscreen}
             className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300 hidden sm:block"
