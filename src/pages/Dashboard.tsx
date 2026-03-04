@@ -58,7 +58,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
       setLoading(true);
       const res = await fetch("/api/content");
       if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        const msg = errorData.details || errorData.error || `Server error: ${res.status}`;
+        throw new Error(msg);
       }
       const data = await res.json();
       if (data.resources) {

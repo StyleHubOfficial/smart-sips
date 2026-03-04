@@ -40,6 +40,13 @@ export default function Upload({ onOpenLogin }: UploadProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
       const selectedFile = acceptedFiles[0];
+      
+      // Vercel Serverless Functions have a 4.5MB limit for request bodies
+      if (selectedFile.size > 4.5 * 1024 * 1024) {
+        addNotification('error', 'File too large! Vercel limit is 4.5MB. Please upload a smaller file.');
+        return;
+      }
+
       setFile(selectedFile);
       
       // Auto-detect file type
@@ -50,7 +57,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
       else if (type.includes("presentation") || type.includes("powerpoint")) setFormData(prev => ({ ...prev, fileType: "PPT" }));
       else setFormData(prev => ({ ...prev, fileType: "Other" }));
     }
-  }, []);
+  }, [addNotification]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
     onDrop,

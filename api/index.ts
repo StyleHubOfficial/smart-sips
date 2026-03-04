@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import cors from "cors";
@@ -19,7 +18,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || "YMIVl-hidOuXm0yYkzq7xX0raKg",
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  }
+});
 
 async function startServer() {
   const app = express();
@@ -30,24 +34,48 @@ async function startServer() {
 
   // API Routes
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
   // Fetch all resources with metadata
   app.get("/api/content", async (req, res) => {
     try {
-      // We use the search API to get resources with context (metadata)
-      const result = await cloudinary.search
-        .expression("folder:sunrise_classroom")
-        .with_field("context")
-        .sort_by("created_at", "desc")
-        .max_results(100)
-        .execute();
+      console.log("Fetching content from Cloudinary...");
+      
+      let resources = [];
+      try {
+        // Try search API first (more powerful, supports context filtering)
+        const result = await cloudinary.search
+          .expression("folder:sunrise_classroom")
+          .with_field("context")
+          .sort_by("created_at", "desc")
+          .max_results(100)
+          .execute();
+        resources = result.resources || [];
+        console.log(`Search API returned ${resources.length} resources`);
+      } catch (searchError: any) {
+        console.warn("Cloudinary Search API failed, falling back to basic resources API:", searchError.message);
+        
+        // Fallback to basic resources API if search is not enabled/supported
+        const result = await cloudinary.api.resources({
+          type: 'upload',
+          prefix: 'sunrise_classroom/',
+          max_results: 100,
+          context: true
+        });
+        resources = result.resources || [];
+        console.log(`Basic API returned ${resources.length} resources`);
+      }
 
-      res.json({ resources: result.resources });
-    } catch (error) {
+      res.json({ resources });
+    } catch (error: any) {
       console.error("Error fetching content:", error);
-      res.status(500).json({ error: "Failed to fetch content" });
+      res.status(500).json({ 
+        error: "Failed to fetch content", 
+        details: error.message,
+        code: error.http_code,
+        cloudinary_error: error.error?.message
+      });
     }
   });
 
@@ -60,11 +88,15 @@ async function startServer() {
         return res.status(400).json({ error: "Missing public_id" });
       }
 
-      await cloudinary.uploader.destroy(public_id as string, { resource_type: resource_type as string || 'image' });
-      res.json({ success: true });
-    } catch (error) {
+      console.log(`Deleting resource: ${public_id}`);
+      const result = await cloudinary.uploader.destroy(public_id as string, { 
+        resource_type: resource_type as string || 'image' 
+      });
+      
+      res.json({ success: true, result });
+    } catch (error: any) {
       console.error("Error deleting content:", error);
-      res.status(500).json({ error: "Failed to delete content" });
+      res.status(500).json({ error: "Failed to delete content", details: error.message });
     }
   });
 
@@ -79,15 +111,16 @@ async function startServer() {
 
       const contextStr = `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}`;
 
+      console.log(`Updating metadata for: ${public_id}`);
       await cloudinary.api.update(public_id, {
         resource_type: resource_type || 'image',
         context: contextStr
       });
 
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating content:", error);
-      res.status(500).json({ error: "Failed to update content" });
+      res.status(500).json({ error: "Failed to update content", details: error.message });
     }
   });
 
@@ -100,6 +133,8 @@ async function startServer() {
 
       const { title, teacher, subject, className, description, fileType } = req.body;
 
+      console.log(`Uploading file: ${req.file.originalname} (${req.file.size} bytes)`);
+
       // Convert buffer to base64
       const b64 = Buffer.from(req.file.buffer).toString("base64");
       const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
@@ -110,15 +145,21 @@ async function startServer() {
         context: `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}`,
       });
 
+      console.log("Upload successful:", result.public_id);
       res.json({ success: true, resource: result });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading file:", error);
-      res.status(500).json({ error: "Failed to upload file" });
+      res.status(500).json({ 
+        error: "Failed to upload file", 
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -133,4 +174,8 @@ async function startServer() {
   return app;
 }
 
-export default await startServer();
+const appPromise = startServer();
+export default async (req: any, res: any) => {
+  const app = await appPromise;
+  return app(req, res);
+};
