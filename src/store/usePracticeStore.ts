@@ -75,7 +75,8 @@ export const usePracticeStore = create<PracticeState>()(
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        if (selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-2.0-pro-exp-02-05' || selectedModel === 'gemini-2.0-flash') {
+        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-pro-preview'];
+        if (!validModels.includes(selectedModel)) {
           selectedModel = 'gemini-3-flash-preview';
           set({ model: selectedModel }); // Update store to valid model
         }

@@ -103,18 +103,41 @@ export default function CinematicLoader() {
             <span>{Math.round(progress)}%</span>
           </div>
           
-          <div className="relative h-2 bg-[#00F0FF]/10 rounded-full overflow-hidden border border-[#00F0FF]/20">
+          <div className="relative h-2 bg-[#00F0FF]/10 rounded-full border border-[#00F0FF]/20">
             {/* Main Progress Bar */}
             <motion.div 
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] bg-[length:200%_100%]"
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] bg-[length:200%_100%] rounded-full"
               style={{ width: `${progress}%` }}
               animate={{ backgroundPosition: ["0% 0%", "100% 0%"] }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            />
+            >
+              {/* Particle Emitter at Leading Edge */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0">
+                 {Array.from({ length: 5 }).map((_, i) => (
+                   <motion.div
+                     key={i}
+                     className="absolute w-1 h-1 bg-[#00F0FF] rounded-full shadow-[0_0_5px_#00F0FF]"
+                     initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                     animate={{ 
+                       x: -20 - Math.random() * 30, 
+                       y: (Math.random() - 0.5) * 10, 
+                       opacity: 0, 
+                       scale: 0 
+                     }}
+                     transition={{ 
+                       duration: 0.8, 
+                       repeat: Infinity, 
+                       ease: "easeOut",
+                       delay: i * 0.15
+                     }}
+                   />
+                 ))}
+              </div>
+            </motion.div>
             
             {/* Glitch Effect Overlay */}
             <motion.div
-              className="absolute top-0 left-0 h-full w-2 bg-white/50 blur-[2px]"
+              className="absolute top-0 left-0 h-full w-2 bg-white/50 blur-[2px] rounded-full"
               animate={{ left: ["0%", "100%"] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear", repeatDelay: 0.5 }}
             />
