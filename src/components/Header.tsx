@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut, Zap, User, Bell, X } from "lucide-react";
+import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut, Zap, User, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
@@ -11,17 +11,17 @@ interface HeaderProps {
   isSmartPanelMode: boolean;
   setIsSmartPanelMode: (mode: boolean) => void;
   onOpenLogin: () => void;
-  onOpenProfile: () => void;
+  isNotificationsOpen: boolean;
+  setIsNotificationsOpen: (open: boolean) => void;
 }
 
-export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin, onOpenProfile }: HeaderProps) {
+export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin, isNotificationsOpen, setIsNotificationsOpen }: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useTheme();
-  const { isSimpleMode, toggleSimpleMode, notifications: siteNotifications, deleteSiteNotification } = useAppStore();
-  const [showNotifications, setShowNotifications] = useState(false);
+  const { isSimpleMode, toggleSimpleMode } = useAppStore();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -72,27 +72,31 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
         </div>
 
         <div className="flex items-center gap-2">
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <>
               <button 
-                onClick={onOpenProfile}
-                className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-[#00F0FF]/20 hover:text-[#00F0FF] transition-all duration-300 flex items-center gap-2"
-                title="Profile"
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className={`p-2.5 rounded-xl transition-all duration-300 relative ${isNotificationsOpen ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
+                title="Notifications"
               >
-                <User className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => {
-                  logout();
-                  addNotification('info', 'Logged out successfully');
-                }}
-                className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="text-sm font-medium hidden sm:block">Logout</span>
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
             </>
+          )}
+          
+          {isAuthenticated ? (
+            <button 
+              onClick={() => {
+                logout();
+                addNotification('info', 'Logged out successfully');
+              }}
+              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium hidden sm:block">Logout</span>
+            </button>
           ) : (
             <button 
               onClick={onOpenLogin}
@@ -135,44 +139,6 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-
-          <div className="relative">
-            <button 
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300 relative"
-              title="Notifications"
-            >
-              <Bell className="w-5 h-5" />
-              {siteNotifications.length > 0 && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[var(--color-background)]"></span>
-              )}
-            </button>
-
-            {showNotifications && (
-              <div className="absolute top-full right-0 mt-2 w-80 max-h-96 overflow-y-auto glass-panel rounded-2xl border border-white/10 shadow-2xl p-4 z-50">
-                <h3 className="text-lg font-display font-bold mb-3">Announcements</h3>
-                {siteNotifications.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">No new announcements</p>
-                ) : (
-                  <div className="space-y-3">
-                    {siteNotifications.map(notif => (
-                      <div key={notif.id} className="p-3 rounded-xl bg-white/5 border border-white/10 relative group">
-                        <button 
-                          onClick={() => deleteSiteNotification(notif.id)}
-                          className="absolute top-2 right-2 p-1 rounded-md hover:bg-white/10 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                        <p className="text-xs text-[#00F0FF] font-medium mb-1">{notif.title}</p>
-                        <p className="text-sm text-gray-300">{notif.message}</p>
-                        <p className="text-[10px] text-gray-500 mt-2">{format(new Date(notif.timestamp), 'MMM d, h:mm a')}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </motion.header>

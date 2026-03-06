@@ -17,6 +17,7 @@ export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { isSimpleMode } = useAppStore();
 
   useEffect(() => {
@@ -60,6 +61,8 @@ export default function App() {
               isSmartPanelMode={isSmartPanelMode} 
               setIsSmartPanelMode={setIsSmartPanelMode}
               onOpenLogin={() => setIsLoginModalOpen(true)}
+              isNotificationsOpen={isNotificationsOpen}
+              setIsNotificationsOpen={setIsNotificationsOpen}
             />
             
             <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
@@ -75,7 +78,7 @@ export default function App() {
             </main>
 
             <Navigation />
-            <Notifications />
+            <Notifications isOpen={isNotificationsOpen} />
             <AIHelper />
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
           </div>

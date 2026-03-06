@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useAppStore } from '../store/useAppStore';
 import ReactMarkdown from 'react-markdown';
+import { useLocation } from 'react-router-dom';
 
 export default function AIHelper() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function AIHelper() {
     { role: 'model', text: 'Hello! I am your Sunrise AI Assistant. How can I help you today? You can ask me about using the platform, or submit feedback/ideas to the developer.' }
   ]);
   const [input, setInput] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'ai' | 'admin' | 'developer'>('ai');
   
@@ -20,6 +22,12 @@ export default function AIHelper() {
   const { role } = useAuthStore();
   const addNotification = useNotificationStore(state => state.addNotification);
   const { messages: chatMessages, addMessage, markMessagesAsRead, onlineTimes } = useAppStore();
+  const location = useLocation();
+
+  const currentChatMessages = chatMessages.filter(m => 
+    (m.senderRole === role && m.receiverRole === mode) || 
+    (m.senderRole === mode && m.receiverRole === role)
+  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,7 +35,7 @@ export default function AIHelper() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, chatMessages, isOpen, mode]);
+  }, [messages, currentChatMessages, isOpen, mode, isPreview]);
 
   useEffect(() => {
     if (isOpen && mode !== 'ai') {
@@ -40,6 +48,7 @@ export default function AIHelper() {
 
     const userMsg = input.trim();
     setInput('');
+    setIsPreview(false);
 
     if (mode === 'admin' || mode === 'developer') {
       addMessage({
@@ -75,10 +84,9 @@ export default function AIHelper() {
     }
   };
 
-  const currentChatMessages = chatMessages.filter(m => 
-    (m.senderRole === role && m.receiverRole === mode) || 
-    (m.senderRole === mode && m.receiverRole === role)
-  );
+  if (location.pathname === '/chat') {
+    return null;
+  }
 
   return (
     <>
@@ -89,7 +97,7 @@ export default function AIHelper() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-50 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
+        className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-50 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
       >
         <MessageSquare className="w-6 h-6" />
       </motion.button>
@@ -224,14 +232,31 @@ export default function AIHelper() {
               </div>
 
               <div className="relative flex items-center">
-                <input 
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder={mode === 'ai' ? "Ask me anything..." : "Type a message..."}
-                  className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors"
-                />
+                {isPreview && (mode === 'admin' || mode === 'developer') ? (
+                  <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white min-h-[44px] max-h-[100px] overflow-y-auto">
+                    <ReactMarkdown>{input}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <input 
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder={mode === 'ai' ? "Ask me anything..." : "Type a message..."}
+                    className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors"
+                  />
+                )}
+                
+                {(mode === 'admin' || mode === 'developer') && (
+                  <button
+                    onClick={() => setIsPreview(!isPreview)}
+                    className={`absolute right-12 p-2 rounded-full transition-colors ${isPreview ? 'text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                    title="Toggle Markdown Preview"
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                  </button>
+                )}
+
                 <button 
                   onClick={handleSend}
                   disabled={!input.trim() || (isLoading && mode === 'ai')}

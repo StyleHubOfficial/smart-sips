@@ -2,8 +2,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { CheckCircle, XCircle, Info, X } from "lucide-react";
 
-export default function Notifications() {
+export default function Notifications({ isOpen }: { isOpen: boolean }) {
   const { notifications, removeNotification } = useNotificationStore();
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed top-24 right-6 z-50 flex flex-col gap-3 pointer-events-none">
