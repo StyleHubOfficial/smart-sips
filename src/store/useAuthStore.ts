@@ -25,7 +25,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ isAuthenticated: true, role: 'admin' });
       return true;
     }
-    if (id === 'developer' && pass === 'dev123') {
+    if (id === 'dev' && pass === 'dev123') {
       localStorage.setItem('sunrise_auth', 'true');
       localStorage.setItem('sunrise_role', 'developer');
       set({ isAuthenticated: true, role: 'developer' });

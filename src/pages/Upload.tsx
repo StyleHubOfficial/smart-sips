@@ -67,11 +67,8 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     try {
       console.log("Starting direct upload for:", file.name);
       
-      // Prepare context metadata
-      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
-      
-      // 1. Get signature from backend (include context to sign it)
-      const signRes = await axios.get(`/api/sign-upload?context=${encodeURIComponent(contextStr)}`);
+      // 1. Get signature from backend
+      const signRes = await axios.get("/api/sign-upload");
       const { signature, timestamp, cloudName, apiKey, folder } = signRes.data;
 
       // 2. Prepare FormData for Cloudinary
@@ -81,6 +78,9 @@ export default function Upload({ onOpenLogin }: UploadProps) {
       data.append("timestamp", timestamp);
       data.append("signature", signature);
       data.append("folder", folder);
+      
+      // Add context metadata
+      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
       data.append("context", contextStr);
 
       // 3. Upload directly to Cloudinary

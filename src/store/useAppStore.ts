@@ -1,22 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export interface ChatGroup {
-  id: string;
-  name: string;
-  members: string[]; // roles
-  createdBy: string;
-  createdAt: string;
-}
-
 export interface ChatMessage {
   id: string;
   senderRole: string;
-  receiverRole: string; // can be a role or a group id
+  receiverRole: string; 
   text: string;
   timestamp: string;
   status: 'sent' | 'delivered' | 'read';
-  isGroup?: boolean;
 }
 
 export interface SiteNotification {
@@ -36,19 +27,13 @@ export interface MaintenanceAlert {
 
 interface AppState {
   messages: ChatMessage[];
-  groups: ChatGroup[];
   notifications: SiteNotification[];
   maintenanceAlerts: MaintenanceAlert[];
   onlineTimes: Record<string, string>;
   isSimpleMode: boolean;
-  viewedContent: string[];
   
   addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp' | 'status'>) => void;
-  markMessagesAsRead: (receiverRole: string, senderRole: string, isGroup?: boolean) => void;
-  
-  createGroup: (group: Omit<ChatGroup, 'id' | 'createdAt'>) => void;
-  updateGroup: (id: string, updates: Partial<ChatGroup>) => void;
-  deleteGroup: (id: string) => void;
+  markMessagesAsRead: (receiverRole: string, senderRole: string) => void;
   
   addSiteNotification: (notif: Omit<SiteNotification, 'id' | 'timestamp'>) => void;
   deleteSiteNotification: (id: string) => void;
@@ -58,20 +43,16 @@ interface AppState {
   setMaintenanceAlert: (alert: MaintenanceAlert) => void;
   removeMaintenanceAlert: (id: string) => void;
   toggleSimpleMode: () => void;
-  markContentAsViewed: (contentId: string) => void;
-  resetApp: () => void;
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       messages: [],
-      groups: [],
       notifications: [],
       maintenanceAlerts: [],
       onlineTimes: {},
       isSimpleMode: false,
-      viewedContent: [],
       
       addMessage: (msg) => set((state) => ({
         messages: [...state.messages, {
@@ -82,28 +63,12 @@ export const useAppStore = create<AppState>()(
         }]
       })),
       
-      markMessagesAsRead: (receiverRole, senderRole, isGroup) => set((state) => ({
+      markMessagesAsRead: (receiverRole, senderRole) => set((state) => ({
         messages: state.messages.map(m => 
-          (isGroup ? m.receiverRole === receiverRole : m.receiverRole === receiverRole && m.senderRole === senderRole) 
+          (m.receiverRole === receiverRole && m.senderRole === senderRole) 
             ? { ...m, status: 'read' } 
             : m
         )
-      })),
-
-      createGroup: (group) => set((state) => ({
-        groups: [...state.groups, {
-          ...group,
-          id: Math.random().toString(36).substring(7),
-          createdAt: new Date().toISOString()
-        }]
-      })),
-
-      updateGroup: (id, updates) => set((state) => ({
-        groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
-      })),
-
-      deleteGroup: (id) => set((state) => ({
-        groups: state.groups.filter(g => g.id !== id)
       })),
       
       addSiteNotification: (notif) => set((state) => ({
@@ -136,23 +101,7 @@ export const useAppStore = create<AppState>()(
         maintenanceAlerts: state.maintenanceAlerts.filter(a => a.id !== id)
       })),
 
-      toggleSimpleMode: () => set((state) => ({ isSimpleMode: !state.isSimpleMode })),
-      
-      markContentAsViewed: (contentId) => set((state) => ({
-        viewedContent: state.viewedContent.includes(contentId) 
-          ? state.viewedContent 
-          : [...state.viewedContent, contentId]
-      })),
-      
-      resetApp: () => set({
-        messages: [],
-        groups: [],
-        notifications: [],
-        maintenanceAlerts: [],
-        onlineTimes: {},
-        isSimpleMode: false,
-        viewedContent: []
-      })
+      toggleSimpleMode: () => set((state) => ({ isSimpleMode: !state.isSimpleMode }))
     }),
     {
       name: 'sunrise-app-storage',
