@@ -16,6 +16,7 @@ import { useAppStore } from "./store/useAppStore";
 import { useThemeStore } from "./store/useThemeStore";
 
 import Practice from "./pages/Practice";
+import Simulator from "./pages/Simulator";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
@@ -87,6 +88,7 @@ export default function App() {
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/practice" element={<Practice />} />
+                  <Route path="/simulator" element={<Simulator />} />
                 </Routes>
               </AnimatePresence>
             </main>
