@@ -20,12 +20,18 @@ export default function Upload({ onOpenLogin }: UploadProps) {
   
   const [formData, setFormData] = useState({
     title: "",
-    teacher: "",
-    className: "Class 10",
-    subject: "Mathematics",
+    teacher: localStorage.getItem("sunrise_upload_teacher") || "",
+    className: localStorage.getItem("sunrise_upload_class") || "Class 10",
+    subject: localStorage.getItem("sunrise_upload_subject") || "Mathematics",
     description: "",
     fileType: "PDF"
   });
+
+  useEffect(() => {
+    localStorage.setItem("sunrise_upload_teacher", formData.teacher);
+    localStorage.setItem("sunrise_upload_class", formData.className);
+    localStorage.setItem("sunrise_upload_subject", formData.subject);
+  }, [formData.teacher, formData.className, formData.subject]);
 
   useEffect(() => {
     if (file) {
@@ -67,11 +73,8 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     try {
       console.log("Starting direct upload for:", file.name);
       
-      // Prepare context metadata
-      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
-      
-      // 1. Get signature from backend (include context to sign it)
-      const signRes = await axios.get(`/api/sign-upload?context=${encodeURIComponent(contextStr)}`);
+      // 1. Get signature from backend
+      const signRes = await axios.get("/api/sign-upload");
       const { signature, timestamp, cloudName, apiKey, folder } = signRes.data;
 
       // 2. Prepare FormData for Cloudinary
@@ -81,6 +84,9 @@ export default function Upload({ onOpenLogin }: UploadProps) {
       data.append("timestamp", timestamp);
       data.append("signature", signature);
       data.append("folder", folder);
+      
+      // Add context metadata
+      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
       data.append("context", contextStr);
 
       // 3. Upload directly to Cloudinary
@@ -106,14 +112,14 @@ export default function Upload({ onOpenLogin }: UploadProps) {
         setTimeout(() => {
           setFile(null);
           setProgress(0);
-          setFormData({
+          setFormData(prev => ({
             title: "",
-            teacher: "",
-            className: "Class 10",
-            subject: "Mathematics",
+            teacher: prev.teacher,
+            className: prev.className,
+            subject: prev.subject,
             description: "",
             fileType: "PDF"
-          });
+          }));
         }, 500);
       } else {
         throw new Error("Upload failed - No public_id returned");
