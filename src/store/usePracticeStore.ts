@@ -19,6 +19,8 @@ interface PracticeState {
   classLevel: string;
   model: string;
   viewMode: 'list' | 'grid' | 'box';
+  difficulty: string;
+  deepSearch: boolean;
   questions: Question[];
   loading: boolean;
   selectedOptions: Record<string, string>;
@@ -31,6 +33,8 @@ interface PracticeState {
   setClassLevel: (classLevel: string) => void;
   setModel: (model: string) => void;
   setViewMode: (viewMode: 'list' | 'grid' | 'box') => void;
+  setDifficulty: (difficulty: string) => void;
+  setDeepSearch: (deepSearch: boolean) => void;
   setSelectedOption: (questionId: string, option: string) => void;
   generateQuestions: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
@@ -46,6 +50,8 @@ export const usePracticeStore = create<PracticeState>()(
       classLevel: 'Class 12',
       model: 'gemini-3-flash-preview',
       viewMode: 'list',
+      difficulty: 'Medium',
+      deepSearch: false,
       questions: [],
       loading: false,
       selectedOptions: {},
@@ -58,6 +64,8 @@ export const usePracticeStore = create<PracticeState>()(
       setClassLevel: (classLevel) => set({ classLevel }),
       setModel: (model) => set({ model }),
       setViewMode: (viewMode) => set({ viewMode }),
+      setDifficulty: (difficulty) => set({ difficulty }),
+      setDeepSearch: (deepSearch) => set({ deepSearch }),
       
       setSelectedOption: (questionId, option) => 
         set((state) => ({
@@ -68,14 +76,14 @@ export const usePracticeStore = create<PracticeState>()(
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {} }),
 
       generateQuestions: async (apiKey) => {
-        const { query, questionCount, subject, examType, classLevel, model } = get();
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, deepSearch } = get();
         if (!query.trim()) return;
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {} });
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-3.1-pro-preview'];
+        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-2.0-flash'];
         if (!validModels.includes(selectedModel)) {
           selectedModel = 'gemini-3-flash-preview';
           set({ model: selectedModel }); // Update store to valid model
@@ -84,12 +92,17 @@ export const usePracticeStore = create<PracticeState>()(
         try {
           const ai = new GoogleGenAI({ apiKey });
           
-          const prompt = `Generate ${questionCount} multiple choice questions based on this request: "${query}". 
+          let prompt = `Generate ${questionCount} multiple choice questions based on this request: "${query}". 
           Subject: ${subject}
           Exam Type: ${examType}
           Class Level: ${classLevel}
+          Difficulty Level: ${difficulty}
+          
           The questions must be authentic competitive exam questions (like NDA, JEE, NEET, UPSC, etc.) from any reputable source.
           Ensure the questions are searched well and are from correct, authentic sources.
+          
+          ${deepSearch ? 'DEEP SEARCH MODE ENABLED: Perform a deep retrieval of high-quality, conceptual, and challenging questions. Prioritize questions that test in-depth understanding and application of concepts. Provide very detailed, step-by-step solutions.' : ''}
+
           Return ONLY a valid JSON array of objects. Each object must have:
           - id: unique string
           - question: string text of the question
@@ -124,7 +137,9 @@ export const usePracticeStore = create<PracticeState>()(
         questionCount: state.questionCount,
         classLevel: state.classLevel,
         model: state.model,
-        viewMode: state.viewMode
+        viewMode: state.viewMode,
+        difficulty: state.difficulty,
+        deepSearch: state.deepSearch
       }),
     }
   )

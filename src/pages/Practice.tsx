@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Filter, Layers, Zap } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore } from '../store/usePracticeStore';
@@ -9,8 +9,8 @@ import CinematicLoader from '../components/CinematicLoader';
 
 export default function Practice() {
   const { 
-    query, questionCount, subject, examType, classLevel, model, viewMode, questions, loading, selectedOptions, showSolutions,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setSelectedOption, generateQuestions 
+    query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, deepSearch, questions, loading, selectedOptions, showSolutions,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setDeepSearch, setSelectedOption, generateQuestions 
   } = usePracticeStore();
   
   const { role } = useAuthStore();
@@ -170,7 +170,8 @@ export default function Practice() {
 
       {/* Search Section */}
       <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Row 1: Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
             <select 
@@ -233,6 +234,24 @@ export default function Practice() {
           </div>
 
           <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</label>
+            <select 
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+            >
+              <option value="Easy">Easy</option>
+              <option value="Medium">Medium</option>
+              <option value="Hard">Hard</option>
+              <option value="Board Level">Board Level</option>
+              <option value="Competition Level">Competition Level</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 2: Advanced Options */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">AI Model</label>
             <select 
               value={model}
@@ -241,7 +260,7 @@ export default function Practice() {
             >
               <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
               <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
-              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </select>
           </div>
 
@@ -261,16 +280,32 @@ export default function Practice() {
               <span>50</span>
             </div>
           </div>
+
+          <div className="flex items-center justify-end pb-1">
+             <button
+               onClick={() => setDeepSearch(!deepSearch)}
+               className={`w-full md:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-xl border transition-all ${
+                 deepSearch 
+                   ? 'bg-[#00F0FF]/20 border-[#00F0FF] text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.3)]' 
+                   : 'bg-black/40 border-white/10 text-gray-400 hover:text-white hover:border-white/30'
+               }`}
+             >
+               <Zap className={`w-4 h-4 ${deepSearch ? 'fill-current' : ''}`} />
+               <span className="font-medium">Deep Search</span>
+               {deepSearch && <span className="text-[10px] bg-[#00F0FF] text-black px-1.5 py-0.5 rounded font-bold ml-1">ON</span>}
+             </button>
+          </div>
         </div>
 
-        <div className="relative flex items-center">
+        {/* Search Bar */}
+        <div className="relative flex items-center pt-2">
           <Search className="absolute left-4 w-5 h-5 text-gray-400" />
           <input 
             type="text" 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={`e.g. ${questionCount} pyqs of ${examType} in ${subject} for ${classLevel}...`}
+            placeholder={`e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
             className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-32 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
           />
           <button 
