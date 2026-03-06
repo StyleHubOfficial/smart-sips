@@ -10,8 +10,11 @@ import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
+import GlobalUploadProgress from "./components/GlobalUploadProgress";
 import { useState, useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
+
+import Practice from "./pages/Practice";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
@@ -73,6 +76,7 @@ export default function App() {
                   <Route path="/manage" element={<Manage />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/chat" element={<Chat />} />
+                  <Route path="/practice" element={<Practice />} />
                 </Routes>
               </AnimatePresence>
             </main>
@@ -80,6 +84,7 @@ export default function App() {
             <Navigation />
             <Notifications isOpen={isNotificationsOpen} />
             <AIHelper />
+            <GlobalUploadProgress />
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
           </div>
         </div>

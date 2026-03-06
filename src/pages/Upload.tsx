@@ -2,9 +2,8 @@ import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2, PlayCircle, Eye, Lock } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import axios from "axios";
 import { useAuthStore } from "../store/useAuthStore";
-import { useNotificationStore } from "../store/useNotificationStore";
+import { useUploadStore } from "../store/useUploadStore";
 
 interface UploadProps {
   onOpenLogin: () => void;
@@ -13,10 +12,13 @@ interface UploadProps {
 export default function Upload({ onOpenLogin }: UploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
   const { isAuthenticated } = useAuthStore();
-  const addNotification = useNotificationStore((state) => state.addNotification);
+  const { addUpload, uploads } = useUploadStore();
+  
+  // Find current upload if any
+  const currentUpload = uploads.find(u => u.file === file && u.status === 'uploading');
+  const uploading = !!currentUpload;
+  const progress = currentUpload?.progress || 0;
   
   const [formData, setFormData] = useState({
     title: "",
@@ -67,70 +69,21 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     e.preventDefault();
     if (!file) return;
 
-    setUploading(true);
-    setProgress(0);
-
-    try {
-      console.log("Starting direct upload for:", file.name);
-      
-      // 1. Get signature from backend
-      const signRes = await axios.get("/api/sign-upload");
-      const { signature, timestamp, cloudName, apiKey, folder } = signRes.data;
-
-      // 2. Prepare FormData for Cloudinary
-      const data = new FormData();
-      data.append("file", file);
-      data.append("api_key", apiKey);
-      data.append("timestamp", timestamp);
-      data.append("signature", signature);
-      data.append("folder", folder);
-      
-      // Add context metadata
-      const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
-      data.append("context", contextStr);
-
-      // 3. Upload directly to Cloudinary
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
-      const res = await axios.post(uploadUrl, data, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setProgress(percentCompleted);
-          }
-        },
-      });
-
-      console.log("Upload response received:", res.status, res.data);
-
-      if (res.data && res.data.public_id) {
-        addNotification('success', 'File uploaded successfully!');
-        
-        // Small delay before resetting to prevent UI glitches during transition
-        setTimeout(() => {
-          setFile(null);
-          setProgress(0);
-          setFormData(prev => ({
-            title: "",
-            teacher: prev.teacher,
-            className: prev.className,
-            subject: prev.subject,
-            description: "",
-            fileType: "PDF"
-          }));
-        }, 500);
-      } else {
-        throw new Error("Upload failed - No public_id returned");
-      }
-    } catch (err: any) {
-      console.error("Upload error details:", err);
-      const errorMessage = err.response?.data?.error?.message || err.message || "Failed to upload file";
-      addNotification('error', String(errorMessage));
-    } finally {
-      setUploading(false);
-    }
+    const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
+    
+    // Start background upload
+    addUpload(file, contextStr);
+    
+    // Reset form immediately
+    setFile(null);
+    setFormData(prev => ({
+      title: "",
+      teacher: prev.teacher,
+      className: prev.className,
+      subject: prev.subject,
+      description: "",
+      fileType: "PDF"
+    }));
   };
 
   if (!isAuthenticated) {

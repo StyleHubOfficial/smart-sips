@@ -127,9 +127,9 @@ async function startServer() {
   // Get signature for direct upload
   app.get("/api/sign-upload", (req, res) => {
     try {
+      const { context } = req.query;
       const timestamp = Math.round((new Date).getTime() / 1000);
       const folder = "sunrise_classroom";
-      const { context } = req.query;
       
       const paramsToSign: any = {
         timestamp: timestamp,

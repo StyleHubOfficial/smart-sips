@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare } from "lucide-react";
+import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -13,7 +13,7 @@ export default function Navigation() {
       transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] sm:w-auto max-w-md"
     >
-      <div className="glass-panel rounded-full px-4 sm:px-6 py-3 flex items-center justify-between sm:justify-center sm:gap-8 border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
+      <div className="glass-panel rounded-full px-4 sm:px-6 py-3 flex items-center justify-between sm:justify-center sm:gap-6 border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
         <NavLink 
           to="/" 
           className={({ isActive }) => 
@@ -21,11 +21,11 @@ export default function Navigation() {
           }
           title="Dashboard"
         >
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="text-[10px] font-medium uppercase tracking-wider">Dashboard</span>
+          <LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Dash</span>
         </NavLink>
         
-        <div className="w-[1px] h-8 bg-white/10"></div>
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
         
         {role === 'admin' || role === 'developer' ? (
           <>
@@ -36,10 +36,10 @@ export default function Navigation() {
               }
               title="Manage"
             >
-              <Settings className="w-6 h-6" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Manage</span>
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Manage</span>
             </NavLink>
-            <div className="w-[1px] h-8 bg-white/10"></div>
+            <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
             <NavLink 
               to="/analytics" 
               className={({ isActive }) => 
@@ -47,46 +47,48 @@ export default function Navigation() {
               }
               title="Analytics"
             >
-              <BarChart3 className="w-6 h-6" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Analytics</span>
-            </NavLink>
-            <div className="w-[1px] h-8 bg-white/10"></div>
-            <NavLink 
-              to="/chat" 
-              className={({ isActive }) => 
-                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-gray-400 hover:text-white'}`
-              }
-              title="Chat"
-            >
-              <MessageSquare className="w-6 h-6" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Chat</span>
+              <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Stats</span>
             </NavLink>
           </>
         ) : (
-          <>
-            <NavLink 
-              to="/upload" 
-              className={({ isActive }) => 
-                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-              }
-              title="Upload"
-            >
-              <UploadCloud className="w-6 h-6" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Upload</span>
-            </NavLink>
-            <div className="w-[1px] h-8 bg-white/10"></div>
-            <NavLink 
-              to="/chat" 
-              className={({ isActive }) => 
-                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-gray-400 hover:text-white'}`
-              }
-              title="Chat"
-            >
-              <MessageSquare className="w-6 h-6" />
-              <span className="text-[10px] font-medium uppercase tracking-wider">Chat</span>
-            </NavLink>
-          </>
+          <NavLink 
+            to="/upload" 
+            className={({ isActive }) => 
+              `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
+            }
+            title="Upload"
+          >
+            <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Upload</span>
+          </NavLink>
         )}
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
+
+        <NavLink 
+          to="/practice" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-yellow-400 scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="Practice"
+        >
+          <BrainCircuit className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Practice</span>
+        </NavLink>
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
+
+        <NavLink 
+          to="/chat" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="Chat"
+        >
+          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Chat</span>
+        </NavLink>
       </div>
     </motion.nav>
   );
