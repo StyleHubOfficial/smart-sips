@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
+import CinematicLoader from '../components/CinematicLoader';
 
 export default function Practice() {
   const { 
-    query, questionCount, subject, examType, classLevel, questions, loading, selectedOptions, showSolutions,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setSelectedOption, generateQuestions 
+    query, questionCount, subject, examType, classLevel, model, viewMode, questions, loading, selectedOptions, showSolutions,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setSelectedOption, generateQuestions 
   } = usePracticeStore();
   
   const { role } = useAuthStore();
@@ -21,10 +22,30 @@ export default function Practice() {
 
   const handleSearch = async () => {
     if (!query.trim()) return;
+    
+    // Robust API Key Retrieval for Vercel & Preview Environments
+    let apiKey = '';
+    
+    // 1. Try process.env (Preview Environment / Define Plugin)
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    
+    // 2. Try import.meta.env (Standard Vite / Vercel)
+    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      addNotification('error', 'API Key missing. Please set GEMINI_API_KEY or VITE_GEMINI_API_KEY in your environment variables.');
+      return;
+    }
+
     try {
-      await generateQuestions(process.env.GEMINI_API_KEY || '');
+      await generateQuestions(apiKey);
     } catch (error) {
-      addNotification('error', 'Failed to generate questions. Please try again.');
+      console.error("Generation Error:", error);
+      addNotification('error', 'Failed to generate questions. Please check your API key and try again.');
     }
   };
 
@@ -133,7 +154,7 @@ export default function Practice() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="p-6 md:p-10 max-w-5xl mx-auto pb-32"
+      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
       <div className="mb-10 flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
@@ -149,7 +170,7 @@ export default function Practice() {
 
       {/* Search Section */}
       <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
             <select 
@@ -212,19 +233,32 @@ export default function Practice() {
           </div>
 
           <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">AI Model</label>
+            <select 
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+            >
+              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">No. of Questions ({questionCount})</label>
             <input 
               type="range" 
-              min="10" 
-              max="80" 
+              min="5" 
+              max="50" 
               step="5"
               value={questionCount}
               onChange={(e) => setQuestionCount(parseInt(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#00F0FF]"
             />
             <div className="flex justify-between text-xs text-gray-500">
-              <span>10</span>
-              <span>80</span>
+              <span>5</span>
+              <span>50</span>
             </div>
           </div>
         </div>
@@ -242,9 +276,10 @@ export default function Practice() {
           <button 
             onClick={handleSearch}
             disabled={loading || !query.trim()}
-            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
+            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generate'}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+            {loading ? 'Generating...' : 'Generate'}
           </button>
         </div>
       </div>
@@ -252,112 +287,124 @@ export default function Practice() {
       {/* Questions List */}
       <div className="space-y-6">
         {loading && (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="glass-panel rounded-2xl p-6 border border-white/10 animate-pulse">
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-white/10 shrink-0"></div>
-                  <div className="flex-1 space-y-3">
-                    <div className="h-4 bg-white/10 rounded w-3/4"></div>
-                    <div className="h-4 bg-white/10 rounded w-1/2"></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                      <div className="h-12 bg-white/5 rounded-xl border border-white/5"></div>
-                      <div className="h-12 bg-white/5 rounded-xl border border-white/5"></div>
-                      <div className="h-12 bg-white/5 rounded-xl border border-white/5"></div>
-                      <div className="h-12 bg-white/5 rounded-xl border border-white/5"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div className="text-center text-[#00F0FF] animate-pulse mt-4">
-              Generating authentic questions from reliable sources...
-            </div>
+          <div className="py-8">
+            <CinematicLoader />
           </div>
         )}
 
         {!loading && questions.length > 0 && (
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-white">Generated Questions ({questions.length})</h3>
-            {(role === 'admin' || role === 'developer' || role === 'teacher') && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              Generated Questions <span className="text-gray-500 text-sm font-normal">({questions.length})</span>
+            </h3>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="List View"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="Grid View"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => setViewMode('box')}
+                  className={`p-2 rounded-md transition-all ${viewMode === 'box' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="Box View"
+                >
+                  <Square className="w-4 h-4" />
+                </button>
+              </div>
+
               <button 
                 onClick={handleSaveToDashboard}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all disabled:opacity-50 border border-white/10"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 {isSaving ? 'Saving...' : 'Save to Dashboard'}
               </button>
-            )}
+            </div>
           </div>
         )}
 
         <AnimatePresence>
-          {!loading && questions.map((q, index) => (
-            <motion.div
-              key={q.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="glass-panel rounded-2xl p-6 border border-white/10"
-            >
-              <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 font-bold text-[#00F0FF]">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="text-lg font-medium text-white mb-4">{q.question}</p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    {q.options.map((option, optIndex) => {
-                      const isSelected = selectedOptions[q.id] === option;
-                      const isCorrect = q.correctAnswer === option;
-                      const showResult = !!selectedOptions[q.id];
-                      
-                      let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
-                      if (showResult) {
-                        if (isCorrect) optionClass = "bg-green-500/20 border-green-500/50 text-green-200";
-                        else if (isSelected) optionClass = "bg-red-500/20 border-red-500/50 text-red-200";
-                        else optionClass = "bg-white/5 border-white/10 opacity-50";
-                      }
-
-                      return (
-                        <button
-                          key={optIndex}
-                          onClick={() => handleOptionClick(q.id, option)}
-                          disabled={showResult}
-                          className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between group ${optionClass}`}
-                        >
-                          <span>{option}</span>
-                          {showResult && isCorrect && <CheckCircle className="w-5 h-5 text-green-400" />}
-                          {showResult && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-red-400" />}
-                        </button>
-                      );
-                    })}
+          <div className={
+            viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 
+            viewMode === 'box' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
+            'space-y-6'
+          }>
+            {!loading && questions.map((q, index) => (
+              <motion.div
+                key={q.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`glass-panel rounded-2xl p-6 border border-white/10 flex flex-col ${viewMode === 'box' ? 'h-full' : ''}`}
+              >
+                <div className="flex gap-4 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 font-bold text-[#00F0FF]">
+                    {index + 1}
                   </div>
-
-                  {showSolutions[q.id] && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4"
-                    >
-                      <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
-                        <HelpCircle className="w-4 h-4" />
-                        <span className="font-bold text-sm uppercase tracking-wider">Solution</span>
-                      </div>
-                      <p className="text-gray-300 text-sm leading-relaxed mb-3">{q.solution}</p>
-                      {q.sourceLink && (
-                        <div className="text-xs text-gray-500 border-t border-white/10 pt-2 mt-2">
-                          Source: <a href={q.sourceLink} target="_blank" rel="noopener noreferrer" className="text-[#00F0FF] hover:underline truncate inline-block max-w-full align-bottom">{q.sourceLink}</a>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
+                  <p className="text-lg font-medium text-white">{q.question}</p>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+                
+                <div className={`grid gap-3 mb-4 ${viewMode === 'box' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+                  {q.options.map((option, optIndex) => {
+                    const isSelected = selectedOptions[q.id] === option;
+                    const isCorrect = q.correctAnswer === option;
+                    const showResult = !!selectedOptions[q.id];
+                    
+                    let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
+                    if (showResult) {
+                      if (isCorrect) optionClass = "bg-green-500/20 border-green-500/50 text-green-200";
+                      else if (isSelected) optionClass = "bg-red-500/20 border-red-500/50 text-red-200";
+                      else optionClass = "bg-white/5 border-white/10 opacity-50";
+                    }
+
+                    return (
+                      <button
+                        key={optIndex}
+                        onClick={() => handleOptionClick(q.id, option)}
+                        disabled={showResult}
+                        className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass}`}
+                      >
+                        <span>{option}</span>
+                        {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-green-400 shrink-0 ml-2" />}
+                        {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {showSolutions[q.id] && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
+                  >
+                    <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
+                      <HelpCircle className="w-4 h-4" />
+                      <span className="font-bold text-sm uppercase tracking-wider">Solution</span>
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-3">{q.solution}</p>
+                    {q.sourceLink && (
+                      <div className="text-xs text-gray-500 border-t border-white/10 pt-2 mt-2">
+                        Source: <a href={q.sourceLink} target="_blank" rel="noopener noreferrer" className="text-[#00F0FF] hover:underline truncate inline-block max-w-full align-bottom">{q.sourceLink}</a>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </motion.div>
+            ))}
+          </div>
         </AnimatePresence>
         
         {questions.length === 0 && !loading && (

@@ -17,6 +17,8 @@ interface PracticeState {
   subject: string;
   examType: string;
   classLevel: string;
+  model: string;
+  viewMode: 'list' | 'grid' | 'box';
   questions: Question[];
   loading: boolean;
   selectedOptions: Record<string, string>;
@@ -27,6 +29,8 @@ interface PracticeState {
   setSubject: (subject: string) => void;
   setExamType: (examType: string) => void;
   setClassLevel: (classLevel: string) => void;
+  setModel: (model: string) => void;
+  setViewMode: (viewMode: 'list' | 'grid' | 'box') => void;
   setSelectedOption: (questionId: string, option: string) => void;
   generateQuestions: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
@@ -40,6 +44,8 @@ export const usePracticeStore = create<PracticeState>()(
       subject: 'General',
       examType: 'General',
       classLevel: 'Class 12',
+      model: 'gemini-3-flash-preview',
+      viewMode: 'list',
       questions: [],
       loading: false,
       selectedOptions: {},
@@ -50,6 +56,8 @@ export const usePracticeStore = create<PracticeState>()(
       setSubject: (subject) => set({ subject }),
       setExamType: (examType) => set({ examType }),
       setClassLevel: (classLevel) => set({ classLevel }),
+      setModel: (model) => set({ model }),
+      setViewMode: (viewMode) => set({ viewMode }),
       
       setSelectedOption: (questionId, option) => 
         set((state) => ({
@@ -60,7 +68,7 @@ export const usePracticeStore = create<PracticeState>()(
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {} }),
 
       generateQuestions: async (apiKey) => {
-        const { query, questionCount, subject, examType, classLevel } = get();
+        const { query, questionCount, subject, examType, classLevel, model } = get();
         if (!query.trim()) return;
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {} });
@@ -84,7 +92,7 @@ export const usePracticeStore = create<PracticeState>()(
           Do not include markdown formatting like \`\`\`json. Just the raw JSON array.`;
 
           const result = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: model,
             contents: prompt
           });
           
@@ -106,7 +114,9 @@ export const usePracticeStore = create<PracticeState>()(
         subject: state.subject, 
         examType: state.examType, 
         questionCount: state.questionCount,
-        classLevel: state.classLevel
+        classLevel: state.classLevel,
+        model: state.model,
+        viewMode: state.viewMode
       }),
     }
   )
