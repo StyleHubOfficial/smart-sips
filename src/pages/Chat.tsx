@@ -84,7 +84,7 @@ export default function Chat() {
               initial={{ x: -300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -300, opacity: 0 }}
-              className={`absolute md:relative z-20 w-72 h-full glass-panel rounded-2xl border border-white/10 flex flex-col overflow-hidden ${!isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
+              className={`absolute md:relative z-20 w-72 h-full glass-panel !bg-black/95 md:!bg-[var(--color-glass)] backdrop-blur-2xl md:backdrop-blur-xl rounded-2xl border border-white/10 flex flex-col overflow-hidden ${!isSidebarOpen ? 'hidden md:flex' : 'flex'}`}
             >
               <div className="p-4 border-b border-white/10 bg-black/40 flex flex-col gap-3">
                 <div className="flex justify-between items-center">
