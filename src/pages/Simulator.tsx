@@ -1,26 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
-import CinematicLoader from '../components/CinematicLoader';
+import SimLoader from '../components/SimLoader';
 
 export default function Simulator() {
   const { 
-    query, generatedCode, loading, model, mode,
-    setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation
+    query, generatedCode, loading, model, mode, savedSimulations,
+    setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation
   } = useSimulatorStore();
   
   const addNotification = useNotificationStore(state => state.addNotification);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleGenerate = async () => {
     if (!query.trim()) return;
     
-    // Robust API Key Retrieval
     let apiKey = '';
     if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
       apiKey = process.env.GEMINI_API_KEY;
@@ -40,6 +40,12 @@ export default function Simulator() {
       console.error("Generation Error:", error);
       addNotification('error', 'Failed to generate simulation. Please try again.');
     }
+  };
+
+  const handleSave = () => {
+    if (!generatedCode) return;
+    saveCurrentSimulation();
+    addNotification('success', 'Simulation saved to your history.');
   };
 
   const handleDownload = () => {
@@ -81,22 +87,85 @@ export default function Simulator() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
-      <div className="mb-10 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
-          <MonitorPlay className="w-8 h-8 text-[#00F0FF]" />
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#B026FF]/20 to-[#00F0FF]/20 flex items-center justify-center border border-[#B026FF]/30 shadow-[0_0_30px_rgba(176,38,255,0.2)]">
+            <MonitorPlay className="w-8 h-8 text-[#B026FF]" />
+          </div>
+          <div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold">
+              Simulator <span className="text-gradient-purple">Generator</span>
+            </h2>
+            <p className="text-gray-400">Interactive 2D & 3D physics simulations with real-time parameters</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-3xl md:text-5xl font-display font-bold">
-            Simulator <span className="text-gradient">Generator</span>
-          </h2>
-          <p className="text-gray-400">AI-powered interactive 2D & 3D physics simulations</p>
-        </div>
+
+        <button 
+          onClick={() => setShowHistory(!showHistory)}
+          className={`flex items-center gap-2 px-6 py-3 rounded-2xl border transition-all ${
+            showHistory ? 'bg-[#B026FF]/20 border-[#B026FF] text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+          }`}
+        >
+          <History className="w-5 h-5" />
+          <span className="font-bold">History</span>
+          {savedSimulations.length > 0 && (
+            <span className="bg-[#B026FF] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
+              {savedSimulations.length}
+            </span>
+          )}
+        </button>
       </div>
+
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden mb-8"
+          >
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {savedSimulations.length === 0 ? (
+                <div className="col-span-full py-10 text-center text-gray-500">
+                  No saved simulations yet.
+                </div>
+              ) : (
+                savedSimulations.map((sim) => (
+                  <div 
+                    key={sim.id}
+                    className="group bg-white/5 border border-white/10 rounded-xl p-4 hover:border-[#B026FF]/50 transition-all cursor-pointer"
+                    onClick={() => {
+                      loadSimulation(sim.id);
+                      setShowHistory(false);
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-bold text-white truncate pr-4">{sim.title}</h4>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSimulation(sim.id);
+                        }}
+                        className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-wider">
+                      <span>{sim.date}</span>
+                      <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Controls Section */}
       <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden">
-        {/* Background glow effect */}
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#00F0FF]/10 rounded-full blur-[80px] pointer-events-none"></div>
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#B026FF]/10 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end relative z-10">
           <div className="space-y-2">
@@ -134,17 +203,23 @@ export default function Simulator() {
             <select 
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all appearance-none cursor-pointer"
             >
               <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
               <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             </select>
           </div>
 
           <div className="flex justify-end pb-1">
              {generatedCode && (
                <div className="flex gap-2">
+                 <button 
+                   onClick={handleSave}
+                   className="p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
+                   title="Save to History"
+                 >
+                   <Save className="w-5 h-5" />
+                 </button>
                  <button 
                    onClick={() => setShowCode(!showCode)}
                    className={`p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
@@ -173,12 +248,12 @@ export default function Simulator() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
             placeholder={`Describe the simulation (e.g., "Solar system with gravity", "Double pendulum", "Particle collision")...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-32 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all shadow-inner"
+            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-32 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
           />
           <button 
             onClick={handleGenerate}
             disabled={loading || !query.trim()}
-            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
+            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
             {loading ? 'Generating...' : 'Generate'}
@@ -190,7 +265,7 @@ export default function Simulator() {
       <div className="space-y-6">
         {loading && (
           <div className="py-12">
-            <CinematicLoader />
+            <SimLoader />
           </div>
         )}
 

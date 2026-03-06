@@ -83,7 +83,7 @@ export const usePracticeStore = create<PracticeState>()(
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview', 'gemini-2.0-flash'];
+        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'];
         if (!validModels.includes(selectedModel)) {
           selectedModel = 'gemini-3-flash-preview';
           set({ model: selectedModel }); // Update store to valid model
@@ -101,7 +101,25 @@ export const usePracticeStore = create<PracticeState>()(
           The questions must be authentic competitive exam questions (like NDA, JEE, NEET, UPSC, etc.) from any reputable source.
           Ensure the questions are searched well and are from correct, authentic sources.
           
-          ${deepSearch ? 'DEEP SEARCH MODE ENABLED: Perform a deep retrieval of high-quality, conceptual, and challenging questions. Prioritize questions that test in-depth understanding and application of concepts. Provide very detailed, step-by-step solutions.' : ''}
+          ${deepSearch ? `
+            [DEEP RESEARCH & REASONING MODE ENABLED]
+            You are an elite educational researcher and pedagogical expert. 
+            
+            STEP 1: DEEP CONCEPTUAL ANALYSIS
+            - Break down the topic into its fundamental principles, common misconceptions, and advanced applications.
+            - Analyze the specific requirements for ${examType} at ${classLevel} level.
+            - Identify "trap" concepts often tested in competitive exams.
+
+            STEP 2: CROSS-REFERENCE & VALIDATION
+            - Simulate a search across high-authority sources (NCERT, MIT OpenCourseWare, Khan Academy, specialized competitive exam portals).
+            - Ensure the difficulty matches the "${difficulty}" level perfectly.
+
+            STEP 3: QUESTION SYNTHESIS
+            - Generate questions that test deep understanding, not just rote memorization.
+            - Include a mix of conceptual, numerical (if applicable), and application-based questions.
+            - For each question, provide a detailed, step-by-step solution that explains the "why" behind the correct answer.
+            - Provide a realistic "Source Link" or reference to a high-quality educational resource for further reading.
+          ` : ''}
 
           Return ONLY a valid JSON array of objects. Each object must have:
           - id: unique string

@@ -17,7 +17,7 @@ const loadingTexts = [
 
 const icons = [BrainCircuit, Cpu, Zap, Radio, Globe, ShieldCheck, Database, Server, Code2, Terminal];
 
-export default function CinematicLoader() {
+export default React.memo(function CinematicLoader() {
   const [progress, setProgress] = useState(0);
   const [textIndex, setTextIndex] = useState(0);
   const [currentIconIndex, setCurrentIconIndex] = useState(0);
@@ -113,25 +113,28 @@ export default function CinematicLoader() {
             >
               {/* Particle Emitter at Leading Edge */}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0">
-                 {Array.from({ length: 5 }).map((_, i) => (
+                 {Array.from({ length: 12 }).map((_, i) => (
                    <motion.div
                      key={i}
-                     className="absolute w-1 h-1 bg-[#00F0FF] rounded-full shadow-[0_0_5px_#00F0FF]"
+                     className="absolute w-1 h-1 bg-[#00F0FF] rounded-full shadow-[0_0_8px_#00F0FF]"
                      initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                      animate={{ 
-                       x: -20 - Math.random() * 30, 
-                       y: (Math.random() - 0.5) * 10, 
+                       x: -40 - Math.random() * 60, // Backward force
+                       y: (Math.random() - 0.5) * 25, 
                        opacity: 0, 
-                       scale: 0 
+                       scale: 0,
+                       rotate: Math.random() * 360
                      }}
                      transition={{ 
-                       duration: 0.8, 
+                       duration: 1.5, 
                        repeat: Infinity, 
-                       ease: "easeOut",
-                       delay: i * 0.15
+                       ease: "circOut",
+                       delay: i * 0.1
                      }}
                    />
                  ))}
+                 {/* Tip Glow */}
+                 <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full blur-[6px] opacity-60 shadow-[0_0_20px_#00F0FF]"></div>
               </div>
             </motion.div>
             
@@ -159,4 +162,4 @@ export default function CinematicLoader() {
       </div>
     </div>
   );
-}
+});

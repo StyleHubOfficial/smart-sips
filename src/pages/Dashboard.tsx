@@ -29,6 +29,180 @@ interface ContentItem {
   }
 }
 
+const ContentCard = React.memo(({ 
+  item, 
+  viewMode, 
+  isAuthenticated, 
+  deletingId, 
+  onEdit, 
+  onDelete, 
+  getFileIcon 
+}: { 
+  item: ContentItem, 
+  viewMode: 'grid' | 'list', 
+  isAuthenticated: boolean, 
+  deletingId: string | null, 
+  onEdit: (item: ContentItem) => void, 
+  onDelete: (id: string, type: string) => void,
+  getFileIcon: (type: string) => React.ReactNode
+}) => {
+  const meta = item.context?.custom || {};
+  const title = meta.title || "Untitled Document";
+  const fileType = meta.fileType || "Unknown";
+  const date = new Date(item.created_at);
+
+  if (viewMode === 'list') {
+    return (
+      <motion.div 
+        variants={{
+          hidden: { opacity: 0, y: 20 },
+          show: { opacity: 1, y: 0 }
+        }}
+        whileHover={{ scale: 1.01 }}
+        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex items-center p-4 gap-4"
+      >
+        <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
+          {item.resource_type === 'image' ? (
+            <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
+          ) : item.resource_type === 'video' ? (
+            <video src={item.secure_url} className="w-full h-full object-cover" />
+          ) : (
+            getFileIcon(fileType)
+          )}
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
+          <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"} • {format(date, "MMM d, yyyy")}</p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <a 
+            href={item.secure_url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
+            title="View"
+          >
+            <Eye className="w-4 h-4" />
+          </a>
+          <a 
+            href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
+            download
+            className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-colors text-white"
+            title="Download"
+          >
+            <Download className="w-4 h-4" />
+          </a>
+          {isAuthenticated && (
+            <>
+              <button 
+                onClick={() => onEdit(item)}
+                className="p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-colors"
+                title="Edit"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => onDelete(item.public_id, item.resource_type)}
+                disabled={deletingId === item.public_id}
+                className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                title="Delete"
+              >
+                {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div 
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0 }
+      }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col"
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+      
+      {isAuthenticated && (
+        <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+          <button 
+            onClick={() => onEdit(item)}
+            className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-colors"
+            title="Edit"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => onDelete(item.public_id, item.resource_type)}
+            disabled={deletingId === item.public_id}
+            className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+            title="Delete"
+          >
+            {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+          </button>
+        </div>
+      )}
+
+      <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
+        {item.resource_type === 'image' ? (
+          <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+        ) : item.resource_type === 'video' ? (
+          <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+        ) : (
+          <div className="transform group-hover:scale-110 transition-transform duration-500">
+            {getFileIcon(fileType)}
+          </div>
+        )}
+        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2">
+          {getFileIcon(fileType)}
+          {fileType}
+        </div>
+      </div>
+
+      <div className="p-5 flex-1 flex flex-col relative z-10">
+        <div className="flex items-start gap-3 mb-1">
+          <div className="mt-1 opacity-70">
+            {getFileIcon(fileType)}
+          </div>
+          <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
+        </div>
+        <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject} • {meta.class}</p>
+        
+        <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
+          <span>By {meta.teacher || "Unknown"}</span>
+          <span>{format(date, "MMM d, yyyy")}</span>
+        </div>
+
+        <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+          <a 
+            href={item.secure_url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
+            title="View Content"
+          >
+            <Eye className="w-4 h-4" /> View
+          </a>
+          <a 
+            href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
+            download
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white"
+            title="Download Content"
+          >
+            <Download className="w-4 h-4" /> Download
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -448,165 +622,18 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           animate="show"
           className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}
         >
-          {filteredContent.map((item) => {
-            const meta = item.context?.custom || {};
-            const title = meta.title || "Untitled Document";
-            const fileType = meta.fileType || "Unknown";
-            const date = new Date(item.created_at);
-
-            if (viewMode === 'list') {
-              return (
-                <motion.div 
-                  key={item.public_id}
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    show: { opacity: 1, y: 0 }
-                  }}
-                  whileHover={{ scale: 1.01 }}
-                  className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex items-center p-4 gap-4"
-                >
-                  <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
-                    {item.resource_type === 'image' ? (
-                      <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
-                    ) : item.resource_type === 'video' ? (
-                      <video src={item.secure_url} className="w-full h-full object-cover" />
-                    ) : (
-                      getFileIcon(fileType)
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
-                    <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"} • {format(date, "MMM d, yyyy")}</p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a 
-                      href={item.secure_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
-                      title="View"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </a>
-                    <a 
-                      href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
-                      download
-                      className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-colors text-white"
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </a>
-                    {isAuthenticated && (
-                      <>
-                        <button 
-                          onClick={() => handleEditClick(item)}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-colors"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(item.public_id, item.resource_type)}
-                          disabled={deletingId === item.public_id}
-                          className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                          title="Delete"
-                        >
-                          {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            }
-
-            return (
-              <motion.div 
-                key={item.public_id}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 }
-                }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col"
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                
-                {isAuthenticated && (
-                  <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
-                    <button 
-                      onClick={() => handleEditClick(item)}
-                      className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item.public_id, item.resource_type)}
-                      disabled={deletingId === item.public_id}
-                      className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
-                      title="Delete"
-                    >
-                      {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    </button>
-                  </div>
-                )}
-
-                <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
-                  {item.resource_type === 'image' ? (
-                    <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-                  ) : item.resource_type === 'video' ? (
-                    <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-                  ) : (
-                    <div className="transform group-hover:scale-110 transition-transform duration-500">
-                      {getFileIcon(fileType)}
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2">
-                    {getFileIcon(fileType)}
-                    {fileType}
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col relative z-10">
-                  <div className="flex items-start gap-3 mb-1">
-                    <div className="mt-1 opacity-70">
-                      {getFileIcon(fileType)}
-                    </div>
-                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject} • {meta.class}</p>
-                  
-                  <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
-                    <span>By {meta.teacher || "Unknown"}</span>
-                    <span>{format(date, "MMM d, yyyy")}</span>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-4 border-t border-white/10">
-                    <a 
-                      href={item.secure_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
-                      title="View Content"
-                    >
-                      <Eye className="w-4 h-4" /> View
-                    </a>
-                    <a 
-                      href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
-                      download
-                      className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white"
-                      title="Download Content"
-                    >
-                      <Download className="w-4 h-4" /> Download
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          {filteredContent.map((item) => (
+            <ContentCard 
+              key={item.public_id}
+              item={item}
+              viewMode={viewMode}
+              isAuthenticated={isAuthenticated}
+              deletingId={deletingId}
+              onEdit={handleEditClick}
+              onDelete={handleDelete}
+              getFileIcon={getFileIcon}
+            />
+          ))}
         </motion.div>
       )}
 

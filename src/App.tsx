@@ -17,6 +17,7 @@ import { useThemeStore } from "./store/useThemeStore";
 
 import Practice from "./pages/Practice";
 import Simulator from "./pages/Simulator";
+import Tutorial from "./components/Tutorial";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
@@ -98,6 +99,7 @@ export default function App() {
             <AIHelper />
             <GlobalUploadProgress />
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+            <Tutorial />
           </div>
         </div>
       </BrowserRouter>
