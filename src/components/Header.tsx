@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
-import { useTheme } from "../context/ThemeContext";
+import { useThemeStore } from "../store/useThemeStore";
 import { useAppStore } from "../store/useAppStore";
 
 interface HeaderProps {
@@ -20,7 +20,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useThemeStore();
   const { isSimpleMode, toggleSimpleMode } = useAppStore();
 
   useEffect(() => {

@@ -13,6 +13,7 @@ import AIHelper from "./components/AIHelper";
 import GlobalUploadProgress from "./components/GlobalUploadProgress";
 import { useState, useEffect } from "react";
 import { useAppStore } from "./store/useAppStore";
+import { useThemeStore } from "./store/useThemeStore";
 
 import Practice from "./pages/Practice";
 
@@ -22,6 +23,15 @@ export default function App() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { isSimpleMode } = useAppStore();
+  const { theme } = useThemeStore();
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-mode');
+    } else {
+      document.documentElement.classList.remove('light-mode');
+    }
+  }, [theme]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
