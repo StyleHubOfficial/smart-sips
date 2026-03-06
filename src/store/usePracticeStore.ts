@@ -73,6 +73,13 @@ export const usePracticeStore = create<PracticeState>()(
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {} });
 
+        // Fallback for deprecated/invalid models
+        let selectedModel = model;
+        if (selectedModel === 'gemini-2.0-flash-exp' || selectedModel === 'gemini-2.0-pro-exp-02-05' || selectedModel === 'gemini-2.0-flash') {
+          selectedModel = 'gemini-3-flash-preview';
+          set({ model: selectedModel }); // Update store to valid model
+        }
+
         try {
           const ai = new GoogleGenAI({ apiKey });
           
@@ -92,7 +99,7 @@ export const usePracticeStore = create<PracticeState>()(
           Do not include markdown formatting like \`\`\`json. Just the raw JSON array.`;
 
           const result = await ai.models.generateContent({
-            model: model,
+            model: selectedModel,
             contents: prompt
           });
           
