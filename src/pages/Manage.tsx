@@ -98,20 +98,20 @@ export default function Manage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
-        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('upload')} title="Upload Content" className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <UploadCloud className="w-4 h-4" /> Upload Content
         </button>
-        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('messages')} title="Messages" className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <MessageSquare className="w-4 h-4" /> Messages
         </button>
-        <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('notifications')} title="Notifications" className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <Bell className="w-4 h-4" /> Notifications
         </button>
-        <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('status')} title="System Status" className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
           <Activity className="w-4 h-4" /> System Status
         </button>
         {role === 'developer' && (
-          <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <button onClick={() => setActiveTab('maintenance')} title="Maintenance" className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
             <Shield className="w-4 h-4" /> Maintenance
           </button>
         )}
@@ -199,6 +199,7 @@ export default function Manage() {
                   />
                   <button 
                     onClick={handleSendMessage}
+                    title="Send message"
                     disabled={!messageInput.trim()}
                     className="absolute right-2 p-2 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white disabled:opacity-50"
                   >
@@ -223,7 +224,7 @@ export default function Manage() {
                   <label className="text-sm text-gray-400 mb-1 block">Message</label>
                   <textarea value={notifMsg} onChange={e => setNotifMsg(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00F0FF]/50 outline-none h-32 resize-none" placeholder="Enter notification details..." />
                 </div>
-                <button onClick={handleSendNotification} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all">
+                <button onClick={handleSendNotification} title="Send Notification" className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all">
                   Send to All Teachers
                 </button>
               </div>
@@ -236,7 +237,7 @@ export default function Manage() {
                 <div>
                   <input type="text" value={onlineTimeInput} onChange={e => setOnlineTimeInput(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00F0FF]/50 outline-none" placeholder="e.g. 9:00 AM - 5:00 PM" />
                 </div>
-                <button onClick={handleSetOnlineTime} className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all">
+                <button onClick={handleSetOnlineTime} title="Update Availability" className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all">
                   Update Availability
                 </button>
               </div>
@@ -287,7 +288,7 @@ export default function Manage() {
                         <p className="text-gray-300 mt-1">{alert.message}</p>
                       </div>
                       {role === 'developer' && (
-                        <button onClick={() => removeMaintenanceAlert(alert.id)} className="text-xs text-red-400 hover:text-red-300 px-3 py-1 rounded-lg bg-red-500/10">Resolve</button>
+                        <button onClick={() => removeMaintenanceAlert(alert.id)} title="Resolve Alert" className="text-xs text-red-400 hover:text-red-300 px-3 py-1 rounded-lg bg-red-500/10">Resolve</button>
                       )}
                     </div>
                   ))}
@@ -309,7 +310,7 @@ export default function Manage() {
                 <label className="text-sm text-gray-400 mb-1 block">Message</label>
                 <textarea value={maintMsg} onChange={e => setMaintMsg(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-green-500/50 outline-none h-24 resize-none" placeholder="e.g. Video uploads are currently degraded. We are investigating." />
               </div>
-              <button onClick={handleAddMaintenance} className="w-full py-3 rounded-xl bg-green-500/20 text-green-400 font-bold hover:bg-green-500/30 transition-all border border-green-500/30">
+              <button onClick={handleAddMaintenance} title="Publish Alert" className="w-full py-3 rounded-xl bg-green-500/20 text-green-400 font-bold hover:bg-green-500/30 transition-all border border-green-500/30">
                 Publish Alert
               </button>
             </div>

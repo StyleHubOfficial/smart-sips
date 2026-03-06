@@ -54,7 +54,7 @@ export default function AIHelper() {
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       const prompt = `You are a helpful, professional AI assistant for the 'Sunrise Classroom Panel', an educational platform.
       The user is currently logged in as a: ${role}.
@@ -89,6 +89,7 @@ export default function AIHelper() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
+        title="Open AI Helper"
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-50 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
       >
         <MessageSquare className="w-6 h-6" />
@@ -111,7 +112,7 @@ export default function AIHelper() {
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-sm">
-                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Dev)'}
+                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Developer)'}
                   </h3>
                   <p className="text-[10px] text-[#00F0FF]">
                     {mode === 'ai' ? 'Online' : onlineTimes[mode] ? `Available: ${onlineTimes[mode]}` : 'Online'}
@@ -120,6 +121,7 @@ export default function AIHelper() {
               </div>
               <button 
                 onClick={() => setIsOpen(false)}
+                title="Close"
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -205,21 +207,24 @@ export default function AIHelper() {
               <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
                 <button 
                   onClick={() => setMode('ai')}
+                  title="Talk to AI"
                   className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'ai' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                 >
                   <Bot className="w-3 h-3 inline mr-1" /> Ask AI
                 </button>
                 <button 
                   onClick={() => setMode('admin')}
+                  title="Message Admin"
                   className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'admin' ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                 >
                   <User className="w-3 h-3 inline mr-1" /> Message Admin
                 </button>
                 <button 
                   onClick={() => setMode('developer')}
+                  title="Message Developer"
                   className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'developer' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                 >
-                  <Lightbulb className="w-3 h-3 inline mr-1" /> Message Dev
+                  <Lightbulb className="w-3 h-3 inline mr-1" /> Message Developer
                 </button>
               </div>
 
@@ -234,6 +239,7 @@ export default function AIHelper() {
                 />
                 <button 
                   onClick={handleSend}
+                  title="Send message"
                   disabled={!input.trim() || (isLoading && mode === 'ai')}
                   className="absolute right-2 p-2 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >

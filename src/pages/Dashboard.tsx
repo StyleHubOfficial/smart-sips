@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save } from "lucide-react";
+import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Grid, List, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
+import { useAppStore } from "../store/useAppStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import axios from "axios";
 
@@ -35,6 +36,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   const [selectedClass, setSelectedClass] = useState(() => localStorage.getItem("sunrise_filter_class") || "All");
   const [selectedSubject, setSelectedSubject] = useState(() => localStorage.getItem("sunrise_filter_subject") || "All");
   const [selectedType, setSelectedType] = useState(() => localStorage.getItem("sunrise_filter_type") || "All");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => (localStorage.getItem("sunrise_view_mode") as 'grid' | 'list') || 'grid');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -47,6 +49,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const { isAuthenticated } = useAuthStore();
+  const { viewedContent, markContentAsViewed } = useAppStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
 
   useEffect(() => {
@@ -60,6 +63,10 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   useEffect(() => {
     localStorage.setItem("sunrise_filter_type", selectedType);
   }, [selectedType]);
+
+  useEffect(() => {
+    localStorage.setItem("sunrise_view_mode", viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     fetchContent();
@@ -294,14 +301,31 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
               <option value="Image">Image</option>
             </select>
           </div>
+
+          <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+              title="Grid View"
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </motion.div>
 
       {/* Content Grid */}
       {loading ? (
-        <div className={`grid ${gridCols}`}>
+        <div className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="glass-panel rounded-2xl h-72 animate-pulse border border-white/5 relative overflow-hidden">
+            <div key={i} className={`glass-panel rounded-2xl animate-pulse border border-white/5 relative overflow-hidden ${viewMode === 'grid' ? 'h-72' : 'h-24'}`}>
                <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
             </div>
           ))}
@@ -367,13 +391,82 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           }}
           initial="hidden"
           animate="show"
-          className={`grid ${gridCols}`}
+          className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}
         >
           {filteredContent.map((item) => {
             const meta = item.context?.custom || {};
             const title = meta.title || "Untitled Document";
             const fileType = meta.fileType || "Unknown";
             const date = new Date(item.created_at);
+
+            if (viewMode === 'list') {
+              return (
+                <motion.div 
+                  key={item.public_id}
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                  whileHover={{ scale: 1.01 }}
+                  className="glass-panel rounded-2xl p-4 border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 flex items-center gap-4"
+                >
+                  <div className="w-16 h-16 rounded-xl bg-black/50 flex items-center justify-center shrink-0">
+                    {getFileIcon(fileType)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex items-center gap-2" title={title}>
+                      {title}
+                      {viewedContent.includes(item.public_id) && (
+                        <div title="Viewed"><CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /></div>
+                      )}
+                    </h3>
+                    <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"}</p>
+                  </div>
+                  <div className="hidden md:block text-sm text-gray-500 whitespace-nowrap">
+                    {format(date, "MMM d, yyyy")}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a 
+                      href={item.secure_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      onClick={() => markContentAsViewed(item.public_id)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
+                      title="View"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </a>
+                    <a 
+                      href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
+                      download
+                      className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-all duration-300 text-white"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4" />
+                    </a>
+                    {isAuthenticated && (
+                      <>
+                        <button 
+                          onClick={() => handleEditClick(item)}
+                          className="p-2 rounded-lg bg-black/60 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(item.public_id, item.resource_type)}
+                          disabled={deletingId === item.public_id}
+                          className="p-2 rounded-lg bg-black/60 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+                          title="Delete"
+                        >
+                          {deletingId === item.public_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            }
 
             return (
               <motion.div 
@@ -428,7 +521,12 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                     <div className="mt-1 opacity-70">
                       {getFileIcon(fileType)}
                     </div>
-                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
+                    <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1 flex items-center gap-2" title={title}>
+                      {title}
+                      {viewedContent.includes(item.public_id) && (
+                        <div title="Viewed"><CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /></div>
+                      )}
+                    </h3>
                   </div>
                   <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject} • {meta.class}</p>
                   
@@ -442,6 +540,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                       href={item.secure_url} 
                       target="_blank" 
                       rel="noopener noreferrer"
+                      onClick={() => markContentAsViewed(item.public_id)}
                       className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
                     >
                       <Eye className="w-4 h-4" /> View
