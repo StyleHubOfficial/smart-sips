@@ -9,7 +9,7 @@ import Upload from './Upload';
 
 export default function Manage() {
   const { role, isAuthenticated } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'upload' | 'messages' | 'notifications' | 'status' | 'maintenance'>('upload');
+  const [activeTab, setActiveTab] = useState<'upload' | 'notifications' | 'status' | 'maintenance'>('upload');
   
   const { 
     messages, addMessage, markMessagesAsRead, 
@@ -98,20 +98,17 @@ export default function Manage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-8 border-b border-white/10 pb-4">
-        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('upload')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'upload' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`} title="Upload Content">
           <UploadCloud className="w-4 h-4" /> Upload Content
         </button>
-        <button onClick={() => setActiveTab('messages')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'messages' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
-          <MessageSquare className="w-4 h-4" /> Messages
-        </button>
-        <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'notifications' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`} title="Notifications">
           <Bell className="w-4 h-4" /> Notifications
         </button>
-        <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+        <button onClick={() => setActiveTab('status')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'status' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`} title="System Status">
           <Activity className="w-4 h-4" /> System Status
         </button>
         {role === 'developer' && (
-          <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+          <button onClick={() => setActiveTab('maintenance')} className={`px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${activeTab === 'maintenance' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`} title="Maintenance">
             <Shield className="w-4 h-4" /> Maintenance
           </button>
         )}
@@ -122,91 +119,6 @@ export default function Manage() {
         {activeTab === 'upload' && (
           <div className="-mx-6 md:-mx-10 -mt-10">
             <Upload onOpenLogin={() => {}} />
-          </div>
-        )}
-
-        {activeTab === 'messages' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-[600px]">
-            {/* Sidebar */}
-            <div className="glass-panel rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-white/10 bg-black/40">
-                <h3 className="font-bold text-lg">Chats</h3>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {['teacher', 'admin', 'developer', 'Group A', 'Group B'].filter(r => r !== role).map(r => (
-                  <button 
-                    key={r}
-                    onClick={() => setSelectedReceiver(r)}
-                    className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 transition-colors ${selectedReceiver === r ? 'bg-[#00F0FF]/20 text-white' : 'text-gray-400 hover:bg-white/5'}`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0">
-                      {r.includes('Group') ? <Users className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
-                    </div>
-                    <div className="capitalize font-medium truncate">{r}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Chat Area */}
-            <div className="md:col-span-3 glass-panel rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-white/10 bg-black/40 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
-                    {selectedReceiver.includes('Group') ? <Users className="w-5 h-5 text-[#00F0FF]" /> : <MessageSquare className="w-5 h-5 text-[#00F0FF]" />}
-                  </div>
-                  <div>
-                    <h3 className="font-bold capitalize">{selectedReceiver}</h3>
-                    <p className="text-xs text-gray-400">{onlineTimes[selectedReceiver] ? `Available: ${onlineTimes[selectedReceiver]}` : 'Online'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-black/20">
-                {currentChatMessages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-gray-500">No messages yet. Start the conversation!</div>
-                ) : (
-                  currentChatMessages.map(msg => {
-                    const isMe = msg.senderRole === role;
-                    return (
-                      <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[70%] p-3 rounded-2xl ${isMe ? 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 rounded-tr-sm' : 'bg-white/5 border border-white/10 rounded-tl-sm'}`}>
-                          <p className="text-sm text-white mb-1">{msg.text}</p>
-                          <div className={`text-[10px] flex items-center justify-end gap-1 ${isMe ? 'text-[#00F0FF]/70' : 'text-gray-500'}`}>
-                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            {isMe && (
-                              msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-[#00F0FF]" /> : 
-                              msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-gray-400" /> :
-                              <Check className="w-3 h-3 text-gray-400" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="p-4 border-t border-white/10 bg-black/40">
-                <div className="relative flex items-center">
-                  <input 
-                    type="text"
-                    value={messageInput}
-                    onChange={e => setMessageInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
-                    placeholder="Type a message..."
-                    className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-[#00F0FF]/50"
-                  />
-                  <button 
-                    onClick={handleSendMessage}
-                    disabled={!messageInput.trim()}
-                    className="absolute right-2 p-2 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white disabled:opacity-50"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 

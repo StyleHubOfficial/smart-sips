@@ -111,7 +111,7 @@ export default function AIHelper() {
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-sm">
-                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Dev)'}
+                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Developer)'}
                   </h3>
                   <p className="text-[10px] text-[#00F0FF]">
                     {mode === 'ai' ? 'Online' : onlineTimes[mode] ? `Available: ${onlineTimes[mode]}` : 'Online'}
@@ -219,7 +219,7 @@ export default function AIHelper() {
                   onClick={() => setMode('developer')}
                   className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'developer' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
                 >
-                  <Lightbulb className="w-3 h-3 inline mr-1" /> Message Dev
+                  <Lightbulb className="w-3 h-3 inline mr-1" /> Message Developer
                 </button>
               </div>
 

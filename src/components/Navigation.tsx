@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud, Settings } from "lucide-react";
+import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -19,6 +19,7 @@ export default function Navigation() {
           className={({ isActive }) => 
             `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#00F0FF] scale-110 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white'}`
           }
+          title="Dashboard"
         >
           <LayoutDashboard className="w-6 h-6" />
           <span className="text-[10px] font-medium uppercase tracking-wider">Dashboard</span>
@@ -27,25 +28,64 @@ export default function Navigation() {
         <div className="w-[1px] h-8 bg-white/10"></div>
         
         {role === 'admin' || role === 'developer' ? (
-          <NavLink 
-            to="/manage" 
-            className={({ isActive }) => 
-              `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-            }
-          >
-            <Settings className="w-6 h-6" />
-            <span className="text-[10px] font-medium uppercase tracking-wider">Manage</span>
-          </NavLink>
+          <>
+            <NavLink 
+              to="/manage" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="Manage"
+            >
+              <Settings className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Manage</span>
+            </NavLink>
+            <div className="w-[1px] h-8 bg-white/10"></div>
+            <NavLink 
+              to="/analytics" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-green-400 scale-110 drop-shadow-[0_0_8px_rgba(74,222,128,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="Analytics"
+            >
+              <BarChart3 className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Analytics</span>
+            </NavLink>
+            <div className="w-[1px] h-8 bg-white/10"></div>
+            <NavLink 
+              to="/chat" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="Chat"
+            >
+              <MessageSquare className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Chat</span>
+            </NavLink>
+          </>
         ) : (
-          <NavLink 
-            to="/upload" 
-            className={({ isActive }) => 
-              `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-            }
-          >
-            <UploadCloud className="w-6 h-6" />
-            <span className="text-[10px] font-medium uppercase tracking-wider">Upload</span>
-          </NavLink>
+          <>
+            <NavLink 
+              to="/upload" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="Upload"
+            >
+              <UploadCloud className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Upload</span>
+            </NavLink>
+            <div className="w-[1px] h-8 bg-white/10"></div>
+            <NavLink 
+              to="/chat" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-blue-400 scale-110 drop-shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="Chat"
+            >
+              <MessageSquare className="w-6 h-6" />
+              <span className="text-[10px] font-medium uppercase tracking-wider">Chat</span>
+            </NavLink>
+          </>
         )}
       </div>
     </motion.nav>

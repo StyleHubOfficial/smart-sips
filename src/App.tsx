@@ -3,6 +3,8 @@ import { AnimatePresence, MotionConfig } from "motion/react";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import Manage from "./pages/Manage";
+import Analytics from "./pages/Analytics";
+import Chat from "./pages/Chat";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
@@ -46,8 +48,12 @@ export default function App() {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
           
           {/* Subtle glowing dots */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+          {!isSimpleMode && (
+            <>
+              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse"></div>
+              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+            </>
+          )}
 
           <div className="relative z-10 flex flex-col h-screen">
             <Header 
@@ -62,6 +68,8 @@ export default function App() {
                   <Route path="/" element={<Dashboard isSmartPanelMode={isSmartPanelMode} />} />
                   <Route path="/upload" element={<Upload onOpenLogin={() => setIsLoginModalOpen(true)} />} />
                   <Route path="/manage" element={<Manage />} />
+                  <Route path="/analytics" element={<Analytics />} />
+                  <Route path="/chat" element={<Chat />} />
                 </Routes>
               </AnimatePresence>
             </main>
