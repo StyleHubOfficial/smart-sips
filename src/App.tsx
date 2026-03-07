@@ -17,6 +17,7 @@ import { useThemeStore } from "./store/useThemeStore";
 
 import Practice from "./pages/Practice";
 import Simulator from "./pages/Simulator";
+import FlowChart from "./pages/FlowChart";
 import Tutorial from "./components/Tutorial";
 
 export default function App() {
@@ -90,6 +91,7 @@ export default function App() {
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/practice" element={<Practice />} />
                   <Route path="/simulator" element={<Simulator />} />
+                  <Route path="/flowchart" element={<FlowChart />} />
                 </Routes>
               </AnimatePresence>
             </main>

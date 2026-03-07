@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List } from "lucide-react";
+import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useAppStore } from "../store/useAppStore";
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 interface DashboardProps {
@@ -433,6 +434,56 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           </div>
         </motion.div>
       )}
+
+      {/* Quick Tools Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mb-12"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold flex items-center gap-2 text-white">
+            <Sparkles className="w-5 h-5 text-[#B026FF]" /> AI Powered Tools
+          </h3>
+          <p className="text-sm text-gray-500">Boost your learning with AI</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link to="/practice" className="group">
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-transparent hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F0FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#00F0FF]/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-[#00F0FF]/20 flex items-center justify-center mb-4 border border-[#00F0FF]/30 group-hover:scale-110 transition-transform">
+                <BrainCircuit className="w-6 h-6 text-[#00F0FF]" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">Practice Arena</h4>
+              <p className="text-sm text-gray-400">Generate authentic competitive exam questions with deep AI reasoning.</p>
+            </div>
+          </Link>
+
+          <Link to="/simulator" className="group">
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#B026FF]/5 to-transparent hover:border-[#B026FF]/50 hover:shadow-[0_0_30px_rgba(176,38,255,0.1)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#B026FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#B026FF]/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-[#B026FF]/20 flex items-center justify-center mb-4 border border-[#B026FF]/30 group-hover:scale-110 transition-transform">
+                <MonitorPlay className="w-6 h-6 text-[#B026FF]" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#B026FF] transition-colors">Simulator Generator</h4>
+              <p className="text-sm text-gray-400">Create interactive 2D & 3D physics simulations for complex concepts.</p>
+            </div>
+          </Link>
+
+          <Link to="/flowchart" className="group">
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 group-hover:scale-110 transition-transform">
+                <GitGraph className="w-6 h-6 text-white" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">FlowChart Generator</h4>
+              <p className="text-sm text-gray-400">Transform processes into logical, AI-powered diagrams and flowcharts.</p>
+            </div>
+          </Link>
+        </div>
+      </motion.div>
 
       {/* Filter Section */}
       <motion.div 

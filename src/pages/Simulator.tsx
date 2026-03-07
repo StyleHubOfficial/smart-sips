@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
+import { useUploadStore } from '../store/useUploadStore';
 import SimLoader from '../components/SimLoader';
 
 export default function Simulator() {
@@ -13,6 +14,8 @@ export default function Simulator() {
   } = useSimulatorStore();
   
   const addNotification = useNotificationStore(state => state.addNotification);
+  const { addUpload } = useUploadStore();
+  const { role } = useAuthStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -46,6 +49,21 @@ export default function Simulator() {
     if (!generatedCode) return;
     saveCurrentSimulation();
     addNotification('success', 'Simulation saved to your history.');
+  };
+
+  const handleSaveToDashboard = async () => {
+    if (!generatedCode) return;
+    
+    try {
+      const blob = new Blob([generatedCode], { type: 'text/html' });
+      const file = new File([blob], `${query.replace(/[^a-z0-9]/gi, '_')}_simulation.html`, { type: 'text/html' });
+      const contextStr = `title=${query} Simulation|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Simulation|class=General|description=AI-generated interactive simulation for ${query}|fileType=HTML Simulation`;
+      
+      addUpload(file, contextStr);
+      addNotification('info', 'Saving simulation to dashboard...');
+    } catch (error) {
+      addNotification('error', 'Failed to save simulation.');
+    }
   };
 
   const handleDownload = () => {
@@ -234,6 +252,13 @@ export default function Simulator() {
                  >
                    <Download className="w-5 h-5" />
                  </button>
+                 <button 
+                    onClick={handleSaveToDashboard}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-sm font-bold"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Save to Dashboard
+                  </button>
                </div>
              )}
           </div>

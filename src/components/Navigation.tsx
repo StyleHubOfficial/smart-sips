@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit, MonitorPlay } from "lucide-react";
+import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit, MonitorPlay, GitGraph } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -88,6 +88,19 @@ export default function Navigation() {
         >
           <MonitorPlay className="w-5 h-5 sm:w-6 sm:h-6" />
           <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Sim</span>
+        </NavLink>
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
+
+        <NavLink 
+          to="/flowchart" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="FlowChart"
+        >
+          <GitGraph className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Flow</span>
         </NavLink>
 
         <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
