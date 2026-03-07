@@ -749,46 +749,24 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
-                    <select 
+                    <input 
+                      required
+                      type="text" 
                       value={editFormData.className}
                       onChange={e => setEditFormData({...editFormData, className: e.target.value})}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="Class 1">Class 1</option>
-                      <option value="Class 2">Class 2</option>
-                      <option value="Class 3">Class 3</option>
-                      <option value="Class 4">Class 4</option>
-                      <option value="Class 5">Class 5</option>
-                      <option value="Class 6">Class 6</option>
-                      <option value="Class 7">Class 7</option>
-                      <option value="Class 8">Class 8</option>
-                      <option value="Class 9">Class 9</option>
-                      <option value="Class 10">Class 10</option>
-                      <option value="Class 11">Class 11</option>
-                      <option value="Class 12">Class 12</option>
-                    </select>
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</label>
-                    <select 
+                    <input 
+                      required
+                      type="text" 
                       value={editFormData.subject}
                       onChange={e => setEditFormData({...editFormData, subject: e.target.value})}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="Mathematics">Mathematics</option>
-                      <option value="Physics">Physics</option>
-                      <option value="Chemistry">Chemistry</option>
-                      <option value="Biology">Biology</option>
-                      <option value="Computer Science">Computer Science</option>
-                      <option value="English">English</option>
-                      <option value="Hindi">Hindi</option>
-                      <option value="History">History</option>
-                      <option value="Geography">Geography</option>
-                      <option value="Economics">Economics</option>
-                      <option value="Accountancy">Accountancy</option>
-                      <option value="Business Studies">Business Studies</option>
-                    </select>
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
+                    />
                   </div>
                 </div>
 

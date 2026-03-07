@@ -97,7 +97,7 @@ export default function AIHelper() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-50 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
+        className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-40 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
       >
         <MessageSquare className="w-6 h-6" />
       </motion.button>
