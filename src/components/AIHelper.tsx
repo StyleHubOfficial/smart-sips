@@ -65,7 +65,7 @@ export default function AIHelper() {
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
       
-      const prompt = `You are a helpful, professional AI assistant for the 'Sunrise Classroom Panel', an educational platform.
+      const prompt = `You are a helpful, professional AI assistant for 'Smart Sunrise', an educational platform.
       The user is currently logged in as a: ${role}.
       Keep your answers concise, well-formatted using markdown, and friendly.
       User's message: ${userMsg}`;
@@ -97,7 +97,7 @@ export default function AIHelper() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-40 hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
+        className="fixed bottom-20 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-[100] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
       >
         <MessageSquare className="w-6 h-6" />
       </motion.button>
@@ -109,7 +109,7 @@ export default function AIHelper() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 w-[380px] h-[500px] max-h-[80vh] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] z-50 flex flex-col overflow-hidden"
+            className="fixed bottom-36 sm:bottom-24 right-6 w-[380px] max-w-[calc(100vw-3rem)] h-[500px] max-h-[70vh] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] z-[100] flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-between">

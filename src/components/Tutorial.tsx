@@ -4,7 +4,7 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Welcome to Sunrise Classroom",
+    title: "Welcome to Smart Sunrise",
     content: "Your AI-powered educational hub. Let's take a quick tour of the powerful tools available to you.",
     icon: Sparkles,
     color: "#00F0FF",
@@ -151,7 +151,7 @@ export default function Tutorial() {
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 right-6 z-[90] w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-[#00F0FF] hover:bg-white/20 transition-all shadow-lg"
+          className="fixed bottom-36 sm:bottom-24 right-6 z-[90] w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-[#00F0FF] hover:bg-white/20 transition-all shadow-lg"
           title="Show Tutorial"
         >
           <HelpCircle className="w-6 h-6" />

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { GoogleGenAI } from "@google/genai";
 
 interface FlowChart {
@@ -14,46 +15,106 @@ interface FlowChartState {
   generatedCode: string;
   loading: boolean;
   model: string;
+  chartType: string;
   savedCharts: FlowChart[];
   setQuery: (query: string) => void;
   setGeneratedCode: (code: string) => void;
   setModel: (model: string) => void;
+  setChartType: (type: string) => void;
   generateFlowChart: (apiKey: string) => Promise<void>;
   saveCurrentChart: () => void;
   deleteChart: (id: string) => void;
   loadChart: (chart: FlowChart) => void;
 }
 
-export const useFlowChartStore = create<FlowChartState>((set, get) => ({
-  query: '',
-  generatedCode: '',
-  loading: false,
-  model: 'gemini-3-flash-preview',
-  savedCharts: JSON.parse(localStorage.getItem('sunrise_flowcharts') || '[]'),
+export const useFlowChartStore = create<FlowChartState>()(
+  persist(
+    (set, get) => ({
+      query: '',
+      generatedCode: '',
+      loading: false,
+      model: 'gemini-3-flash-preview',
+      chartType: 'Flowchart',
+      savedCharts: [],
 
-  setQuery: (query) => set({ query }),
-  setGeneratedCode: (generatedCode) => set({ generatedCode }),
-  setModel: (model) => set({ model }),
+      setQuery: (query) => set({ query }),
+      setGeneratedCode: (generatedCode) => set({ generatedCode }),
+      setModel: (model) => set({ model }),
+      setChartType: (chartType) => set({ chartType }),
 
-  generateFlowChart: async (apiKey) => {
-    const { query, model } = get();
+      generateFlowChart: async (apiKey) => {
+    const { query, model, chartType } = get();
     set({ loading: true });
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `
-        You are an expert at creating Mermaid.js flowcharts.
-        Create a detailed, logical flowchart for the following topic: "${query}".
-        
-        Requirements:
-        1. Use Mermaid.js syntax (starting with "graph TD" or "graph LR").
-        2. Make it comprehensive and easy to understand.
-        3. Use descriptive node labels.
-        4. Add subgraphs if necessary to group related steps.
-        5. Use different shapes for different types of steps (e.g., diamonds for decisions).
-        
-        Return ONLY the Mermaid.js code block. Do not include any other text.
-      `;
+      
+      let prompt = '';
+      if (chartType === 'Mind Map') {
+        prompt = `
+          You are an expert at creating Mermaid.js mindmaps.
+          Create a detailed, logical mindmap for the following topic: "${query}".
+          
+          Requirements:
+          1. Use Mermaid.js syntax (starting with "mindmap").
+          2. Make it comprehensive and easy to understand.
+          3. Use descriptive node labels.
+          4. Organize hierarchically from the central topic.
+          
+          Return ONLY the Mermaid.js code block. Do not include any other text.
+        `;
+      } else if (chartType === 'Sequence Diagram') {
+        prompt = `
+          You are an expert at creating Mermaid.js sequence diagrams.
+          Create a detailed, logical sequence diagram for the following process/interaction: "${query}".
+          
+          Requirements:
+          1. Use Mermaid.js syntax (starting with "sequenceDiagram").
+          2. Make it comprehensive and easy to understand.
+          3. Use descriptive participant names and messages.
+          4. Include alt/opt blocks if there are conditional paths.
+          
+          Return ONLY the Mermaid.js code block. Do not include any other text.
+        `;
+      } else if (chartType === 'State Diagram') {
+        prompt = `
+          You are an expert at creating Mermaid.js state diagrams.
+          Create a detailed, logical state diagram for the following system/process: "${query}".
+          
+          Requirements:
+          1. Use Mermaid.js syntax (starting with "stateDiagram-v2").
+          2. Make it comprehensive and easy to understand.
+          3. Clearly define states and transitions.
+          
+          Return ONLY the Mermaid.js code block. Do not include any other text.
+        `;
+      } else if (chartType === 'Cheat Sheet (Class Diagram)') {
+        prompt = `
+          You are an expert at creating Mermaid.js class diagrams to act as cheat sheets.
+          Create a detailed, logical class diagram/cheat sheet for the following topic: "${query}".
+          
+          Requirements:
+          1. Use Mermaid.js syntax (starting with "classDiagram").
+          2. Use classes to represent core concepts, and attributes/methods to list key facts, formulas, or rules.
+          3. Make it comprehensive and easy to understand.
+          
+          Return ONLY the Mermaid.js code block. Do not include any other text.
+        `;
+      } else {
+        prompt = `
+          You are an expert at creating Mermaid.js flowcharts.
+          Create a detailed, logical flowchart for the following topic: "${query}".
+          
+          Requirements:
+          1. Use Mermaid.js syntax (starting with "graph TD" or "graph LR").
+          2. Make it comprehensive and easy to understand.
+          3. Use descriptive node labels.
+          4. Add subgraphs if necessary to group related steps.
+          5. Use different shapes for different types of steps (e.g., diamonds for decisions).
+          
+          Return ONLY the Mermaid.js code block. Do not include any other text.
+        `;
+      }
 
       const response = await ai.models.generateContent({
         model,
@@ -72,26 +133,24 @@ export const useFlowChartStore = create<FlowChartState>((set, get) => ({
   },
 
   saveCurrentChart: () => {
-    const { query, generatedCode, savedCharts } = get();
+    const { query, generatedCode, chartType, savedCharts } = get();
     if (!generatedCode) return;
 
     const newChart: FlowChart = {
       id: Math.random().toString(36).substring(7),
-      title: query || 'Untitled Flowchart',
+      title: query || `Untitled ${chartType}`,
       mermaidCode: generatedCode,
-      description: `Flowchart for ${query}`,
+      description: `${chartType} for ${query}`,
       timestamp: Date.now(),
     };
 
     const updated = [newChart, ...savedCharts];
     set({ savedCharts: updated });
-    localStorage.setItem('sunrise_flowcharts', JSON.stringify(updated));
   },
 
   deleteChart: (id) => {
     const updated = get().savedCharts.filter(c => c.id !== id);
     set({ savedCharts: updated });
-    localStorage.setItem('sunrise_flowcharts', JSON.stringify(updated));
   },
 
   loadChart: (chart) => {
@@ -100,4 +159,14 @@ export const useFlowChartStore = create<FlowChartState>((set, get) => ({
       generatedCode: chart.mermaidCode 
     });
   },
-}));
+    }),
+    {
+      name: 'sunrise-flowchart-storage',
+      partialize: (state) => ({ 
+        model: state.model,
+        chartType: state.chartType,
+        savedCharts: state.savedCharts
+      }),
+    }
+  )
+);

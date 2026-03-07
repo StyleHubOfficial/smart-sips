@@ -17,8 +17,8 @@ mermaid.initialize({
 
 export default function FlowChart() {
   const { 
-    query, generatedCode, loading, model, savedCharts,
-    setQuery, setGeneratedCode, setModel, generateFlowChart, saveCurrentChart, deleteChart, loadChart 
+    query, generatedCode, loading, model, chartType, savedCharts,
+    setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart 
   } = useFlowChartStore();
   
   const addNotification = useNotificationStore(state => state.addNotification);
@@ -93,13 +93,13 @@ export default function FlowChart() {
 </html>`;
 
       const blob = new Blob([htmlContent], { type: 'text/html' });
-      const file = new File([blob], `${query.replace(/[^a-z0-9]/gi, '_')}_flowchart.html`, { type: 'text/html' });
-      const contextStr = `title=${query} Flowchart|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Diagram|class=General|description=AI-generated flowchart for ${query}|fileType=HTML Diagram`;
+      const file = new File([blob], `${query.replace(/[^a-z0-9]/gi, '_')}_${chartType.replace(/[^a-z0-9]/gi, '_')}.html`, { type: 'text/html' });
+      const contextStr = `title=${query} ${chartType}|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Diagram|class=General|description=AI-generated ${chartType} for ${query}|fileType=HTML Diagram`;
       
       addUpload(file, contextStr);
-      addNotification('info', 'Saving flowchart to dashboard...');
+      addNotification('info', `Saving ${chartType} to dashboard...`);
     } catch (error) {
-      addNotification('error', 'Failed to save flowchart.');
+      addNotification('error', `Failed to save ${chartType}.`);
     }
   };
 
@@ -117,9 +117,9 @@ export default function FlowChart() {
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              FlowChart <span className="text-gradient">Generator</span>
+              Diagram <span className="text-gradient">Generator</span>
             </h2>
-            <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams</p>
+            <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams, mind maps, and cheat sheets</p>
           </div>
         </div>
 
@@ -150,6 +150,21 @@ export default function FlowChart() {
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Diagram Type</label>
+              <select 
+                value={chartType}
+                onChange={(e) => setChartType(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="Flowchart">Flowchart</option>
+                <option value="Mind Map">Mind Map</option>
+                <option value="Sequence Diagram">Sequence Diagram</option>
+                <option value="State Diagram">State Diagram</option>
+                <option value="Cheat Sheet (Class Diagram)">Cheat Sheet</option>
+              </select>
+            </div>
+
             <div className="space-y-4">
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Concept / Process</label>
               <textarea 
@@ -164,7 +179,7 @@ export default function FlowChart() {
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                {loading ? 'Generating...' : 'Generate Diagram'}
+                {loading ? 'Generating...' : `Generate ${chartType}`}
               </button>
             </div>
           </div>

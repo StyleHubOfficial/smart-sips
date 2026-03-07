@@ -60,28 +60,44 @@ const ContentCard = React.memo(({
           show: { opacity: 1, y: 0 }
         }}
         whileHover={{ scale: 1.01 }}
-        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex items-center p-4 gap-4"
+        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4"
       >
-        <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
-          {item.resource_type === 'image' ? (
-            <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
-          ) : item.resource_type === 'video' ? (
-            <video src={item.secure_url} className="w-full h-full object-cover" />
-          ) : (
-            getFileIcon(fileType)
-          )}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
-          <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"} • {format(date, "MMM d, yyyy")}</p>
+        <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
+          <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
+            {item.resource_type === 'image' ? (
+              <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
+            ) : item.resource_type === 'video' ? (
+              <video src={item.secure_url} className="w-full h-full object-cover" />
+            ) : (
+              getFileIcon(fileType)
+            )}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
+            <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"} • {format(date, "MMM d, yyyy")}</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/10 sm:border-0">
           <a 
             href={item.secure_url} 
             target="_blank" 
             rel="noopener noreferrer"
+            onClick={async (e) => {
+              if (item.resource_type === 'raw' && (item.secure_url.includes('.html') || fileType.includes('HTML'))) {
+                e.preventDefault();
+                try {
+                  const response = await fetch(item.secure_url);
+                  const text = await response.text();
+                  const blob = new Blob([text], { type: 'text/html' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  window.open(blobUrl, '_blank');
+                } catch (err) {
+                  window.open(item.secure_url, '_blank');
+                }
+              }
+            }}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
             title="View"
           >
@@ -131,7 +147,7 @@ const ContentCard = React.memo(({
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       
       {isAuthenticated && (
-        <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
+        <div className="absolute top-3 left-3 z-20 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 flex gap-2">
           <button 
             onClick={() => onEdit(item)}
             className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-colors"
@@ -155,6 +171,11 @@ const ContentCard = React.memo(({
           <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
         ) : item.resource_type === 'video' ? (
           <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+        ) : item.resource_type === 'raw' && item.secure_url.endsWith('.html') ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 p-4 text-center">
+            <FileText className="w-8 h-8 text-[#00F0FF] mb-2" />
+            <h4 className="font-display font-bold text-white text-sm line-clamp-2">{title}</h4>
+          </div>
         ) : (
           <div className="transform group-hover:scale-110 transition-transform duration-500">
             {getFileIcon(fileType)}
@@ -185,6 +206,20 @@ const ContentCard = React.memo(({
             href={item.secure_url} 
             target="_blank" 
             rel="noopener noreferrer"
+            onClick={async (e) => {
+              if (item.resource_type === 'raw' && (item.secure_url.includes('.html') || fileType.includes('HTML'))) {
+                e.preventDefault();
+                try {
+                  const response = await fetch(item.secure_url);
+                  const text = await response.text();
+                  const blob = new Blob([text], { type: 'text/html' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  window.open(blobUrl, '_blank');
+                } catch (err) {
+                  window.open(item.secure_url, '_blank');
+                }
+              }
+            }}
             className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
             title="View Content"
           >
@@ -704,7 +739,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glass-panel rounded-3xl p-8 w-full max-w-2xl relative z-10 border border-white/10 shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] overflow-y-auto"
+              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/10 shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
               

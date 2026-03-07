@@ -99,7 +99,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           <Lock className="w-10 h-10 text-gray-500" />
         </div>
         <h2 className="text-3xl font-display font-bold mb-4">Authentication Required</h2>
-        <p className="text-gray-400 mb-8 max-w-md">You need to be logged in as a teacher to upload content to the Sunrise Classroom Panel.</p>
+        <p className="text-gray-400 mb-8 max-w-md">You need to be logged in as a teacher to upload content to Smart Sunrise.</p>
         <button 
           onClick={onOpenLogin}
           className="px-8 py-3 rounded-xl font-display font-bold tracking-wide transition-all duration-300 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.02]"

@@ -20,11 +20,13 @@ interface PracticeState {
   model: string;
   viewMode: 'list' | 'grid' | 'box';
   difficulty: string;
-  deepSearch: boolean;
+  sourceFile: { name: string, data: string, mimeType: string } | null;
   questions: Question[];
   loading: boolean;
   selectedOptions: Record<string, string>;
   showSolutions: Record<string, boolean>;
+  analysis: string | null;
+  analyzing: boolean;
   
   setQuery: (query: string) => void;
   setQuestionCount: (count: number) => void;
@@ -34,9 +36,10 @@ interface PracticeState {
   setModel: (model: string) => void;
   setViewMode: (viewMode: 'list' | 'grid' | 'box') => void;
   setDifficulty: (difficulty: string) => void;
-  setDeepSearch: (deepSearch: boolean) => void;
+  setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
   setSelectedOption: (questionId: string, option: string) => void;
   generateQuestions: (apiKey: string) => Promise<void>;
+  analyzeScore: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
 }
 
@@ -51,11 +54,13 @@ export const usePracticeStore = create<PracticeState>()(
       model: 'gemini-3-flash-preview',
       viewMode: 'list',
       difficulty: 'Medium',
-      deepSearch: false,
+      sourceFile: null,
       questions: [],
       loading: false,
       selectedOptions: {},
       showSolutions: {},
+      analysis: null,
+      analyzing: false,
 
       setQuery: (query) => set({ query }),
       setQuestionCount: (questionCount) => set({ questionCount }),
@@ -65,7 +70,7 @@ export const usePracticeStore = create<PracticeState>()(
       setModel: (model) => set({ model }),
       setViewMode: (viewMode) => set({ viewMode }),
       setDifficulty: (difficulty) => set({ difficulty }),
-      setDeepSearch: (deepSearch) => set({ deepSearch }),
+      setSourceFile: (sourceFile) => set({ sourceFile }),
       
       setSelectedOption: (questionId, option) => 
         set((state) => ({
@@ -73,13 +78,13 @@ export const usePracticeStore = create<PracticeState>()(
           showSolutions: { ...state.showSolutions, [questionId]: true }
         })),
 
-      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {} }),
+      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, analysis: null }),
 
       generateQuestions: async (apiKey) => {
-        const { query, questionCount, subject, examType, classLevel, model, difficulty, deepSearch } = get();
-        if (!query.trim()) return;
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, sourceFile } = get();
+        if (!query.trim() && !sourceFile) return;
 
-        set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {} });
+        set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, analysis: null });
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
@@ -101,49 +106,107 @@ export const usePracticeStore = create<PracticeState>()(
           The questions must be authentic competitive exam questions (like NDA, JEE, NEET, UPSC, etc.) from any reputable source.
           Ensure the questions are searched well and are from correct, authentic sources.
           
-          ${deepSearch ? `
-            [DEEP RESEARCH & REASONING MODE ENABLED]
-            You are an elite educational researcher and pedagogical expert. 
-            
-            STEP 1: DEEP CONCEPTUAL ANALYSIS
-            - Break down the topic into its fundamental principles, common misconceptions, and advanced applications.
-            - Analyze the specific requirements for ${examType} at ${classLevel} level.
-            - Identify "trap" concepts often tested in competitive exams.
-
-            STEP 2: CROSS-REFERENCE & VALIDATION
-            - Simulate a search across high-authority sources (NCERT, MIT OpenCourseWare, Khan Academy, specialized competitive exam portals).
-            - Ensure the difficulty matches the "${difficulty}" level perfectly.
-
-            STEP 3: QUESTION SYNTHESIS
-            - Generate questions that test deep understanding, not just rote memorization.
-            - Include a mix of conceptual, numerical (if applicable), and application-based questions.
-            - For each question, provide a detailed, step-by-step solution that explains the "why" behind the correct answer.
-            - Provide a realistic "Source Link" or reference to a high-quality educational resource for further reading.
+          ${sourceFile ? `
+            [SOURCE MATERIAL PROVIDED]
+            You have been provided with a source file. You MUST extract concepts, facts, and information from this source file to generate the questions.
+            Ensure the questions accurately reflect the content of the uploaded document.
           ` : ''}
 
-          Return ONLY a valid JSON array of objects. Each object must have:
-          - id: unique string
-          - question: string text of the question
-          - options: array of 4 strings
-          - correctAnswer: string (must match exactly one of the options)
-          - solution: string (detailed explanation)
-          - sourceLink: string (A valid, authentic URL where this specific question or concept can be found. Do not restrict to examside.com.)
-          Do not include markdown formatting like \`\`\`json. Just the raw JSON array.`;
+          CRITICAL INSTRUCTION: You MUST return ONLY a valid JSON array of objects. Do not include any conversational text, markdown formatting, or explanations outside the JSON array.
+          
+          Each object in the array must have EXACTLY these fields:
+          - "id": a unique string
+          - "question": string text of the question (can use markdown)
+          - "options": array of exactly 4 strings (can use markdown)
+          - "correctAnswer": string (must match exactly one of the options)
+          - "solution": string (detailed explanation, can use markdown)
+          - "sourceLink": string (A valid, authentic URL where this specific question or concept can be found. Do not restrict to examside.com.)`;
+
+          const contents: any = [];
+          
+          if (sourceFile) {
+            contents.push({
+              inlineData: {
+                data: sourceFile.data,
+                mimeType: sourceFile.mimeType
+              }
+            });
+          }
+          
+          contents.push({ text: prompt });
 
           const result = await ai.models.generateContent({
             model: selectedModel,
-            contents: prompt
+            contents: { parts: contents },
+            config: {
+              responseMimeType: "application/json"
+            }
           });
           
-          const text = result.text || '';
-          const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          const parsedQuestions = JSON.parse(cleanText);
+          let parsedQuestions = [];
+          try {
+            const text = result.text || '';
+            const match = text.match(/\[[\s\S]*\]/);
+            const cleanText = match ? match[0] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+            parsedQuestions = JSON.parse(cleanText);
+          } catch (parseError) {
+             console.error("JSON Parse Error:", parseError, result.text);
+             throw new Error("Failed to parse questions from AI response.");
+          }
           
           set({ questions: parsedQuestions, loading: false });
         } catch (error) {
           console.error('Error fetching questions:', error);
           set({ loading: false });
           throw error;
+        }
+      },
+
+      analyzeScore: async (apiKey) => {
+        const { questions, selectedOptions, model } = get();
+        if (questions.length === 0 || Object.keys(selectedOptions).length === 0) return;
+
+        set({ analyzing: true });
+
+        // Fallback for deprecated/invalid models
+        let selectedModel = model;
+        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'];
+        if (!validModels.includes(selectedModel)) {
+          selectedModel = 'gemini-3-flash-preview';
+        }
+
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          
+          const performanceData = questions.map(q => ({
+            question: q.question,
+            correctAnswer: q.correctAnswer,
+            userAnswer: selectedOptions[q.id] || 'Not answered',
+            isCorrect: selectedOptions[q.id] === q.correctAnswer
+          }));
+
+          const prompt = `Analyze the following student performance data on a recent quiz:
+          
+          ${JSON.stringify(performanceData, null, 2)}
+          
+          Please provide an advanced score analysis formatted in Markdown. Include:
+          1. **Overall Performance Summary**: A brief, encouraging overview of how they did.
+          2. **Strong Concepts**: Identify the topics or types of questions they excelled at.
+          3. **Weaker Concepts**: Identify the specific areas where they struggled or made mistakes.
+          4. **Actionable Advice & Tips**: Provide concrete study tips and strategies to improve on the weaker concepts.
+          5. **Suggested Next Steps**: Recommend specific types of questions or topics they should practice next to strengthen their understanding.
+          
+          Keep the tone constructive, educational, and motivating.`;
+
+          const result = await ai.models.generateContent({
+            model: selectedModel,
+            contents: prompt
+          });
+          
+          set({ analysis: result.text || 'No analysis generated.', analyzing: false });
+        } catch (error) {
+          console.error('Error analyzing score:', error);
+          set({ analyzing: false, analysis: 'Failed to generate analysis. Please try again.' });
         }
       }
     }),
@@ -156,8 +219,7 @@ export const usePracticeStore = create<PracticeState>()(
         classLevel: state.classLevel,
         model: state.model,
         viewMode: state.viewMode,
-        difficulty: state.difficulty,
-        deepSearch: state.deepSearch
+        difficulty: state.difficulty
       }),
     }
   )
