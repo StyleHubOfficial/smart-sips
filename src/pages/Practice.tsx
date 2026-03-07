@@ -90,21 +90,21 @@ export default function Practice() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${query} Practice Set</title>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; background: #f9fafb; }
-        .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb; }
-        .question-card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e5e7eb; }
-        .question-text { font-size: 1.125rem; font-weight: 600; margin-bottom: 16px; color: #111827; }
+        body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #e5e7eb; max-width: 800px; margin: 0 auto; padding: 20px; background: #0f172a; }
+        .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #334155; }
+        .question-card { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); border: 1px solid #334155; }
+        .question-text { font-size: 1.125rem; font-weight: 600; margin-bottom: 16px; color: #f8fafc; }
         .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
         @media (min-width: 640px) { .options-grid { grid-template-columns: 1fr 1fr; } }
-        .option-btn { text-align: left; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; width: 100%; }
-        .option-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
+        .option-btn { text-align: left; padding: 12px 16px; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #e5e7eb; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; width: 100%; }
+        .option-btn:hover:not(:disabled) { background: #334155; border-color: #475569; }
         .option-btn:disabled { cursor: default; }
-        .option-btn.correct { background-color: #dcfce7 !important; border-color: #22c55e !important; color: #15803d !important; font-weight: 600; }
-        .option-btn.incorrect { background-color: #fee2e2 !important; border-color: #ef4444 !important; color: #b91c1c !important; }
-        .solution { margin-top: 16px; padding: 16px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; display: none; }
+        .option-btn.correct { background-color: rgba(34, 197, 94, 0.2) !important; border-color: rgba(34, 197, 94, 0.5) !important; color: #86efac !important; font-weight: 600; }
+        .option-btn.incorrect { background-color: rgba(239, 68, 68, 0.2) !important; border-color: rgba(239, 68, 68, 0.5) !important; color: #fca5a5 !important; }
+        .solution { margin-top: 16px; padding: 16px; background: rgba(0, 240, 255, 0.05); border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.2); display: none; color: #cbd5e1; }
         .solution.visible { display: block; animation: fadeIn 0.3s ease-in-out; }
-        .solution-title { font-weight: 600; color: #1d4ed8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .source-link { display: inline-block; margin-top: 12px; font-size: 0.875rem; color: #2563eb; text-decoration: none; border-top: 1px solid #dbeafe; padding-top: 8px; width: 100%; }
+        .solution-title { font-weight: 600; color: #00F0FF; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .source-link { display: inline-block; margin-top: 12px; font-size: 0.875rem; color: #38bdf8; text-decoration: none; border-top: 1px solid #334155; padding-top: 8px; width: 100%; }
         .source-link:hover { text-decoration: underline; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -282,8 +282,8 @@ export default function Practice() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-              <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+              <option value="gemini-3-flash-preview">Smart/Quality (Gemini 3 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (Gemini 3.1 Flash Lite)</option>
             </select>
           </div>
 
@@ -339,15 +339,17 @@ export default function Practice() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder={`e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-32 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
           />
+        </div>
+        <div className="mt-4 flex justify-end">
           <button 
             onClick={handleSearch}
             disabled={loading || (!query.trim() && !sourceFile)}
-            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
+            className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {loading ? 'Generating...' : 'Generate'}
+            {loading ? 'Generating...' : 'Generate Questions'}
           </button>
         </div>
       </div>

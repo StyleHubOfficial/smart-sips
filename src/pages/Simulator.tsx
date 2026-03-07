@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2 } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -9,8 +9,8 @@ import SimLoader from '../components/SimLoader';
 
 export default function Simulator() {
   const { 
-    query, generatedCode, loading, model, mode, savedSimulations,
-    setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation
+    query, generatedCode, loading, model, mode, savedSimulations, subject, sourceFile,
+    setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation, setSubject, setSourceFile
   } = useSimulatorStore();
   
   const addNotification = useNotificationStore(state => state.addNotification);
@@ -20,9 +20,32 @@ export default function Simulator() {
   const [showCode, setShowCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('error', 'File size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = (event.target?.result as string).split(',')[1];
+      setSourceFile({
+        name: file.name,
+        data: base64String,
+        mimeType: file.type || 'text/plain'
+      });
+      addNotification('success', 'Source file attached successfully');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleGenerate = async () => {
-    if (!query.trim()) return;
+    if (!query.trim() && !sourceFile) return;
     
     let apiKey = '';
     if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
@@ -188,30 +211,55 @@ export default function Simulator() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end relative z-10">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-3 h-3" /> Simulation Mode
+              <Layers className="w-3 h-3" /> Subject & Mode
             </label>
-            <div className="flex bg-black/40 rounded-xl p-1 border border-white/10">
+            <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => setMode('2d')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  mode === '2d' 
-                    ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_10px_rgba(0,240,255,0.2)]' 
-                    : 'text-gray-400 hover:text-white'
+                onClick={() => setSubject('physics')}
+                className={`py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  subject === 'physics' 
+                    ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' 
+                    : 'bg-black/40 text-gray-400 hover:text-white border border-white/10'
                 }`}
               >
-                <Box className="w-4 h-4" /> 2D Canvas
+                <Atom className="w-4 h-4" /> Physics
               </button>
               <button
-                onClick={() => setMode('3d')}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  mode === '3d' 
-                    ? 'bg-[#B026FF]/20 text-[#B026FF] shadow-[0_0_10px_rgba(176,38,255,0.2)]' 
-                    : 'text-gray-400 hover:text-white'
+                onClick={() => setSubject('chemistry')}
+                className={`py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                  subject === 'chemistry' 
+                    ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/30' 
+                    : 'bg-black/40 text-gray-400 hover:text-white border border-white/10'
                 }`}
               >
-                <Box className="w-4 h-4" /> 3D WebGL
+                <FlaskConical className="w-4 h-4" /> Chemistry
               </button>
             </div>
+            
+            {subject === 'physics' && (
+              <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 mt-2">
+                <button
+                  onClick={() => setMode('2d')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
+                    mode === '2d' 
+                      ? 'bg-[#00F0FF]/20 text-[#00F0FF]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Box className="w-3 h-3" /> 2D
+                </button>
+                <button
+                  onClick={() => setMode('3d')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
+                    mode === '3d' 
+                      ? 'bg-[#B026FF]/20 text-[#B026FF]' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Box className="w-3 h-3" /> 3D
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -223,8 +271,8 @@ export default function Simulator() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-              <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+              <option value="gemini-3-flash-preview">Smart/Quality (Gemini 3 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (Gemini 3.1 Flash Lite)</option>
             </select>
           </div>
 
@@ -266,22 +314,49 @@ export default function Simulator() {
 
         {/* Search Bar */}
         <div className="relative flex items-center pt-2 z-10">
-          <Search className="absolute left-4 w-5 h-5 text-gray-400" />
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute left-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors z-10"
+            title="Upload Source File"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
           <input 
             type="text" 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-            placeholder={`Describe the simulation (e.g., "Solar system with gravity", "Double pendulum", "Particle collision")...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-32 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
+            placeholder={`Describe the ${subject} simulation...`}
+            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
           />
+        </div>
+        
+        <div className="flex justify-between items-center mt-4">
+          <div className="flex items-center gap-2">
+            {sourceFile && (
+               <div className="flex items-center gap-2 bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] px-3 py-2 rounded-xl text-sm">
+                 <FileText className="w-4 h-4" />
+                 <span className="truncate max-w-[150px]">{sourceFile.name}</span>
+                 <button onClick={() => setSourceFile(null)} className="hover:text-white transition-colors ml-1">
+                   <X className="w-4 h-4" />
+                 </button>
+               </div>
+             )}
+          </div>
           <button 
             onClick={handleGenerate}
-            disabled={loading || !query.trim()}
-            className="absolute right-2 px-6 py-2 rounded-lg bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
+            disabled={loading || (!query.trim() && !sourceFile)}
+            className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {loading ? 'Generating...' : 'Generate'}
+            {loading ? 'Generating...' : 'Generate Simulation'}
           </button>
         </div>
       </div>

@@ -21,7 +21,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useThemeStore();
-  const { isSimpleMode, toggleSimpleMode } = useAppStore();
+  const { isSimpleMode, toggleSimpleMode, notifications } = useAppStore();
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -57,7 +57,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
               </div>
             </div>
             <h1 className="font-display font-bold text-xl tracking-tight hidden sm:block">
-              Sunrise <span className="text-gradient">Panel</span>
+              Smart <span className="text-gradient">Sunrise</span>
             </h1>
           </div>
         </div>
@@ -80,7 +80,9 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
                 title="Notifications"
               >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                {notifications.length > 0 && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                )}
               </button>
             </>
           )}

@@ -1,33 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, Bot, User, Loader2, Lightbulb, Check, CheckCheck, Clock } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { useAuthStore } from '../store/useAuthStore';
-import { useNotificationStore } from '../store/useNotificationStore';
-import { useAppStore } from '../store/useAppStore';
 import ReactMarkdown from 'react-markdown';
-import { useLocation } from 'react-router-dom';
 
 export default function AIHelper() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'model', text: string }[]>([
-    { role: 'model', text: 'Hello! I am your Sunrise AI Assistant. How can I help you today? You can ask me about using the platform, or submit feedback/ideas to the developer.' }
+    { role: 'model', text: 'Hello! I am your Sunrise AI Assistant. How can I help you today?' }
   ]);
   const [input, setInput] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<'ai' | 'admin' | 'developer'>('ai');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { role } = useAuthStore();
-  const addNotification = useNotificationStore(state => state.addNotification);
-  const { messages: chatMessages, addMessage, markMessagesAsRead, onlineTimes } = useAppStore();
-  const location = useLocation();
-
-  const currentChatMessages = chatMessages.filter(m => 
-    (m.senderRole === role && m.receiverRole === mode) || 
-    (m.senderRole === mode && m.receiverRole === role)
-  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,31 +22,14 @@ export default function AIHelper() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, currentChatMessages, isOpen, mode, isPreview]);
-
-  useEffect(() => {
-    if (isOpen && mode !== 'ai') {
-      markMessagesAsRead(role, mode);
-    }
-  }, [isOpen, mode, chatMessages.length, markMessagesAsRead, role]);
+  }, [messages, isOpen]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMsg = input.trim();
     setInput('');
-    setIsPreview(false);
 
-    if (mode === 'admin' || mode === 'developer') {
-      addMessage({
-        senderRole: role,
-        receiverRole: mode,
-        text: userMsg
-      });
-      return;
-    }
-
-    // Handle AI Chat
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsLoading(true);
     try {
@@ -84,23 +54,25 @@ export default function AIHelper() {
     }
   };
 
-  if (location.pathname === '/chat') {
-    return null;
-  }
-
   return (
     <>
       {/* Floating Button */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 sm:bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center z-[100] hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow"
+      <motion.div
+        drag
+        dragMomentum={false}
+        className="fixed bottom-20 sm:bottom-6 right-6 z-[100]"
       >
-        <MessageSquare className="w-6 h-6" />
-      </motion.button>
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsOpen(true)}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow cursor-move"
+        >
+          <MessageSquare className="w-6 h-6" />
+        </motion.button>
+      </motion.div>
 
       {/* Chat Window */}
       <AnimatePresence>
@@ -115,14 +87,14 @@ export default function AIHelper() {
             <div className="p-4 border-b border-white/10 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center">
-                  {mode === 'ai' ? <Bot className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
+                  <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-sm">
-                    {mode === 'ai' ? 'Sunrise AI Helper' : mode === 'admin' ? 'Admin Support' : 'Lakshya Bhamu (Developer)'}
+                    Sunrise AI Helper
                   </h3>
                   <p className="text-[10px] text-[#00F0FF]">
-                    {mode === 'ai' ? 'Online' : onlineTimes[mode] ? `Available: ${onlineTimes[mode]}` : 'Online'}
+                    Online
                   </p>
                 </div>
               </div>
@@ -136,64 +108,34 @@ export default function AIHelper() {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide bg-black/20">
-              {mode === 'ai' ? (
-                messages.map((msg, idx) => (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={idx} 
-                    className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      msg.role === 'user' ? 'bg-white/10' : 'bg-[#00F0FF]/20 text-[#00F0FF]'
-                    }`}>
-                      {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                    </div>
-                    <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${
-                      msg.role === 'user' 
-                        ? 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-white rounded-tr-sm' 
-                        : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-sm'
-                    }`}>
-                      {msg.role === 'user' ? (
-                        msg.text
-                      ) : (
-                        <div className="markdown-body prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown>{msg.text}</ReactMarkdown>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))
-              ) : (
-                currentChatMessages.map((msg) => {
-                  const isMe = msg.senderRole === role;
-                  return (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      key={msg.id} 
-                      className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}
-                    >
-                      <div className={`max-w-[75%] p-3 rounded-2xl text-sm relative ${
-                        isMe 
-                          ? 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-white rounded-tr-sm' 
-                          : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-sm'
-                      }`}>
-                        <div className="mb-1">{msg.text}</div>
-                        <div className={`text-[10px] flex items-center justify-end gap-1 ${isMe ? 'text-[#00F0FF]/70' : 'text-gray-500'}`}>
-                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          {isMe && (
-                            msg.status === 'read' ? <CheckCheck className="w-3 h-3 text-[#00F0FF]" /> : 
-                            msg.status === 'delivered' ? <CheckCheck className="w-3 h-3 text-gray-400" /> :
-                            <Check className="w-3 h-3 text-gray-400" />
-                          )}
-                        </div>
+              {messages.map((msg, idx) => (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={idx} 
+                  className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                    msg.role === 'user' ? 'bg-white/10' : 'bg-[#00F0FF]/20 text-[#00F0FF]'
+                  }`}>
+                    {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  </div>
+                  <div className={`max-w-[75%] p-3 rounded-2xl text-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-white rounded-tr-sm' 
+                      : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-sm'
+                  }`}>
+                    {msg.role === 'user' ? (
+                      msg.text
+                    ) : (
+                      <div className="markdown-body prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
                       </div>
-                    </motion.div>
-                  );
-                })
-              )}
-              {isLoading && mode === 'ai' && (
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+              {isLoading && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 text-[#00F0FF] flex items-center justify-center shrink-0">
                     <Bot className="w-4 h-4" />
@@ -209,57 +151,19 @@ export default function AIHelper() {
 
             {/* Input Area */}
             <div className="p-4 border-t border-white/10 bg-black/50">
-              {/* Mode Toggle */}
-              <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-                <button 
-                  onClick={() => setMode('ai')}
-                  className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'ai' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
-                >
-                  <Bot className="w-3 h-3 inline mr-1" /> Ask AI
-                </button>
-                <button 
-                  onClick={() => setMode('admin')}
-                  className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'admin' ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
-                >
-                  <User className="w-3 h-3 inline mr-1" /> Message Admin
-                </button>
-                <button 
-                  onClick={() => setMode('developer')}
-                  className={`text-xs px-3 py-1.5 rounded-full transition-colors whitespace-nowrap ${mode === 'developer' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/5 text-gray-400 hover:text-white'}`}
-                >
-                  <Lightbulb className="w-3 h-3 inline mr-1" /> Message Developer
-                </button>
-              </div>
-
               <div className="relative flex items-center">
-                {isPreview && (mode === 'admin' || mode === 'developer') ? (
-                  <div className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white min-h-[44px] max-h-[100px] overflow-y-auto">
-                    <ReactMarkdown>{input}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <input 
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                    placeholder={mode === 'ai' ? "Ask me anything..." : "Type a message..."}
-                    className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors"
-                  />
-                )}
+                <input 
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask me anything..."
+                  className="w-full bg-white/5 border border-white/10 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors"
+                />
                 
-                {(mode === 'admin' || mode === 'developer') && (
-                  <button
-                    onClick={() => setIsPreview(!isPreview)}
-                    className={`absolute right-12 p-2 rounded-full transition-colors ${isPreview ? 'text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
-                    title="Toggle Markdown Preview"
-                  >
-                    <Lightbulb className="w-4 h-4" />
-                  </button>
-                )}
-
                 <button 
                   onClick={handleSend}
-                  disabled={!input.trim() || (isLoading && mode === 'ai')}
+                  disabled={!input.trim() || isLoading}
                   className="absolute right-2 p-2 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />

@@ -4,7 +4,6 @@ import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import Manage from "./pages/Manage";
 import Analytics from "./pages/Analytics";
-import Chat from "./pages/Chat";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
@@ -49,8 +48,11 @@ export default function App() {
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] blur-[100px] opacity-30 animate-pulse"></div>
           <h1 className="text-4xl md:text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 animate-fade-in-up">
-            Smart Sunrise
+            Smart Sunrise <span className="text-sm font-mono text-[#00F0FF] align-top ml-2">v2.0</span>
           </h1>
+          <p className="text-center text-gray-500 text-xs mt-2 font-mono tracking-widest opacity-0 animate-fade-in" style={{ animationDelay: '1s', animationFillMode: 'forwards' }}>
+            ADVANCED AI EDITION
+          </p>
           <div className="h-[2px] w-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mt-4 animate-expand-line mx-auto"></div>
         </div>
       </div>
@@ -88,7 +90,6 @@ export default function App() {
                   <Route path="/upload" element={<Upload onOpenLogin={() => setIsLoginModalOpen(true)} />} />
                   <Route path="/manage" element={<Manage />} />
                   <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/chat" element={<Chat />} />
                   <Route path="/practice" element={<Practice />} />
                   <Route path="/simulator" element={<Simulator />} />
                   <Route path="/flowchart" element={<FlowChart />} />

@@ -4,32 +4,39 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Welcome to Smart Sunrise",
-    content: "Your AI-powered educational hub. Let's take a quick tour of the powerful tools available to you.",
+    title: "Smart Sunrise v2.0",
+    content: "Welcome to the Advanced Edition! We've upgraded our AI engines and added powerful new laboratory tools.",
     icon: Sparkles,
     color: "#00F0FF",
     target: "header"
   },
   {
-    title: "Question Generator",
-    content: "Generate authentic competitive exam questions (JEE, NEET, UPSC, etc.) in seconds. Just enter a topic and hit Generate.",
-    icon: BrainCircuit,
-    color: "#FACC15",
-    target: "practice"
-  },
-  {
-    title: "Deep Search Mode",
-    content: "Enable this to perform exhaustive research. The AI will find conceptual, high-quality questions with extremely detailed solutions.",
+    title: "Advanced AI Models",
+    content: "Choose between 'Smart/Quality' for complex reasoning or 'Fast' for quick results. Tailor the AI to your specific needs.",
     icon: Zap,
-    color: "#00F0FF",
-    target: "deepsearch"
+    color: "#FACC15",
+    target: "models"
   },
   {
-    title: "Simulator Generator",
-    content: "Create interactive 2D and 3D simulations for any scientific concept. Adjust parameters in real-time and save your progress.",
+    title: "Chemistry Laboratory",
+    content: "The Simulator now supports Chemistry! Generate interactive experiments with molecular visualizations and reaction controls.",
+    icon: BrainCircuit,
+    color: "#10B981",
+    target: "chemistry"
+  },
+  {
+    title: "Universal File Upload",
+    content: "You can now upload PDFs, images, and text files to ALL AI generators. Use your own documents as the source of truth.",
     icon: MonitorPlay,
     color: "#B026FF",
-    target: "simulator"
+    target: "upload"
+  },
+  {
+    title: "Diagram Generator",
+    content: "Create complex flowcharts, mind maps, and sequence diagrams instantly. Perfect for visualizing difficult concepts.",
+    icon: HelpCircle,
+    color: "#6366F1",
+    target: "flowchart"
   }
 ];
 
@@ -38,7 +45,7 @@ export default function Tutorial() {
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_seen');
+    const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v2_seen');
     if (!hasSeenTutorial) {
       const timer = setTimeout(() => setIsOpen(true), 3000);
       return () => clearTimeout(timer);
@@ -47,7 +54,7 @@ export default function Tutorial() {
 
   const handleClose = () => {
     setIsOpen(false);
-    localStorage.setItem('sunrise_tutorial_seen', 'true');
+    localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
   };
 
   const nextStep = () => {

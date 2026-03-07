@@ -1,24 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export interface ChatGroup {
-  id: string;
-  name: string;
-  members: string[]; // roles
-  createdBy: string;
-  createdAt: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  senderRole: string;
-  receiverRole: string; // can be a role or a group id
-  text: string;
-  timestamp: string;
-  status: 'sent' | 'delivered' | 'read';
-  isGroup?: boolean;
-}
-
 export interface SiteNotification {
   id: string;
   title: string;
@@ -35,20 +17,11 @@ export interface MaintenanceAlert {
 }
 
 interface AppState {
-  messages: ChatMessage[];
-  groups: ChatGroup[];
   notifications: SiteNotification[];
   maintenanceAlerts: MaintenanceAlert[];
   onlineTimes: Record<string, string>;
   isSimpleMode: boolean;
   viewedContent: string[];
-  
-  addMessage: (msg: Omit<ChatMessage, 'id' | 'timestamp' | 'status'>) => void;
-  markMessagesAsRead: (receiverRole: string, senderRole: string, isGroup?: boolean) => void;
-  
-  createGroup: (group: Omit<ChatGroup, 'id' | 'createdAt'>) => void;
-  updateGroup: (id: string, updates: Partial<ChatGroup>) => void;
-  deleteGroup: (id: string) => void;
   
   addSiteNotification: (notif: Omit<SiteNotification, 'id' | 'timestamp'>) => void;
   deleteSiteNotification: (id: string) => void;
@@ -65,46 +38,11 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      messages: [],
-      groups: [],
       notifications: [],
       maintenanceAlerts: [],
       onlineTimes: {},
       isSimpleMode: false,
       viewedContent: [],
-      
-      addMessage: (msg) => set((state) => ({
-        messages: [...state.messages, {
-          ...msg,
-          id: Math.random().toString(36).substring(7),
-          timestamp: new Date().toISOString(),
-          status: 'sent'
-        }]
-      })),
-      
-      markMessagesAsRead: (receiverRole, senderRole, isGroup) => set((state) => ({
-        messages: state.messages.map(m => 
-          (isGroup ? m.receiverRole === receiverRole : m.receiverRole === receiverRole && m.senderRole === senderRole) 
-            ? { ...m, status: 'read' } 
-            : m
-        )
-      })),
-
-      createGroup: (group) => set((state) => ({
-        groups: [...state.groups, {
-          ...group,
-          id: Math.random().toString(36).substring(7),
-          createdAt: new Date().toISOString()
-        }]
-      })),
-
-      updateGroup: (id, updates) => set((state) => ({
-        groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
-      })),
-
-      deleteGroup: (id) => set((state) => ({
-        groups: state.groups.filter(g => g.id !== id)
-      })),
       
       addSiteNotification: (notif) => set((state) => ({
         notifications: [{
@@ -145,8 +83,6 @@ export const useAppStore = create<AppState>()(
       })),
       
       resetApp: () => set({
-        messages: [],
-        groups: [],
         notifications: [],
         maintenanceAlerts: [],
         onlineTimes: {},

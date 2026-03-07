@@ -17,10 +17,12 @@ interface FlowChartState {
   model: string;
   chartType: string;
   savedCharts: FlowChart[];
+  sourceFile: { name: string; data: string; mimeType: string } | null;
   setQuery: (query: string) => void;
   setGeneratedCode: (code: string) => void;
   setModel: (model: string) => void;
   setChartType: (type: string) => void;
+  setSourceFile: (file: { name: string; data: string; mimeType: string } | null) => void;
   generateFlowChart: (apiKey: string) => Promise<void>;
   saveCurrentChart: () => void;
   deleteChart: (id: string) => void;
@@ -36,101 +38,118 @@ export const useFlowChartStore = create<FlowChartState>()(
       model: 'gemini-3-flash-preview',
       chartType: 'Flowchart',
       savedCharts: [],
+      sourceFile: null,
 
       setQuery: (query) => set({ query }),
       setGeneratedCode: (generatedCode) => set({ generatedCode }),
       setModel: (model) => set({ model }),
       setChartType: (chartType) => set({ chartType }),
+      setSourceFile: (sourceFile) => set({ sourceFile }),
 
       generateFlowChart: async (apiKey) => {
-    const { query, model, chartType } = get();
-    set({ loading: true });
+        const { query, model, chartType, sourceFile } = get();
+        if (!query.trim() && !sourceFile) return;
+        
+        set({ loading: true });
 
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      
-      let prompt = '';
-      if (chartType === 'Mind Map') {
-        prompt = `
-          You are an expert at creating Mermaid.js mindmaps.
-          Create a detailed, logical mindmap for the following topic: "${query}".
+        try {
+          const ai = new GoogleGenAI({ apiKey });
           
-          Requirements:
-          1. Use Mermaid.js syntax (starting with "mindmap").
-          2. Make it comprehensive and easy to understand.
-          3. Use descriptive node labels.
-          4. Organize hierarchically from the central topic.
-          
-          Return ONLY the Mermaid.js code block. Do not include any other text.
-        `;
-      } else if (chartType === 'Sequence Diagram') {
-        prompt = `
-          You are an expert at creating Mermaid.js sequence diagrams.
-          Create a detailed, logical sequence diagram for the following process/interaction: "${query}".
-          
-          Requirements:
-          1. Use Mermaid.js syntax (starting with "sequenceDiagram").
-          2. Make it comprehensive and easy to understand.
-          3. Use descriptive participant names and messages.
-          4. Include alt/opt blocks if there are conditional paths.
-          
-          Return ONLY the Mermaid.js code block. Do not include any other text.
-        `;
-      } else if (chartType === 'State Diagram') {
-        prompt = `
-          You are an expert at creating Mermaid.js state diagrams.
-          Create a detailed, logical state diagram for the following system/process: "${query}".
-          
-          Requirements:
-          1. Use Mermaid.js syntax (starting with "stateDiagram-v2").
-          2. Make it comprehensive and easy to understand.
-          3. Clearly define states and transitions.
-          
-          Return ONLY the Mermaid.js code block. Do not include any other text.
-        `;
-      } else if (chartType === 'Cheat Sheet (Class Diagram)') {
-        prompt = `
-          You are an expert at creating Mermaid.js class diagrams to act as cheat sheets.
-          Create a detailed, logical class diagram/cheat sheet for the following topic: "${query}".
-          
-          Requirements:
-          1. Use Mermaid.js syntax (starting with "classDiagram").
-          2. Use classes to represent core concepts, and attributes/methods to list key facts, formulas, or rules.
-          3. Make it comprehensive and easy to understand.
-          
-          Return ONLY the Mermaid.js code block. Do not include any other text.
-        `;
-      } else {
-        prompt = `
-          You are an expert at creating Mermaid.js flowcharts.
-          Create a detailed, logical flowchart for the following topic: "${query}".
-          
-          Requirements:
-          1. Use Mermaid.js syntax (starting with "graph TD" or "graph LR").
-          2. Make it comprehensive and easy to understand.
-          3. Use descriptive node labels.
-          4. Add subgraphs if necessary to group related steps.
-          5. Use different shapes for different types of steps (e.g., diamonds for decisions).
-          
-          Return ONLY the Mermaid.js code block. Do not include any other text.
-        `;
-      }
+          let prompt = '';
+          if (chartType === 'Mind Map') {
+            prompt = `
+              You are an expert at creating Mermaid.js mindmaps.
+              Create a detailed, logical mindmap for the following topic: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "mindmap").
+              2. Make it comprehensive and easy to understand.
+              3. Use descriptive node labels.
+              4. Organize hierarchically from the central topic.
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          } else if (chartType === 'Sequence Diagram') {
+            prompt = `
+              You are an expert at creating Mermaid.js sequence diagrams.
+              Create a detailed, logical sequence diagram for the following process/interaction: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "sequenceDiagram").
+              2. Make it comprehensive and easy to understand.
+              3. Use descriptive participant names and messages.
+              4. Include alt/opt blocks if there are conditional paths.
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          } else if (chartType === 'State Diagram') {
+            prompt = `
+              You are an expert at creating Mermaid.js state diagrams.
+              Create a detailed, logical state diagram for the following system/process: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "stateDiagram-v2").
+              2. Make it comprehensive and easy to understand.
+              3. Clearly define states and transitions.
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          } else if (chartType === 'Cheat Sheet (Class Diagram)') {
+            prompt = `
+              You are an expert at creating Mermaid.js class diagrams to act as cheat sheets.
+              Create a detailed, logical class diagram/cheat sheet for the following topic: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "classDiagram").
+              2. Use classes to represent core concepts, and attributes/methods to list key facts, formulas, or rules.
+              3. Make it comprehensive and easy to understand.
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          } else {
+            prompt = `
+              You are an expert at creating Mermaid.js flowcharts.
+              Create a detailed, logical flowchart for the following topic: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "graph TD" or "graph LR").
+              2. Make it comprehensive and easy to understand.
+              3. Use descriptive node labels.
+              4. Add subgraphs if necessary to group related steps.
+              5. Use different shapes for different types of steps (e.g., diamonds for decisions).
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          }
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: [{ parts: [{ text: prompt }] }],
-      });
+          const parts: any[] = [{ text: prompt }];
+          
+          if (sourceFile) {
+            parts.push({
+              inlineData: {
+                mimeType: sourceFile.mimeType,
+                data: sourceFile.data
+              }
+            });
+            parts[0].text += `\n\nUse the attached file as context/reference for the diagram structure or content.`;
+          }
 
-      let code = response.text || '';
-      // Clean up markdown code blocks if present
-      code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
-      
-      set({ generatedCode: code, loading: false });
-    } catch (error) {
-      set({ loading: false });
-      throw error;
-    }
-  },
+          const response = await ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts }],
+          });
+
+          let code = response.text || '';
+          // Clean up markdown code blocks if present
+          code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+          
+          set({ generatedCode: code, loading: false });
+        } catch (error) {
+          console.error('Error generating flowchart:', error);
+          set({ loading: false });
+          throw error;
+        }
+      },
 
   saveCurrentChart: () => {
     const { query, generatedCode, chartType, savedCharts } = get();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useFlowChartStore } from '../store/useFlowChartStore';
 import { useUploadStore } from '../store/useUploadStore';
@@ -17,8 +17,8 @@ mermaid.initialize({
 
 export default function FlowChart() {
   const { 
-    query, generatedCode, loading, model, chartType, savedCharts,
-    setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart 
+    query, generatedCode, loading, model, chartType, savedCharts, sourceFile,
+    setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart, setSourceFile
   } = useFlowChartStore();
   
   const addNotification = useNotificationStore(state => state.addNotification);
@@ -29,6 +29,7 @@ export default function FlowChart() {
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (generatedCode && chartRef.current) {
@@ -37,8 +38,30 @@ export default function FlowChart() {
     }
   }, [generatedCode]);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('error', 'File size must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = (event.target?.result as string).split(',')[1];
+      setSourceFile({
+        name: file.name,
+        data: base64String,
+        mimeType: file.type || 'text/plain'
+      });
+      addNotification('success', 'Source file attached successfully');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleGenerate = async () => {
-    if (!query.trim()) return;
+    if (!query.trim() && !sourceFile) return;
     
     let apiKey = '';
     if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
@@ -145,8 +168,8 @@ export default function FlowChart() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
-                <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite</option>
+                <option value="gemini-3-flash-preview">Smart/Quality (Gemini 3 Flash)</option>
+                <option value="gemini-3.1-flash-lite-preview">Fast (Gemini 3.1 Flash Lite)</option>
               </select>
             </div>
 
@@ -166,16 +189,44 @@ export default function FlowChart() {
             </div>
 
             <div className="space-y-4">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Concept / Process</label>
-              <textarea 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."
-                className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
-              />
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Concept / Process</label>
+                {sourceFile && (
+                   <div className="flex items-center gap-2 bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] px-2 py-1 rounded-lg text-xs">
+                     <FileText className="w-3 h-3" />
+                     <span className="truncate max-w-[80px]">{sourceFile.name}</span>
+                     <button onClick={() => setSourceFile(null)} className="hover:text-white transition-colors ml-1">
+                       <X className="w-3 h-3" />
+                     </button>
+                   </div>
+                 )}
+              </div>
+              <div className="relative">
+                <textarea 
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
+                />
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                  className="hidden" 
+                  accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
+                  title="Upload Source File"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              
               <button 
                 onClick={handleGenerate}
-                disabled={loading || !query.trim()}
+                disabled={loading || (!query.trim() && !sourceFile)}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}

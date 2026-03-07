@@ -9,8 +9,6 @@ export default function Notifications({ isOpen }: { isOpen: boolean }) {
   const { notifications: siteNotifications, deleteSiteNotification } = useAppStore();
   const { role } = useAuthStore();
 
-  if (!isOpen) return null;
-
   return (
     <div className="fixed top-24 right-6 z-50 flex flex-col gap-3 pointer-events-none max-h-[80vh] overflow-y-auto scrollbar-hide">
       <AnimatePresence>
@@ -52,7 +50,7 @@ export default function Notifications({ isOpen }: { isOpen: boolean }) {
         ))}
 
         {/* Site Notifications / Announcements */}
-        {siteNotifications.map((notification) => (
+        {isOpen && siteNotifications.map((notification) => (
           <motion.div
             key={notification.id}
             initial={{ opacity: 0, x: 50, scale: 0.9 }}

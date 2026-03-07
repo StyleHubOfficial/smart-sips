@@ -12,7 +12,6 @@ export default function Manage() {
   const [activeTab, setActiveTab] = useState<'upload' | 'notifications' | 'status' | 'maintenance'>('upload');
   
   const { 
-    messages, addMessage, markMessagesAsRead, 
     notifications, addSiteNotification, deleteSiteNotification,
     maintenanceAlerts, setMaintenanceAlert, removeMaintenanceAlert,
     onlineTimes, setOnlineTime
@@ -20,27 +19,14 @@ export default function Manage() {
   
   const addToast = useNotificationStore(state => state.addNotification);
 
-  const [messageInput, setMessageInput] = useState('');
-  const [selectedReceiver, setSelectedReceiver] = useState('teacher');
   const [notifTitle, setNotifTitle] = useState('');
   const [notifMsg, setNotifMsg] = useState('');
-  const [onlineTimeInput, setOnlineTimeInput] = useState(onlineTimes[role] || '');
   const [maintSection, setMaintSection] = useState('');
   const [maintMsg, setMaintMsg] = useState('');
 
   if (!isAuthenticated || (role !== 'admin' && role !== 'developer')) {
     return <Navigate to="/" />;
   }
-
-  const handleSendMessage = () => {
-    if (!messageInput.trim()) return;
-    addMessage({
-      senderRole: role,
-      receiverRole: selectedReceiver,
-      text: messageInput.trim()
-    });
-    setMessageInput('');
-  };
 
   const handleSendNotification = () => {
     if (!notifTitle.trim() || !notifMsg.trim()) return;
@@ -52,11 +38,6 @@ export default function Manage() {
     setNotifTitle('');
     setNotifMsg('');
     addToast('success', 'Notification broadcasted successfully');
-  };
-
-  const handleSetOnlineTime = () => {
-    setOnlineTime(role, onlineTimeInput);
-    addToast('success', 'Online time updated');
   };
 
   const handleAddMaintenance = () => {
@@ -71,11 +52,6 @@ export default function Manage() {
     setMaintMsg('');
     addToast('success', 'Maintenance alert added');
   };
-
-  const currentChatMessages = messages.filter(m => 
-    (m.senderRole === role && m.receiverRole === selectedReceiver) || 
-    (m.senderRole === selectedReceiver && m.receiverRole === role)
-  );
 
   return (
     <motion.div 
@@ -137,19 +113,6 @@ export default function Manage() {
                 </div>
                 <button onClick={handleSendNotification} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all">
                   Send to All Teachers
-                </button>
-              </div>
-            </div>
-
-            <div className="glass-panel rounded-2xl p-6 border border-white/10">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Clock className="w-5 h-5 text-[#B026FF]" /> Set Online Time</h3>
-              <div className="space-y-4">
-                <p className="text-sm text-gray-400">Let teachers know when you are available to reply to messages.</p>
-                <div>
-                  <input type="text" value={onlineTimeInput} onChange={e => setOnlineTimeInput(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00F0FF]/50 outline-none" placeholder="e.g. 9:00 AM - 5:00 PM" />
-                </div>
-                <button onClick={handleSetOnlineTime} className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all">
-                  Update Availability
                 </button>
               </div>
             </div>
