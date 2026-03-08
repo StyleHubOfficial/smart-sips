@@ -44,6 +44,7 @@ Provide a structured JSON response with the following:
           topic: { type: Type.STRING },
           explanation: { type: Type.STRING },
           diagramSvg: { type: Type.STRING },
+          animationCode: { type: Type.STRING, description: "A self-contained HTML/JS/CSS snippet for a small interactive animation of the concept." },
           formulas: {
             type: Type.ARRAY,
             items: {
@@ -67,8 +68,20 @@ Provide a structured JSON response with the following:
             },
           },
           audioScript: { type: Type.STRING },
+          highlightingSteps: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                text: { type: Type.STRING, description: "The text to highlight during this step of the audio explanation." },
+                startTime: { type: Type.NUMBER, description: "The start time in seconds for this highlight." },
+                endTime: { type: Type.NUMBER, description: "The end time in seconds for this highlight." }
+              },
+              required: ['text', 'startTime', 'endTime']
+            }
+          }
         },
-        required: ['topic', 'explanation', 'formulas', 'realLifeExamples', 'audioScript'],
+        required: ['topic', 'explanation', 'formulas', 'realLifeExamples', 'audioScript', 'highlightingSteps', 'animationCode'],
       },
     },
   });

@@ -26,12 +26,17 @@ export default function ConceptVisualizer() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isExplaining, setIsExplaining] = useState(false);
+  const [currentHighlight, setCurrentHighlight] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const animationRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
-      const { sourceContent, extractedData } = location.state;
-      const autoQuery = `Explain the concept of ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      const { sourceContent, extractedData, autoFillQuery } = location.state;
+      const autoQuery = autoFillQuery || `Explain the concept of ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
       setQuery(autoQuery);
 
       setTimeout(() => {
@@ -115,20 +120,49 @@ export default function ConceptVisualizer() {
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
+      if (!document.fullscreenElement) setIsExplaining(false);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   useEffect(() => {
-    if (visualizerData?.audioData && audioRef.current) {
+    if (visualizerData?.audioData) {
       const audioBlob = new Blob([Uint8Array.from(atob(visualizerData.audioData), c => c.charCodeAt(0))], { type: 'audio/wav' });
-      const audioUrl = URL.createObjectURL(audioBlob);
-      audioRef.current.src = audioUrl;
-      audioRef.current.play().catch(err => console.error("Auto-play failed:", err));
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+      setAudioProgress(100);
+      return () => URL.revokeObjectURL(url);
+    } else if (loading) {
+      setAudioUrl(null);
+      setAudioProgress(0);
+      const interval = setInterval(() => {
+        setAudioProgress(prev => Math.min(prev + 2, 95));
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [visualizerData, loading]);
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current || !visualizerData?.highlightingSteps) return;
+    const currentTime = audioRef.current.currentTime;
+    const activeStep = visualizerData.highlightingSteps.find(
+      step => currentTime >= step.startTime && currentTime <= step.endTime
+    );
+    setCurrentHighlight(activeStep ? activeStep.text : null);
+  };
+
+  const startExplaining = () => {
+    if (!visualizerData?.audioData) return;
+    setIsExplaining(true);
+    setIsFullscreen(true);
+    document.documentElement.requestFullscreen();
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
       setIsPlayingAudio(true);
     }
-  }, [visualizerData]);
+  };
 
   const toggleAudio = () => {
     if (audioRef.current) {
@@ -148,11 +182,22 @@ export default function ConceptVisualizer() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
-      <audio ref={audioRef} onEnded={() => setIsPlayingAudio(false)} className="hidden" />
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl}
+          onEnded={() => {
+            setIsPlayingAudio(false);
+            setIsExplaining(false);
+          }} 
+          onTimeUpdate={handleTimeUpdate}
+          className="hidden" 
+        />
+      )}
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
-            <Sparkles className="w-8 h-8 text-[#00F0FF]" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+            <Sparkles className="w-8 h-8 text-black" />
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
@@ -242,6 +287,15 @@ export default function ConceptVisualizer() {
               <div className="flex items-center gap-2">
                 {visualizerData && (
                   <>
+                    <button
+                      onClick={startExplaining}
+                      disabled={!visualizerData.audioData}
+                      className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
+                      title="Start Fullscreen Explanation"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Explain</span>
+                    </button>
                     {visualizerData.audioData && (
                       <button
                         onClick={toggleAudio}
@@ -249,7 +303,7 @@ export default function ConceptVisualizer() {
                         title={isPlayingAudio ? "Pause Explanation" : "Play Hinglish Explanation"}
                       >
                         {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Hinglish Audio</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Audio</span>
                       </button>
                     )}
                     <button
@@ -265,10 +319,23 @@ export default function ConceptVisualizer() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10">
+            <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
               {loading ? (
-                <div className="w-full max-w-2xl mx-auto flex items-center justify-center h-full">
+                <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
+                  <div className="w-full max-w-md space-y-2">
+                    <div className="flex justify-between text-xs font-mono text-[#00F0FF]">
+                      <span>Generating Visuals & Audio...</span>
+                      <span>{audioProgress}%</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${audioProgress}%` }}
+                        className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : visualizerData ? (
                 <div className="max-w-4xl mx-auto space-y-10">
@@ -277,12 +344,37 @@ export default function ConceptVisualizer() {
                     <div className="h-1 w-24 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mx-auto rounded-full"></div>
                   </div>
 
-                  <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
+                  <div className={`glass-panel p-6 rounded-2xl border transition-all duration-500 ${currentHighlight && visualizerData.explanation.includes(currentHighlight) ? 'border-[#00F0FF] bg-[#00F0FF]/5 shadow-[0_0_30px_rgba(0,240,255,0.1)]' : 'border-white/10 bg-white/5'}`}>
                     <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Concept Explanation</h3>
                     <div className="prose prose-invert max-w-none text-lg leading-relaxed">
                       <Markdown>{visualizerData.explanation}</Markdown>
                     </div>
                   </div>
+
+                  {visualizerData.animationCode && (
+                    <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
+                      <h3 className="text-xl font-bold text-[#00F0FF] mb-6">Animated Visualization</h3>
+                      <div className="w-full aspect-video bg-black rounded-xl border border-white/10 overflow-hidden relative">
+                        <iframe
+                          srcDoc={`
+                            <html>
+                              <head>
+                                <style>
+                                  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                                  canvas { max-width: 100%; max-height: 100%; }
+                                </style>
+                              </head>
+                              <body>
+                                ${visualizerData.animationCode}
+                              </body>
+                            </html>
+                          `}
+                          className="w-full h-full border-none"
+                          title="Concept Animation"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {visualizerData.diagramSvg && (
                     <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center">
@@ -296,7 +388,7 @@ export default function ConceptVisualizer() {
                       <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Key Formulas</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {visualizerData.formulas.map((f, i) => (
-                          <div key={i} className="p-4 rounded-xl bg-black/40 border border-white/10">
+                          <div key={i} className={`p-4 rounded-xl border transition-all duration-500 ${currentHighlight && f.formula.includes(currentHighlight) ? 'border-[#00F0FF] bg-[#00F0FF]/10' : 'bg-black/40 border-white/10'}`}>
                             <div className="font-mono text-lg text-white mb-2">{f.formula}</div>
                             <div className="text-sm text-gray-400">{f.explanation}</div>
                           </div>
@@ -310,7 +402,7 @@ export default function ConceptVisualizer() {
                       <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Real-Life Applications</h3>
                       <div className="space-y-4">
                         {visualizerData.realLifeExamples.map((ex, i) => (
-                          <div key={i} className="flex gap-4 items-start">
+                          <div key={i} className={`flex gap-4 items-start p-4 rounded-xl transition-all duration-500 ${currentHighlight && ex.title.includes(currentHighlight) ? 'bg-[#00F0FF]/10 border border-[#00F0FF]/30' : ''}`}>
                             <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 flex items-center justify-center shrink-0 text-[#00F0FF] font-bold">
                               {i + 1}
                             </div>

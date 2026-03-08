@@ -4,9 +4,11 @@ export interface VisualizerData {
   topic: string;
   explanation: string;
   diagramSvg?: string;
+  animationCode?: string;
   formulas: { formula: string; explanation: string }[];
   realLifeExamples: { title: string; description: string }[];
   audioScript?: string;
+  highlightingSteps?: { text: string; startTime: number; endTime: number }[];
   audioData?: string;
 }
 

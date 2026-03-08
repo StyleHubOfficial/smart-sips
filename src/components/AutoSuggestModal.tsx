@@ -1,28 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Sparkles, BrainCircuit, MonitorPlay, GitGraph, FileText, CheckCircle, Loader2, Play, Eye } from 'lucide-react';
+import { X, Sparkles, BrainCircuit, MonitorPlay, GitGraph, FileText, CheckCircle, Loader2, Play, Eye, Zap, List, HelpCircle, FileQuestion, BookOpen } from 'lucide-react';
 import { useCoPilotStore } from '../store/useCoPilotStore';
-import { analyzeContent } from '../services/aiCoPilotService';
+import { analyzeContentForCoPilot, CoPilotSuggestion } from '../services/aiCoPilotService';
 import { useNavigate } from 'react-router-dom';
 
 const toolIcons: Record<string, any> = {
-  'Concept Visualizer': Sparkles,
-  'Virtual Laboratory Simulation': MonitorPlay,
-  'Concept Map': GitGraph,
-  'Practice Questions': BrainCircuit,
-  'Diagram Generator': GitGraph,
-  'Quiz': CheckCircle,
-  'Summary Notes': FileText,
+  'visualizer': Sparkles,
+  'simulator': MonitorPlay,
+  'flowchart': GitGraph,
+  'practice': BrainCircuit,
+  'diagram': Zap,
+  'solution': HelpCircle,
+  'quiz': FileQuestion,
+  'summary': BookOpen,
+  'board': FileText,
 };
 
 const toolRoutes: Record<string, string> = {
-  'Concept Visualizer': '/visualizer',
-  'Virtual Laboratory Simulation': '/simulator',
-  'Concept Map': '/flowchart',
-  'Practice Questions': '/practice',
-  'Diagram Generator': '/flowchart',
-  'Quiz': '/practice',
-  'Summary Notes': '/practice', // Or a new route if we had one
+  'visualizer': '/visualizer',
+  'simulator': '/simulator',
+  'flowchart': '/flowchart',
+  'practice': '/practice',
+  'diagram': '/flowchart',
+  'solution': '/practice',
+  'quiz': '/practice',
+  'summary': '/practice',
+  'board': '/practice',
 };
 
 export default function AutoSuggestModal() {
@@ -36,10 +40,23 @@ export default function AutoSuggestModal() {
         setIsAnalyzing(true);
         const meta = selectedContent.context?.custom || {};
         const title = meta.title || selectedContent.public_id;
-        const fileType = meta.fileType || 'Unknown';
         
+        let apiKey = '';
+        if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        }
+        if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+
+        if (!apiKey) {
+          console.error("API Key missing");
+          setIsAnalyzing(false);
+          return;
+        }
+
         try {
-          const data = await analyzeContent(selectedContent.secure_url, fileType, title);
+          const data = await analyzeContentForCoPilot(selectedContent.secure_url, title, apiKey);
           setExtractedData(data);
         } catch (error) {
           console.error("Analysis failed", error);
@@ -49,14 +66,13 @@ export default function AutoSuggestModal() {
       };
       fetchAnalysis();
     }
-  }, [isModalOpen, selectedContent]);
+  }, [isModalOpen, selectedContent, extractedData]);
 
   if (!isModalOpen) return null;
 
-  const handleGenerate = (toolName: string) => {
-    const route = toolRoutes[toolName] || '/';
-    // We can pass state to the route so it auto-fills
-    navigate(route, { state: { sourceContent: selectedContent, extractedData } });
+  const handleGenerate = (suggestion: CoPilotSuggestion) => {
+    const route = toolRoutes[suggestion.toolId] || '/';
+    navigate(route, { state: { sourceContent: selectedContent, extractedData, autoFillQuery: suggestion.autoFillQuery } });
     closeModal();
   };
 
@@ -66,7 +82,6 @@ export default function AutoSuggestModal() {
     await new Promise(resolve => setTimeout(resolve, 3000));
     setGeneratingAll(false);
     closeModal();
-    // In a real app, this would trigger background jobs and update the dashboard
     alert("Background generation started! The generated content will be attached to this document.");
   };
 
@@ -100,7 +115,7 @@ export default function AutoSuggestModal() {
             <div>
               <h2 className="text-2xl md:text-3xl font-display font-bold text-white mb-2 flex items-center gap-3">
                 <Sparkles className="w-8 h-8 text-[#00F0FF]" />
-                AI Classroom Co-Pilot
+                AI Classroom Co-Pilot Suggestions
               </h2>
               <p className="text-gray-400 text-sm">Intelligent suggestions based on your uploaded content</p>
             </div>
@@ -109,7 +124,7 @@ export default function AutoSuggestModal() {
               <button
                 onClick={handleGenerateAll}
                 disabled={generatingAll}
-                className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="hidden md:flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-black font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-[0_0_20px_rgba(0,240,255,0.3)]"
               >
                 {generatingAll ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
                 Generate All
@@ -142,7 +157,7 @@ export default function AutoSuggestModal() {
                     <div>
                       <span className="text-gray-500 text-xs uppercase tracking-wider">Key Concepts</span>
                       <div className="flex flex-wrap gap-2 mt-1">
-                        {extractedData.keyConcepts?.slice(0, 4).map((concept: string, i: number) => (
+                        {extractedData.keyConcepts?.slice(0, 6).map((concept: string, i: number) => (
                           <span key={i} className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300">{concept}</span>
                         ))}
                       </div>
@@ -154,8 +169,8 @@ export default function AutoSuggestModal() {
                 <div>
                   <h3 className="text-white font-bold mb-4 text-lg">Suggested Generations</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {extractedData.suggestedTools?.map((tool: any, index: number) => {
-                      const Icon = toolIcons[tool.toolName] || Sparkles;
+                    {extractedData.suggestions?.map((suggestion: CoPilotSuggestion, index: number) => {
+                      const Icon = toolIcons[suggestion.toolId] || Sparkles;
                       return (
                         <motion.div 
                           key={index}
@@ -169,8 +184,8 @@ export default function AutoSuggestModal() {
                               <Icon className="w-5 h-5 text-[#00F0FF]" />
                             </div>
                             <div>
-                              <h4 className="text-white font-bold">{tool.toolName}</h4>
-                              <p className="text-xs text-gray-400 mt-1 line-clamp-2">{tool.reason}</p>
+                              <h4 className="text-white font-bold">{suggestion.toolName}</h4>
+                              <p className="text-xs text-gray-400 mt-1 line-clamp-2">{suggestion.description}</p>
                             </div>
                           </div>
                           <div className="mt-auto pt-4 flex items-center justify-between border-t border-white/5">
@@ -178,7 +193,7 @@ export default function AutoSuggestModal() {
                               <Eye className="w-3 h-3" /> Preview
                             </button>
                             <button 
-                              onClick={() => handleGenerate(tool.toolName)}
+                              onClick={() => handleGenerate(suggestion)}
                               className="px-4 py-2 rounded-lg bg-white/10 hover:bg-[#00F0FF]/20 text-white hover:text-[#00F0FF] text-sm font-medium transition-colors border border-transparent hover:border-[#00F0FF]/30"
                             >
                               Generate

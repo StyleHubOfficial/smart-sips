@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap, HelpCircle, Lock, Rocket, LayoutGrid, GitGraph } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap, HelpCircle, Lock, Rocket, LayoutGrid, GitGraph, Eye, EyeOff } from 'lucide-react';
 
 const steps = [
   {
@@ -46,6 +46,7 @@ export default function Tutorial() {
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v2_seen');
@@ -186,13 +187,22 @@ export default function Tutorial() {
 
                 {!isUnlocked ? (
                   <form onSubmit={handleUnlock} className="space-y-4">
-                    <input 
-                      type="password"
-                      value={accessCode}
-                      onChange={(e) => setAccessCode(e.target.value)}
-                      placeholder="Enter Access Code"
-                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center focus:outline-none focus:border-[#B026FF]/50"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"}
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value)}
+                        placeholder="Enter Access Code"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center focus:outline-none focus:border-[#B026FF]/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                     <button 
                       type="submit"
                       className="w-full py-3 rounded-xl bg-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all"

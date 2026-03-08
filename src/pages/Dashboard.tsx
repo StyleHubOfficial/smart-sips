@@ -69,13 +69,17 @@ const ContentCard = React.memo(({
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
             {isAiGenerated ? (
-              <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center p-2 text-center">
-                <span className="text-[8px] font-bold text-white uppercase tracking-tighter line-clamp-2">{title}</span>
-                <Sparkles className="absolute top-1 right-1 w-2 h-2 text-[#00F0FF]" />
+              <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/30 to-[#B026FF]/40 flex flex-col items-center justify-center p-2 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                <span className="text-[7.5px] font-bold text-white uppercase tracking-tighter line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] z-10">{title}</span>
+                <Sparkles className="absolute top-1 right-1 w-2.5 h-2.5 text-[#00F0FF] z-10 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 bg-[#00F0FF]/30 rounded-full blur-md animate-pulse"></div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#B026FF]/30 rounded-full blur-md animate-pulse delay-700"></div>
               </div>
             ) : item.resource_type === 'image' ? (
               <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
-            ) : item.resource_type === 'video' ? (
+            ) : item.resource_type === 'video' && item.secure_url ? (
               <video src={item.secure_url} className="w-full h-full object-cover" />
             ) : (
               getFileIcon(fileType)
@@ -94,7 +98,7 @@ const ContentCard = React.memo(({
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-xs font-bold uppercase tracking-wider"
             title="AI Classroom Co-Pilot"
           >
-            <Sparkles className="w-3 h-3" /> Auto Suggest
+            <Sparkles className="w-3 h-3" /> Auto Suggest (AI)
           </button>
           <a 
             href={item.secure_url} 
@@ -184,15 +188,18 @@ const ContentCard = React.memo(({
 
       <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
         {isAiGenerated ? (
-          <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/30 flex flex-col items-center justify-center p-6 text-center relative">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-            <Sparkles className="w-10 h-10 text-[#00F0FF] mb-3 animate-pulse" />
-            <h4 className="font-display font-bold text-white text-lg leading-tight line-clamp-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{title}</h4>
-            <div className="mt-4 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-[#00F0FF] uppercase tracking-widest">AI Generated</div>
+          <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/30 to-[#B026FF]/40 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            <Sparkles className="w-12 h-12 text-[#00F0FF] mb-3 animate-pulse drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]" />
+            <h4 className="font-display font-bold text-white text-xl leading-tight line-clamp-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] z-10">{title}</h4>
+            <div className="mt-4 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-bold text-[#00F0FF] uppercase tracking-[0.2em] z-10 shadow-[0_0_15px_rgba(0,240,255,0.2)]">AI Generated</div>
+            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-[#00F0FF]/20 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#B026FF]/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
           </div>
         ) : item.resource_type === 'image' ? (
           <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-        ) : item.resource_type === 'video' ? (
+        ) : item.resource_type === 'video' && item.secure_url ? (
           <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
         ) : item.resource_type === 'raw' && item.secure_url.endsWith('.html') ? (
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 p-4 text-center">
@@ -783,7 +790,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto bg-black/80 backdrop-blur-xl"
+              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto bg-black/40 backdrop-blur-2xl"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
               

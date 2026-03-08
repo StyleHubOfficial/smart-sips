@@ -31,7 +31,7 @@ export default function Analytics() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await axios.get(`https://res.cloudinary.com/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/list/sunrise_content.json`);
+        const response = await axios.get('/api/content');
         const items: ContentItem[] = response.data.resources;
         setContentCount(items.length);
         

@@ -1,70 +1,110 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from '@google/genai';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-const ai = new GoogleGenAI({ apiKey: apiKey as string });
+export interface CoPilotSuggestion {
+  toolName: string;
+  description: string;
+  toolId: string;
+  previewIcon: string;
+  autoFillQuery: string;
+}
 
-export const analyzeContent = async (contentUrl: string, fileType: string, title: string) => {
-  try {
-    // In a real scenario, we would download the file and send its contents to Gemini.
-    // For this prototype, we'll simulate the analysis based on the title and file type,
-    // or if it's text/html, we could fetch it.
-    // Since we are in an iframe, fetching external URLs might have CORS issues unless it's our own Cloudinary.
-    
-    let prompt = `Analyze the following educational content titled "${title}" (Type: ${fileType}).
-    Extract the following information:
-    - topic
-    - key concepts
-    - formulas
-    - definitions
-    - experiment references
-    
-    Based on this, suggest which of the following educational tools would be most appropriate to generate:
-    - Concept Visualizer
-    - Virtual Laboratory Simulation
-    - Concept Map
-    - Practice Questions
-    - Diagram Generator
-    - Quiz
-    - Summary Notes
-    
-    Return the response in JSON format.`;
+export interface ContentAnalysis {
+  topic: string;
+  keyConcepts: string[];
+  formulas: string[];
+  definitions: string[];
+  diagrams: string[];
+  experimentReferences: string[];
+  suggestions: CoPilotSuggestion[];
+}
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            topic: { type: Type.STRING },
-            keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } },
-            formulas: { type: Type.ARRAY, items: { type: Type.STRING } },
-            definitions: { type: Type.ARRAY, items: { type: Type.STRING } },
-            experimentReferences: { type: Type.ARRAY, items: { type: Type.STRING } },
-            suggestedTools: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  toolName: { type: Type.STRING },
-                  reason: { type: Type.STRING }
-                },
-                required: ["toolName", "reason"]
-              }
-            }
-          },
-          required: ["topic", "keyConcepts", "suggestedTools"]
+export async function analyzeContentForCoPilot(
+  content: string,
+  fileName: string,
+  apiKey: string
+): Promise<ContentAnalysis> {
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `
+    Analyze the following educational content and provide a structured analysis for a "Classroom Co-Pilot" system.
+    Content Source: ${fileName}
+    Content Body: ${content}
+
+    Extract the following:
+    1. Topic: The main subject or lesson.
+    2. Key Concepts: List of main ideas.
+    3. Formulas: Any mathematical or scientific formulas found.
+    4. Definitions: Key terms and their meanings.
+    5. Diagrams: Descriptions of visual aids that would help.
+    6. Experiment References: Any mentions of lab work or practicals.
+
+    Based on this analysis, suggest at least 5 educational tools that can be generated from this content.
+    Available Tools:
+    - Concept Visualizer (Interactive visual explanations)
+    - Virtual Laboratory Simulation (Interactive 2D/3D experiments)
+    - Concept Map (Mermaid mindmap/flowchart)
+    - Practice Questions (MCQs and descriptive)
+    - Diagram Generator (SVG diagrams)
+    - Step-by-Step Solution (For problems)
+    - Quiz (Interactive assessment)
+    - Summary Notes (Concise revision notes)
+    - Board Exam Questions (Previous year style)
+
+    Respond ONLY in JSON format following this schema:
+    {
+      "topic": "string",
+      "keyConcepts": ["string"],
+      "formulas": ["string"],
+      "definitions": ["string"],
+      "diagrams": ["string"],
+      "experimentReferences": ["string"],
+      "suggestions": [
+        {
+          "toolName": "string",
+          "description": "string",
+          "toolId": "string (one of: visualizer, simulator, flowchart, practice, diagram, solution, quiz, summary, board)",
+          "previewIcon": "string (lucide icon name)",
+          "autoFillQuery": "string (a detailed prompt to generate this specific tool based on the content)"
         }
-      }
-    });
-
-    if (response.text) {
-      return JSON.parse(response.text);
+      ]
     }
-    return null;
-  } catch (error) {
-    console.error("Error analyzing content:", error);
-    return null;
-  }
-};
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: [{ text: prompt }],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          topic: { type: Type.STRING },
+          keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } },
+          formulas: { type: Type.ARRAY, items: { type: Type.STRING } },
+          definitions: { type: Type.ARRAY, items: { type: Type.STRING } },
+          diagrams: { type: Type.ARRAY, items: { type: Type.STRING } },
+          experimentReferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+          suggestions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                toolName: { type: Type.STRING },
+                description: { type: Type.STRING },
+                toolId: { type: Type.STRING },
+                previewIcon: { type: Type.STRING },
+                autoFillQuery: { type: Type.STRING }
+              },
+              required: ['toolName', 'description', 'toolId', 'previewIcon', 'autoFillQuery']
+            }
+          }
+        },
+        required: ['topic', 'keyConcepts', 'formulas', 'definitions', 'diagrams', 'experimentReferences', 'suggestions']
+      }
+    }
+  });
+
+  const text = response.text;
+  if (!text) throw new Error('Failed to analyze content');
+  return JSON.parse(text) as ContentAnalysis;
+}

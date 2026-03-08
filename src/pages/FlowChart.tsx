@@ -166,13 +166,19 @@ export default function FlowChart() {
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Diagram <span className="text-gradient">Generator</span>
+              AI Diagram <span className="text-gradient">& Concept Map</span>
             </h2>
-            <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams, mind maps, and cheat sheets</p>
+            <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams, mind maps, and interactive concept maps</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setChartType('Concept Map')}
+            className={`px-4 py-2 rounded-xl transition-all border ${chartType === 'Concept Map' ? 'bg-[#00F0FF]/20 border-[#00F0FF] text-[#00F0FF]' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+          >
+            Concept Map
+          </button>
           <button 
             onClick={() => setShowHistory(!showHistory)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all border border-white/10"
@@ -206,6 +212,7 @@ export default function FlowChart() {
                 onChange={(e) => setChartType(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
+                <option value="Concept Map">Concept Map</option>
                 <option value="Flowchart">Flowchart</option>
                 <option value="Mind Map">Mind Map</option>
                 <option value="Sequence Diagram">Sequence Diagram</option>

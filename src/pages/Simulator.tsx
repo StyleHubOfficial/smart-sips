@@ -25,6 +25,7 @@ export default function Simulator() {
   const [explainerData, setExplainerData] = useState<{ text: string; audioData: string | null } | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,12 +54,9 @@ export default function Simulator() {
       setExplainerData(data);
       if (data.audioData) {
         const audioBlob = await fetch(`data:audio/wav;base64,${data.audioData}`).then(res => res.blob());
-        const audioUrl = URL.createObjectURL(audioBlob);
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          audioRef.current.play();
-          setIsAudioPlaying(true);
-        }
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+        setIsAudioPlaying(true);
       }
     } catch (error) {
       console.error("Explainer Error:", error);
@@ -214,31 +212,64 @@ export default function Simulator() {
     >
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#B026FF]/20 to-[#00F0FF]/20 flex items-center justify-center border border-[#B026FF]/30 shadow-[0_0_30px_rgba(176,38,255,0.2)]">
-            <MonitorPlay className="w-8 h-8 text-[#B026FF]" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+            <FlaskConical className="w-8 h-8 text-black" />
           </div>
           <div>
-            <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Simulator <span className="text-gradient-purple">Generator</span>
+            <h2 className="text-3xl md:text-5xl font-display font-bold text-white flex items-center gap-3">
+              AI Virtual Laboratory
+              <span className="text-[10px] bg-[#00F0FF]/20 text-[#00F0FF] px-2 py-0.5 rounded-full border border-[#00F0FF]/30 uppercase tracking-widest">v2.0</span>
             </h2>
-            <p className="text-gray-400">Interactive 2D & 3D physics simulations with real-time parameters</p>
+            <p className="text-gray-400">Generate interactive science experiments from any topic or document</p>
           </div>
         </div>
 
-        <button 
-          onClick={() => setShowHistory(!showHistory)}
-          className={`flex items-center gap-2 px-6 py-3 rounded-2xl border transition-all ${
-            showHistory ? 'bg-[#B026FF]/20 border-[#B026FF] text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
-          }`}
-        >
-          <History className="w-5 h-5" />
-          <span className="font-bold">History</span>
-          {savedSimulations.length > 0 && (
-            <span className="bg-[#B026FF] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
-              {savedSimulations.length}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10">
+            <button 
+              onClick={() => setSubject('physics')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${subject === 'physics' ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+            >
+              Physics
+            </button>
+            <button 
+              onClick={() => setSubject('chemistry')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${subject === 'chemistry' ? 'bg-[#B026FF] text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+            >
+              Chemistry
+            </button>
+          </div>
+          
+          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10">
+            <button 
+              onClick={() => setMode('2d')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === '2d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              2D
+            </button>
+            <button 
+              onClick={() => setMode('3d')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === '3d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+            >
+              3D
+            </button>
+          </div>
+
+          <button 
+            onClick={() => setShowHistory(!showHistory)}
+            className={`flex items-center gap-2 px-6 py-3 rounded-2xl border transition-all ${
+              showHistory ? 'bg-[#B026FF]/20 border-[#B026FF] text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
+            }`}
+          >
+            <History className="w-5 h-5" />
+            <span className="font-bold">History</span>
+            {savedSimulations.length > 0 && (
+              <span className="bg-[#B026FF] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
+                {savedSimulations.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -572,11 +603,15 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      <audio 
-        ref={audioRef} 
-        onEnded={() => setIsAudioPlaying(false)}
-        className="hidden"
-      />
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl}
+          autoPlay
+          onEnded={() => setIsAudioPlaying(false)}
+          className="hidden"
+        />
+      )}
     </motion.div>
   );
 }

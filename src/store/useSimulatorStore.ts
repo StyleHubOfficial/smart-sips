@@ -89,39 +89,35 @@ export const useSimulatorStore = create<SimulatorState>()(
         try {
           const ai = new GoogleGenAI({ apiKey });
           
-          let prompt = '';
-          
-          if (subject === 'chemistry') {
-            prompt = `Create a high-fidelity, interactive HTML5 Chemistry Experiment/Simulation for the following concept: "${query}".
-            
+          const prompt = `
+            Create a high-fidelity, interactive "AI Virtual Laboratory" HTML5 simulation for the following concept: "${query}".
+            Subject: ${subject.toUpperCase()}
+            Mode: ${mode.toUpperCase()} (2D Canvas or 3D Three.js)
+
             Requirements:
-            1. Use standard HTML5, CSS3, and JavaScript (Canvas API or DOM manipulation).
-            2. Visualize chemical reactions, molecular structures, or laboratory equipment (beakers, test tubes, burners) as appropriate.
-            3. The simulation must be interactive: allow users to mix chemicals, adjust temperature, control reaction rates, or manipulate molecules.
-            4. Include a "Parameters" panel to adjust variables (concentration, temperature, catalyst, etc.).
-            5. Implement "Save State" and "Load State" functionality using localStorage.
-            6. Include a "Theory" section explaining the chemical principles.
-            7. Visuals: Premium, dark-themed aesthetic with glowing liquids, particle effects for reactions, and clear labels.
-            8. Safety: If applicable, visually demonstrate safety warnings or reaction hazards (e.g., explosions, color changes).
-            9. The code must be self-contained in a single HTML string.
-            10. Return ONLY the raw HTML code.`;
-          } else {
-            prompt = `Create a high-fidelity, interactive HTML ${mode.toUpperCase()} Physics simulation for the following concept: "${query}".
+            1. Simulation Engine:
+               - If 2D: Use HTML5 Canvas API with high-performance rendering loop.
+               - If 3D: Use Three.js (CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
+            2. Interactive Parameters Panel:
+               - Create a sleek, glassmorphism-style floating panel with sliders and toggles.
+               - Variables for Physics: gravity, mass, velocity, voltage, resistance, etc.
+               - Variables for Chemistry: temperature, concentration, reaction rate, catalyst, etc.
+            3. Real-time Graph Panel:
+               - Implement a dynamic graph using Canvas or a lightweight library (like Chart.js via CDN: https://cdn.jsdelivr.net/npm/chart.js) showing real-time data (e.g., velocity vs time, concentration vs time).
+            4. Visuals:
+               - Premium dark-themed interface with glowing effects, particle systems for reactions, and smooth transitions.
+               - Large, smart-panel optimized controls (easy to touch/click).
+            5. Features:
+               - "Theory" section explaining the scientific principles.
+               - "Controls" guide.
+               - Reset, Play/Pause, and Step-by-Step execution.
+               - Fullscreen mode support.
+            6. Code Structure:
+               - Self-contained single HTML file with CSS and JS.
+               - Responsive design for smart panels, desktop, and mobile.
             
-            Requirements:
-            1. Use standard HTML5, CSS3, and JavaScript.
-            2. For 2D, use the HTML5 Canvas API.
-            3. For 3D, use Three.js (load via CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
-            4. The simulation must be highly interactive with a "Parameters" panel (using HTML/CSS) that allows users to adjust variables (e.g., speed, mass, gravity, color) in real-time.
-            5. Implement "Save State" and "Load State" functionality using localStorage.
-            6. Include a professional "Controls" overlay and a "Theory" section explaining the concept.
-            7. Visuals: Use a premium, dark-themed aesthetic with glowing effects, smooth transitions, and high-quality typography.
-            8. Performance: Optimize the rendering loop for 60FPS. Handle window resizing perfectly.
-            9. Add advanced effects: Particle systems, motion blur, or shaders where appropriate.
-            10. The code must be self-contained in a single HTML string.
-            
-            Return ONLY the raw HTML code. Do not wrap it in markdown code blocks.`;
-          }
+            Return ONLY the raw HTML code. Do not wrap it in markdown code blocks.
+          `;
 
           const parts: any[] = [{ text: prompt }];
           
@@ -132,7 +128,7 @@ export const useSimulatorStore = create<SimulatorState>()(
                 data: sourceFile.data
               }
             });
-            parts[0].text += `\n\nUse the attached file as context/reference for the simulation parameters or structure.`;
+            parts[0].text += `\n\nUse the attached file as the primary context/reference for the simulation logic and parameters.`;
           }
 
           const result = await ai.models.generateContent({

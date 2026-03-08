@@ -56,7 +56,21 @@ export const useFlowChartStore = create<FlowChartState>()(
           const ai = new GoogleGenAI({ apiKey });
           
           let prompt = '';
-          if (chartType === 'Mind Map') {
+          if (chartType === 'Concept Map') {
+            prompt = `
+              You are an expert at creating Mermaid.js flowcharts representing concept maps.
+              Create a detailed, logical concept map for the following topic: "${query}".
+              
+              Requirements:
+              1. Use Mermaid.js syntax (starting with "graph TD").
+              2. Use descriptive node labels for concepts.
+              3. Use descriptive edge labels for relationships (e.g., "is a", "results in", "contains").
+              4. Organize hierarchically from the main concept at the top.
+              5. Use different node shapes for different types of concepts (e.g., [Node] for main, (Node) for sub-concepts).
+              
+              Return ONLY the Mermaid.js code block. Do not include any other text.
+            `;
+          } else if (chartType === 'Mind Map') {
             prompt = `
               You are an expert at creating Mermaid.js mindmaps.
               Create a detailed, logical mindmap for the following topic: "${query}".
