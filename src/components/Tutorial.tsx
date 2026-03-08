@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap, HelpCircle } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap, HelpCircle, Lock, Rocket, LayoutGrid, GitGraph } from 'lucide-react';
 
 const steps = [
   {
@@ -11,31 +11,31 @@ const steps = [
     target: "header"
   },
   {
-    title: "Advanced AI Models",
-    content: "Choose between 'Smart/Quality' for complex reasoning or 'Fast' for quick results. Tailor the AI to your specific needs.",
-    icon: Zap,
-    color: "#FACC15",
-    target: "models"
-  },
-  {
-    title: "Chemistry Laboratory",
-    content: "The Simulator now supports Chemistry! Generate interactive experiments with molecular visualizations and reaction controls.",
-    icon: BrainCircuit,
-    color: "#10B981",
-    target: "chemistry"
-  },
-  {
-    title: "Universal File Upload",
-    content: "You can now upload PDFs, images, and text files to ALL AI generators. Use your own documents as the source of truth.",
-    icon: MonitorPlay,
+    title: "AI Classroom Co-Pilot",
+    content: "Our intelligent assistant analyzes your uploaded content and suggests the best educational tools to generate automatically.",
+    icon: Rocket,
     color: "#B026FF",
-    target: "upload"
+    target: "copilot"
   },
   {
-    title: "Diagram Generator",
-    content: "Create complex flowcharts, mind maps, and sequence diagrams instantly. Perfect for visualizing difficult concepts.",
-    icon: HelpCircle,
-    color: "#6366F1",
+    title: "AI Virtual Laboratory",
+    content: "Generate interactive 2D & 3D physics and chemistry simulations from any topic or document. Perfect for visual learning.",
+    icon: MonitorPlay,
+    color: "#00F0FF",
+    target: "simulator"
+  },
+  {
+    title: "AI Concept Visualizer",
+    content: "Convert complex scientific concepts into interactive visual explanations with diagrams, formulas, and real-life examples.",
+    icon: LayoutGrid,
+    color: "#10B981",
+    target: "visualizer"
+  },
+  {
+    title: "AI Concept Map",
+    content: "Extract key information from your notes to create structured, interactive concept maps and flowcharts automatically.",
+    icon: GitGraph,
+    color: "#FACC15",
     target: "flowchart"
   }
 ];
@@ -43,6 +43,9 @@ const steps = [
 export default function Tutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v2_seen');
@@ -55,6 +58,8 @@ export default function Tutorial() {
   const handleClose = () => {
     setIsOpen(false);
     localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
+    setShowUpcoming(false);
+    setAccessCode("");
   };
 
   const nextStep = () => {
@@ -68,6 +73,15 @@ export default function Tutorial() {
   const prevStep = () => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (accessCode === "123") {
+      setIsUnlocked(true);
+    } else {
+      alert("Invalid Access Code");
     }
   };
 
@@ -86,7 +100,7 @@ export default function Tutorial() {
             {/* Background Glow */}
             <div 
               className="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[80px] opacity-20"
-              style={{ backgroundColor: steps[currentStep].color }}
+              style={{ backgroundColor: showUpcoming ? "#B026FF" : steps[currentStep].color }}
             ></div>
 
             <button 
@@ -96,59 +110,139 @@ export default function Tutorial() {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="relative z-10 space-y-6">
-              <div className="flex items-center gap-4">
-                <div 
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10"
-                  style={{ backgroundColor: `${steps[currentStep].color}20`, color: steps[currentStep].color }}
-                >
-                  <StepIcon className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">
-                    Step {currentStep + 1} of {steps.length}
-                  </div>
-                  <h3 className="text-xl font-display font-bold text-white">
-                    {steps[currentStep].title}
-                  </h3>
-                </div>
-              </div>
-
-              <p className="text-gray-400 leading-relaxed">
-                {steps[currentStep].content}
-              </p>
-
-              <div className="flex items-center justify-between pt-4">
-                <div className="flex gap-1">
-                  {steps.map((_, i) => (
-                    <div 
-                      key={i}
-                      className={`h-1 rounded-full transition-all duration-300 ${i === currentStep ? 'w-6' : 'w-2 bg-white/10'}`}
-                      style={{ backgroundColor: i === currentStep ? steps[currentStep].color : undefined }}
-                    ></div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  {currentStep > 0 && (
-                    <button 
-                      onClick={prevStep}
-                      className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button 
-                    onClick={nextStep}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black transition-all hover:scale-105 active:scale-95"
-                    style={{ backgroundColor: steps[currentStep].color }}
+            {!showUpcoming ? (
+              <div className="relative z-10 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10"
+                    style={{ backgroundColor: `${steps[currentStep].color}20`, color: steps[currentStep].color }}
                   >
-                    {currentStep === steps.length - 1 ? "Get Started" : "Next"}
-                    <ChevronRight className="w-5 h-5" />
+                    <StepIcon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">
+                      Step {currentStep + 1} of {steps.length}
+                    </div>
+                    <h3 className="text-xl font-display font-bold text-white">
+                      {steps[currentStep].title}
+                    </h3>
+                  </div>
+                </div>
+
+                <p className="text-gray-400 leading-relaxed">
+                  {steps[currentStep].content}
+                </p>
+
+                <div className="flex items-center justify-between pt-4">
+                  <div className="flex gap-1">
+                    {steps.map((_, i) => (
+                      <div 
+                        key={i}
+                        className={`h-1 rounded-full transition-all duration-300 ${i === currentStep ? 'w-6' : 'w-2 bg-white/10'}`}
+                        style={{ backgroundColor: i === currentStep ? steps[currentStep].color : undefined }}
+                      ></div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    {currentStep > 0 && (
+                      <button 
+                        onClick={prevStep}
+                        className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                    )}
+                    <button 
+                      onClick={nextStep}
+                      className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black transition-all hover:scale-105 active:scale-95"
+                      style={{ backgroundColor: steps[currentStep].color }}
+                    >
+                      {currentStep === steps.length - 1 ? "Get Started" : "Next"}
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/5">
+                  <button 
+                    onClick={() => setShowUpcoming(true)}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B026FF]/10 to-[#00F0FF]/10 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    View Upcoming Features
                   </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="relative z-10 space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-[#B026FF]/20 rounded-2xl flex items-center justify-center mb-4 border border-[#B026FF]/30">
+                    <Lock className="w-8 h-8 text-[#B026FF]" />
+                  </div>
+                  <h3 className="text-2xl font-display font-bold text-white mb-2">Restricted Access</h3>
+                  <p className="text-gray-400 text-sm">Enter the developer access code to view upcoming features roadmap.</p>
+                </div>
+
+                {!isUnlocked ? (
+                  <form onSubmit={handleUnlock} className="space-y-4">
+                    <input 
+                      type="password"
+                      value={accessCode}
+                      onChange={(e) => setAccessCode(e.target.value)}
+                      placeholder="Enter Access Code"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center focus:outline-none focus:border-[#B026FF]/50"
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full py-3 rounded-xl bg-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all"
+                    >
+                      Unlock Roadmap
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setShowUpcoming(false)}
+                      className="w-full text-gray-500 hover:text-white text-sm transition-colors"
+                    >
+                      Back to Tutorial
+                    </button>
+                  </form>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-3 text-white font-bold">
+                        <div className="w-2 h-2 rounded-full bg-[#00F0FF]"></div>
+                        AI Exam Predictor
+                      </div>
+                      <p className="text-xs text-gray-400">Predict likely exam questions based on historical data and current trends.</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-3 text-white font-bold">
+                        <div className="w-2 h-2 rounded-full bg-[#B026FF]"></div>
+                        Collaborative Lab
+                      </div>
+                      <p className="text-xs text-gray-400">Real-time multiplayer simulations for classroom group activities.</p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                      <div className="flex items-center gap-3 text-white font-bold">
+                        <div className="w-2 h-2 rounded-full bg-[#10B981]"></div>
+                        Voice-Controlled AI
+                      </div>
+                      <p className="text-xs text-gray-400">Control simulations and generators using natural voice commands.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setIsUnlocked(false);
+                        setShowUpcoming(false);
+                      }}
+                      className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all"
+                    >
+                      Close Roadmap
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       )}

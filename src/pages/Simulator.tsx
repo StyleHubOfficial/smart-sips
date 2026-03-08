@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { useUploadStore } from '../store/useUploadStore';
 import SimLoader from '../components/SimLoader';
+import { useLocation } from 'react-router-dom';
+import { generateHinglishExplanation } from '../services/aiExplainerService';
 
 export default function Simulator() {
   const { 
@@ -19,8 +21,90 @@ export default function Simulator() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [explainerLoading, setExplainerLoading] = useState(false);
+  const [explainerData, setExplainerData] = useState<{ text: string; audioData: string | null } | null>(null);
+  const [showExplainer, setShowExplainer] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  const handleExplain = async () => {
+    if (!generatedCode) return;
+    
+    let apiKey = '';
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      addNotification('error', 'API Key missing.');
+      return;
+    }
+
+    setExplainerLoading(true);
+    setShowExplainer(true);
+    try {
+      const data = await generateHinglishExplanation(query, generatedCode, apiKey);
+      setExplainerData(data);
+      if (data.audioData) {
+        const audioBlob = await fetch(`data:audio/wav;base64,${data.audioData}`).then(res => res.blob());
+        const audioUrl = URL.createObjectURL(audioBlob);
+        if (audioRef.current) {
+          audioRef.current.src = audioUrl;
+          audioRef.current.play();
+          setIsAudioPlaying(true);
+        }
+      }
+    } catch (error) {
+      console.error("Explainer Error:", error);
+      addNotification('error', 'Failed to generate explanation.');
+    } finally {
+      setExplainerLoading(false);
+    }
+  };
+
+  const toggleAudio = () => {
+    if (audioRef.current) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsAudioPlaying(!isAudioPlaying);
+    }
+  };
+
+  useEffect(() => {
+    if (location.state?.sourceContent) {
+      const { sourceContent, extractedData } = location.state;
+      const autoQuery = `Generate a simulation for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      setQuery(autoQuery);
+      
+      // Auto-generate after a short delay to allow state to settle
+      setTimeout(() => {
+        // Use the store's generate function directly with the new query
+        let apiKey = '';
+        if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        }
+        if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+        if (apiKey) {
+          useSimulatorStore.getState().setQuery(autoQuery);
+          useSimulatorStore.getState().generateSimulation(apiKey);
+        }
+      }, 500);
+      
+      // Clear state so it doesn't re-trigger on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -280,6 +364,15 @@ export default function Simulator() {
              {generatedCode && (
                <div className="flex gap-2">
                  <button 
+                   onClick={handleExplain}
+                   disabled={explainerLoading}
+                   className="p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+                   title="Explain in Hinglish"
+                 >
+                   {explainerLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+                   <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Explain</span>
+                 </button>
+                 <button 
                    onClick={handleSave}
                    className="p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
                    title="Save to History"
@@ -417,6 +510,73 @@ export default function Simulator() {
           </div>
         )}
       </div>
+
+      {/* Explainer Panel */}
+      <AnimatePresence>
+        {showExplainer && (
+          <motion.div 
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            className="fixed top-24 right-6 w-full max-w-md z-50"
+          >
+            <div className="glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 shadow-[0_0_50px_rgba(240,0,255,0.15)] relative overflow-hidden bg-black/80 backdrop-blur-xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
+              
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-[#00F0FF]/20 text-[#00F0FF]">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-display font-bold text-white">AI Explainer (Hinglish)</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {explainerData?.audioData && (
+                    <button 
+                      onClick={toggleAudio}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-[#00F0FF] transition-colors"
+                    >
+                      {isAudioPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setShowExplainer(false)}
+                    className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative z-10 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                {explainerLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <Loader2 className="w-10 h-10 text-[#00F0FF] animate-spin" />
+                    <p className="text-gray-400 text-sm animate-pulse">Generating Hinglish explanation...</p>
+                  </div>
+                ) : explainerData ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 leading-relaxed text-sm italic">
+                      {explainerData.text}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                      <Sparkles className="w-3 h-3" /> AI Generated Explanation
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No explanation generated yet.</p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <audio 
+        ref={audioRef} 
+        onEnded={() => setIsAudioPlaying(false)}
+        className="hidden"
+      />
     </motion.div>
   );
 }

@@ -7,6 +7,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import mermaid from 'mermaid';
+import { useLocation } from 'react-router-dom';
 
 mermaid.initialize({
   startOnLoad: true,
@@ -30,6 +31,31 @@ export default function FlowChart() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.sourceContent) {
+      const { sourceContent, extractedData } = location.state;
+      const autoQuery = `Create a ${chartType} for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Include: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      setQuery(autoQuery);
+      
+      setTimeout(() => {
+        let apiKey = '';
+        if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        }
+        if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+        if (apiKey) {
+          useFlowChartStore.getState().setQuery(autoQuery);
+          useFlowChartStore.getState().generateFlowChart(apiKey);
+        }
+      }, 500);
+      
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (generatedCode && chartRef.current) {

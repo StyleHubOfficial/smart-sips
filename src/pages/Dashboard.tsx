@@ -5,6 +5,8 @@ import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useAppStore } from "../store/useAppStore";
+import { useCoPilotStore } from "../store/useCoPilotStore";
+import AutoSuggestModal from "../components/AutoSuggestModal";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
@@ -51,6 +53,8 @@ const ContentCard = React.memo(({
   const title = meta.title || "Untitled Document";
   const fileType = meta.fileType || "Unknown";
   const date = new Date(item.created_at);
+  const openCoPilotModal = useCoPilotStore(state => state.openModal);
+  const isAiGenerated = meta.teacher === 'AI Assistant' || meta.description?.includes('AI-generated');
 
   if (viewMode === 'list') {
     return (
@@ -63,8 +67,13 @@ const ContentCard = React.memo(({
         className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4"
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
-          <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
-            {item.resource_type === 'image' ? (
+          <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
+            {isAiGenerated ? (
+              <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center p-2 text-center">
+                <span className="text-[8px] font-bold text-white uppercase tracking-tighter line-clamp-2">{title}</span>
+                <Sparkles className="absolute top-1 right-1 w-2 h-2 text-[#00F0FF]" />
+              </div>
+            ) : item.resource_type === 'image' ? (
               <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
             ) : item.resource_type === 'video' ? (
               <video src={item.secure_url} className="w-full h-full object-cover" />
@@ -80,6 +89,13 @@ const ContentCard = React.memo(({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/10 sm:border-0">
+          <button 
+            onClick={() => openCoPilotModal(item)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-xs font-bold uppercase tracking-wider"
+            title="AI Classroom Co-Pilot"
+          >
+            <Sparkles className="w-3 h-3" /> Auto Suggest
+          </button>
           <a 
             href={item.secure_url} 
             target="_blank" 
@@ -167,7 +183,14 @@ const ContentCard = React.memo(({
       )}
 
       <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
-        {item.resource_type === 'image' ? (
+        {isAiGenerated ? (
+          <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/30 flex flex-col items-center justify-center p-6 text-center relative">
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+            <Sparkles className="w-10 h-10 text-[#00F0FF] mb-3 animate-pulse" />
+            <h4 className="font-display font-bold text-white text-lg leading-tight line-clamp-3 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{title}</h4>
+            <div className="mt-4 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[10px] font-bold text-[#00F0FF] uppercase tracking-widest">AI Generated</div>
+          </div>
+        ) : item.resource_type === 'image' ? (
           <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
         ) : item.resource_type === 'video' ? (
           <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
@@ -200,6 +223,13 @@ const ContentCard = React.memo(({
           <span>By {meta.teacher || "Unknown"}</span>
           <span>{format(date, "MMM d, yyyy")}</span>
         </div>
+
+        <button 
+          onClick={() => openCoPilotModal(item)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+        >
+          <Sparkles className="w-4 h-4 animate-pulse" /> Auto Suggest (AI)
+        </button>
 
         <div className="flex items-center gap-3 pt-4 border-t border-white/10">
           <a 
@@ -484,7 +514,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           <p className="text-sm text-gray-500">Boost your learning with AI</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/practice" className="group">
             <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-transparent hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-all duration-500 h-full relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F0FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#00F0FF]/10 transition-all"></div>
@@ -515,6 +545,17 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
               </div>
               <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">FlowChart Generator</h4>
               <p className="text-sm text-gray-400">Transform processes into logical, AI-powered diagrams and flowcharts.</p>
+            </div>
+          </Link>
+
+          <Link to="/visualizer" className="group">
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">Concept Visualizer</h4>
+              <p className="text-sm text-gray-400">Convert scientific concepts into interactive visual explanations.</p>
             </div>
           </Link>
         </div>
@@ -723,6 +764,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         </motion.div>
       )}
 
+      {/* Auto Suggest Modal */}
+      <AutoSuggestModal />
+
       {/* Edit Modal */}
       <AnimatePresence>
         {editingItem && (
@@ -736,10 +780,10 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
             />
             
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/10 shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto bg-black/80 backdrop-blur-xl"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
               

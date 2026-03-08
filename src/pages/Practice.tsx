@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity } from 'lucide-react';
 import Markdown from 'react-markdown';
@@ -7,6 +7,7 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
+import { useLocation } from 'react-router-dom';
 
 export default function Practice() {
   const { 
@@ -18,6 +19,31 @@ export default function Practice() {
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload, uploads } = useUploadStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.sourceContent) {
+      const { sourceContent, extractedData } = location.state;
+      const autoQuery = `Create practice questions for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      setQuery(autoQuery);
+      
+      setTimeout(() => {
+        let apiKey = '';
+        if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        }
+        if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+          apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        }
+        if (apiKey) {
+          usePracticeStore.getState().setQuery(autoQuery);
+          usePracticeStore.getState().generateQuestions(apiKey);
+        }
+      }, 500);
+      
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Check if there's an ongoing upload for this specific practice set
   const isSaving = uploads.some(u => u.status === 'uploading' && u.contextStr.includes(`title=${query} Practice Set`));
