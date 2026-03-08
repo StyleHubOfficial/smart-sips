@@ -244,6 +244,14 @@ export default function Tutorial() {
                       </div>
                       <p className="text-xs text-gray-400">Intelligent scheduling and planning system that automatically organizes teaching activities for the entire school.</p>
                     </div>
+
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex items-center gap-3 text-[#FACC15] font-bold">
+                        <MonitorPlay className="w-5 h-5" />
+                        🚀 AI Teacher Command Center (v3.0)
+                      </div>
+                      <p className="text-xs text-gray-400">A futuristic classroom command center with AI lesson suggestions, real-time syllabus progress, and smart teaching insights.</p>
+                    </div>
                     
                     <p className="text-xs text-gray-500 pt-2 italic">Result: AI Smart School Operating System</p>
 

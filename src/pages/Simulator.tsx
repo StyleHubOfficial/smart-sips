@@ -27,6 +27,8 @@ export default function Simulator() {
   const [showExplainer, setShowExplainer] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -174,6 +176,25 @@ export default function Simulator() {
     }
   };
 
+  const handleShare = async () => {
+    if (!generatedCode) return;
+    const shareData = {
+      title: `Smart Sunrise - ${query}`,
+      text: `Check out this AI-generated simulation for ${query}!`,
+      url: window.location.href
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        addNotification('success', 'Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+    }
+  };
+
   const handleDownload = () => {
     if (!generatedCode) return;
     const blob = new Blob([generatedCode], { type: 'text/html' });
@@ -213,46 +234,46 @@ export default function Simulator() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-            <FlaskConical className="w-8 h-8 text-black" />
+          <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)] shrink-0">
+            <FlaskConical className="w-6 h-6 md:w-8 md:h-8 text-black" />
           </div>
           <div>
-            <h2 className="text-3xl md:text-5xl font-display font-bold text-white flex items-center gap-3">
+            <h2 className="text-2xl md:text-5xl font-display font-bold text-white flex items-center gap-3 flex-wrap">
               AI Virtual Laboratory
               <span className="text-[10px] bg-[#00F0FF]/20 text-[#00F0FF] px-2 py-0.5 rounded-full border border-[#00F0FF]/30 uppercase tracking-widest">v2.0</span>
             </h2>
-            <p className="text-gray-400">Generate interactive science experiments from any topic or document</p>
+            <p className="text-sm md:text-base text-gray-400">Generate interactive science experiments from any topic or document</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
+          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10 shrink-0">
             <button 
               onClick={() => setSubject('physics')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${subject === 'physics' ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${subject === 'physics' ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
             >
               Physics
             </button>
             <button 
               onClick={() => setSubject('chemistry')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${subject === 'chemistry' ? 'bg-[#B026FF] text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${subject === 'chemistry' ? 'bg-[#B026FF] text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : 'text-gray-400 hover:text-white'}`}
             >
               Chemistry
             </button>
           </div>
           
-          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10">
+          <div className="flex p-1 bg-black/40 rounded-xl border border-white/10 shrink-0">
             <button 
               onClick={() => setMode('2d')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === '2d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${mode === '2d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
             >
               2D
             </button>
             <button 
               onClick={() => setMode('3d')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${mode === '3d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${mode === '3d' ? 'bg-white/20 text-white' : 'text-gray-400 hover:text-white'}`}
             >
               3D
             </button>
@@ -260,12 +281,12 @@ export default function Simulator() {
 
           <button 
             onClick={() => setShowHistory(!showHistory)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-2xl border transition-all ${
+            className={`flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 rounded-2xl border transition-all ${
               showHistory ? 'bg-[#B026FF]/20 border-[#B026FF] text-white' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'
             }`}
           >
-            <History className="w-5 h-5" />
-            <span className="font-bold">History</span>
+            <History className="w-4 h-4 md:w-5 md:h-5" />
+            <span className="font-bold text-sm md:text-base">History</span>
             {savedSimulations.length > 0 && (
               <span className="bg-[#B026FF] text-white text-[10px] px-2 py-0.5 rounded-full ml-1">
                 {savedSimulations.length}
@@ -395,44 +416,51 @@ export default function Simulator() {
             </select>
           </div>
 
-          <div className="flex justify-end pb-1">
+          <div className="flex flex-wrap justify-end gap-2 pb-1">
              {generatedCode && (
-               <div className="flex gap-2">
+               <div className="flex flex-wrap gap-2">
                  <button 
                    onClick={handleExplain}
                    disabled={explainerLoading}
-                   className="p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+                   className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
                    title="Explain in Hinglish"
                  >
-                   {explainerLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
-                   <span className="hidden sm:inline text-xs font-bold uppercase tracking-wider">Explain</span>
+                   {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
+                   <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
                  </button>
                  <button 
                    onClick={handleSave}
-                   className="p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
+                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
                    title="Save to History"
                  >
-                   <Save className="w-5 h-5" />
+                   <Save className="w-4 h-4 md:w-5 md:h-5" />
                  </button>
                  <button 
                    onClick={() => setShowCode(!showCode)}
-                   className={`p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
+                   className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
                    title="View Code"
                  >
-                   <Code className="w-5 h-5" />
+                   <Code className="w-4 h-4 md:w-5 md:h-5" />
                  </button>
                  <button 
                    onClick={handleDownload}
-                   className="p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
                    title="Download HTML"
                  >
-                   <Download className="w-5 h-5" />
+                   <Download className="w-4 h-4 md:w-5 md:h-5" />
+                 </button>
+                 <button 
+                   onClick={handleShare}
+                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
+                   title="Share Simulation"
+                 >
+                   <Share2 className="w-4 h-4 md:w-5 md:h-5" />
                  </button>
                  <button 
                     onClick={handleSaveToDashboard}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-sm font-bold"
+                    className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
                   >
-                    <Share2 className="w-4 h-4" />
+                    <Share2 className="w-3 h-3 md:w-4 md:h-4" />
                     Save to Dashboard
                   </button>
                </div>
@@ -501,7 +529,7 @@ export default function Simulator() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
+            className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
           >
             {/* Toolbar Overlay */}
             <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -591,8 +619,26 @@ export default function Simulator() {
                   </div>
                 ) : explainerData ? (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 leading-relaxed text-sm italic">
-                      {explainerData.text}
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 leading-relaxed text-sm">
+                      {explainerData.text.split(/([.!?]+)/).filter(Boolean).map((sentence, idx, arr) => {
+                        if (idx % 2 !== 0) return null;
+                        const fullSentence = sentence + (arr[idx+1] || '');
+                        const words = fullSentence.split(' ');
+                        const totalWords = explainerData.text.split(' ').length;
+                        const progress = duration > 0 ? currentTime / duration : 0;
+                        const sentenceStartRatio = explainerData.text.indexOf(fullSentence) / explainerData.text.length;
+                        const sentenceEndRatio = (explainerData.text.indexOf(fullSentence) + fullSentence.length) / explainerData.text.length;
+                        const isHighlighted = progress >= sentenceStartRatio && progress <= sentenceEndRatio;
+
+                        return (
+                          <span 
+                            key={idx} 
+                            className={`transition-all duration-300 ${isHighlighted ? 'text-[#00F0FF] font-bold scale-105 inline-block' : 'opacity-60'}`}
+                          >
+                            {fullSentence}{' '}
+                          </span>
+                        );
+                      })}
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                       <Sparkles className="w-3 h-3" /> AI Generated Explanation
@@ -612,7 +658,12 @@ export default function Simulator() {
           ref={audioRef} 
           src={audioUrl}
           autoPlay
-          onEnded={() => setIsAudioPlaying(false)}
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+          onEnded={() => {
+            setIsAudioPlaying(false);
+            setCurrentTime(0);
+          }}
           className="hidden"
         />
       )}

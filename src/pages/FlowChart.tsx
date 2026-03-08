@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useFlowChartStore } from '../store/useFlowChartStore';
 import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { InteractiveTree } from '../components/InteractiveTree';
 import CinematicLoader from '../components/CinematicLoader';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
@@ -18,7 +19,7 @@ mermaid.initialize({
 
 export default function FlowChart() {
   const { 
-    query, generatedCode, loading, model, chartType, savedCharts, sourceFile,
+    query, generatedCode, interactiveData, loading, model, chartType, savedCharts, sourceFile,
     setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart, setSourceFile
   } = useFlowChartStore();
   
@@ -29,6 +30,7 @@ export default function FlowChart() {
   const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
   const chartRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
@@ -115,6 +117,25 @@ export default function FlowChart() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     addNotification('success', 'Mermaid code copied to clipboard!');
+  };
+
+  const handleShare = async () => {
+    if (!generatedCode) return;
+    const shareData = {
+      title: `Smart Sunrise - ${query} ${chartType}`,
+      text: `Check out this AI-generated ${chartType} for ${query}!`,
+      url: window.location.href
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        addNotification('success', 'Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+    }
   };
 
   const handleSaveToDashboard = async () => {
@@ -311,7 +332,7 @@ export default function FlowChart() {
 
         {/* Main Display Area */}
         <div className="lg:col-span-3 space-y-6">
-          <div className={`relative glass-panel rounded-2xl border border-white/10 overflow-hidden min-h-[600px] flex flex-col ${isFullscreen ? 'fixed inset-0 z-[200] rounded-none' : ''}`}>
+          <div className={`relative glass-panel rounded-2xl border border-white/10 overflow-hidden min-h-[600px] flex flex-col ${isFullscreen ? 'fixed inset-0 z-[1000] rounded-none bg-[#050505]' : ''}`}>
             {/* Toolbar */}
             <div className="p-4 border-b border-white/10 bg-black/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -325,11 +346,11 @@ export default function FlowChart() {
                 {generatedCode && (
                   <>
                     <button 
-                      onClick={handleCopy}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
-                      title="Copy Mermaid Code"
+                      onClick={handleShare}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all"
+                      title="Share Diagram"
                     >
-                      {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      <Share2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => setIsFullscreen(!isFullscreen)}
@@ -358,17 +379,36 @@ export default function FlowChart() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 relative bg-[#050505] overflow-auto flex items-center justify-center p-10">
+            <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
               {loading ? (
-                <div className="w-full max-w-2xl">
+                <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
+                  <div className="w-full max-w-md space-y-2">
+                    <div className="flex justify-between text-xs font-mono text-[#00F0FF]">
+                      <span>Synthesizing Knowledge Structure...</span>
+                      <span>{query ? 'Analyzing Topic' : 'Processing Source'}</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 10, ease: "linear" }}
+                        className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
+                      />
+                    </div>
+                  </div>
                 </div>
+              ) : interactiveData ? (
+                <InteractiveTree data={interactiveData} />
               ) : generatedCode ? (
-                <div 
-                  ref={chartRef} 
-                  className="mermaid w-full flex justify-center"
-                >
-                  {generatedCode}
+                <div className="w-full h-full flex items-center justify-center">
+                  <div 
+                    ref={chartRef} 
+                    className="mermaid w-full flex justify-center"
+                    style={{ minHeight: '400px' }}
+                  >
+                    {generatedCode}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center space-y-4">

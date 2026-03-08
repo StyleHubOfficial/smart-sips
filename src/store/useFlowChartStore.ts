@@ -13,6 +13,7 @@ interface FlowChart {
 interface FlowChartState {
   query: string;
   generatedCode: string;
+  interactiveData: any | null;
   loading: boolean;
   model: string;
   chartType: string;
@@ -34,6 +35,7 @@ export const useFlowChartStore = create<FlowChartState>()(
     (set, get) => ({
       query: '',
       generatedCode: '',
+      interactiveData: null,
       loading: false,
       model: 'gemini-2.5-flash',
       chartType: 'Flowchart',
@@ -56,19 +58,29 @@ export const useFlowChartStore = create<FlowChartState>()(
           const ai = new GoogleGenAI({ apiKey });
           
           let prompt = '';
+          let responseMimeType: 'text/plain' | 'application/json' = 'text/plain';
+
           if (chartType === 'Concept Map') {
+            responseMimeType = 'application/json';
             prompt = `
-              You are an expert at creating Mermaid.js flowcharts representing concept maps.
+              You are an expert at creating hierarchical concept maps.
               Create a detailed, logical concept map for the following topic: "${query}".
               
-              Requirements:
-              1. Use Mermaid.js syntax (starting with "graph TD").
-              2. Use descriptive node labels for concepts.
-              3. Use descriptive edge labels for relationships (e.g., "is a", "results in", "contains").
-              4. Organize hierarchically from the main concept at the top.
-              5. Use different node shapes for different types of concepts (e.g., [Node] for main, (Node) for sub-concepts).
-              
-              Return ONLY the Mermaid.js code block. Do not include any other text.
+              Return a JSON object representing a tree structure:
+              {
+                "id": "root",
+                "label": "Main Topic",
+                "description": "Brief overview",
+                "children": [
+                  {
+                    "id": "child1",
+                    "label": "Sub-concept",
+                    "description": "Explanation",
+                    "children": [...]
+                  }
+                ]
+              }
+              Make it deep and comprehensive (at least 3-4 levels).
             `;
           } else if (chartType === 'Mind Map') {
             prompt = `
@@ -151,13 +163,24 @@ export const useFlowChartStore = create<FlowChartState>()(
           const response = await ai.models.generateContent({
             model,
             contents: [{ role: 'user', parts }],
+            config: responseMimeType === 'application/json' ? { responseMimeType } : undefined
           });
 
           let code = response.text || '';
-          // Clean up markdown code blocks if present
-          code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
           
-          set({ generatedCode: code, loading: false });
+          if (responseMimeType === 'application/json') {
+            try {
+              const data = JSON.parse(code);
+              set({ interactiveData: data, generatedCode: '', loading: false });
+            } catch (e) {
+              console.error('Failed to parse interactive data', e);
+              set({ generatedCode: code, interactiveData: null, loading: false });
+            }
+          } else {
+            // Clean up markdown code blocks if present
+            code = code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+            set({ generatedCode: code, interactiveData: null, loading: false });
+          }
         } catch (error) {
           console.error('Error generating flowchart:', error);
           set({ loading: false });

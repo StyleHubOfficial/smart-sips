@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { pcmToWav } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Loader2, Play, Pause, Maximize2, Minimize2, FileText, X, Plus, Volume2 } from 'lucide-react';
+import { Sparkles, Loader2, Play, Pause, Maximize2, Minimize2, FileText, X, Plus, Volume2, Share2 } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useConceptVisualizerStore } from '../store/useConceptVisualizerStore';
+import { useUploadStore } from '../store/useUploadStore';
+import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
 import Markdown from 'react-markdown';
@@ -22,6 +24,8 @@ export default function ConceptVisualizer() {
   } = useConceptVisualizerStore();
 
   const addNotification = useNotificationStore((state) => state.addNotification);
+  const { addUpload } = useUploadStore();
+  const { role } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
@@ -178,6 +182,68 @@ export default function ConceptVisualizer() {
     }
   };
 
+  const handleShare = async () => {
+    if (!visualizerData) return;
+    const shareData = {
+      title: `Smart Sunrise - ${visualizerData.topic}`,
+      text: `Check out this AI-generated visualization for ${visualizerData.topic}!`,
+      url: window.location.href
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        addNotification('success', 'Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+    }
+  };
+
+  const handleSaveToDashboard = async () => {
+    if (!visualizerData) return;
+    
+    try {
+      const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; padding: 40px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #00F0FF; border-bottom: 2px solid #00F0FF; padding-bottom: 10px; }
+        .section { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+        .formula { font-family: monospace; background: #000; padding: 10px; border-radius: 6px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${visualizerData.topic}</h1>
+        <div class="section">
+            <h2>Explanation</h2>
+            <p>${visualizerData.explanation}</p>
+        </div>
+        ${visualizerData.formulas.length > 0 ? `
+        <div class="section">
+            <h2>Formulas</h2>
+            ${visualizerData.formulas.map(f => `<div class="formula"><strong>${f.formula}</strong>: ${f.explanation}</div>`).join('')}
+        </div>` : ''}
+    </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const file = new File([blob], `${visualizerData.topic.replace(/[^a-z0-9]/gi, '_')}_Visualization.html`, { type: 'text/html' });
+      const contextStr = `title=${visualizerData.topic} Visualization|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Science|class=General|description=AI-generated visualization for ${visualizerData.topic}|fileType=HTML Visualization`;
+      
+      addUpload(file, contextStr);
+      addNotification('success', 'Visualization saved to dashboard!');
+    } catch (error) {
+      addNotification('error', 'Failed to save visualization.');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -291,6 +357,20 @@ export default function ConceptVisualizer() {
               <div className="flex items-center gap-2">
                 {visualizerData && (
                   <>
+                    <button
+                      onClick={handleShare}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all"
+                      title="Share Visualization"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={handleSaveToDashboard}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Save to Dashboard
+                    </button>
                     <button
                       onClick={startExplaining}
                       disabled={!visualizerData.audioData}
