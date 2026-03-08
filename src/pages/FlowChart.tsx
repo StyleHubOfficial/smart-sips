@@ -200,8 +200,9 @@ export default function FlowChart() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
-                <option value="gemini-3-flash-preview">Smart/Quality (Gemini 3 Flash)</option>
-                <option value="gemini-3.1-flash-lite-preview">Fast (Gemini 3.1 Flash Lite)</option>
+                <option value="gemini-3.1-pro-preview">High Quality</option>
+                <option value="gemini-2.5-flash">Medium Quality</option>
+                <option value="gemini-3.1-flash-lite-preview">Fast</option>
               </select>
             </div>
 

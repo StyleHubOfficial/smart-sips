@@ -29,7 +29,7 @@ export const useConceptVisualizerStore = create<ConceptVisualizerState>((set, ge
   sourceFile: null,
   loading: false,
   visualizerData: null,
-  model: 'gemini-3-flash-preview',
+  model: 'gemini-2.5-flash',
   setQuery: (query) => set({ query }),
   setSourceFile: (sourceFile) => set({ sourceFile }),
   setModel: (model) => set({ model }),

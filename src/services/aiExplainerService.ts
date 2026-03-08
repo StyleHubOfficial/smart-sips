@@ -9,7 +9,7 @@ export async function generateHinglishExplanation(
 
   // 1. Generate Hinglish Text
   const textResponse = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.5-flash',
     contents: `
       Explain the following concept in "Hinglish" (a natural mix of Hindi and English as spoken in urban India). 
       The explanation should be friendly, clear, and engaging for a student.

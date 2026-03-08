@@ -51,7 +51,7 @@ export const usePracticeStore = create<PracticeState>()(
       subject: 'General',
       examType: 'General',
       classLevel: 'Class 12',
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       viewMode: 'list',
       difficulty: 'Medium',
       sourceFile: null,
@@ -88,9 +88,9 @@ export const usePracticeStore = create<PracticeState>()(
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'];
+        const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
         if (!validModels.includes(selectedModel)) {
-          selectedModel = 'gemini-3-flash-preview';
+          selectedModel = 'gemini-2.5-flash';
           set({ model: selectedModel }); // Update store to valid model
         }
 
@@ -170,9 +170,9 @@ export const usePracticeStore = create<PracticeState>()(
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        const validModels = ['gemini-3-flash-preview', 'gemini-3.1-flash-lite-preview'];
+        const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
         if (!validModels.includes(selectedModel)) {
-          selectedModel = 'gemini-3-flash-preview';
+          selectedModel = 'gemini-2.5-flash';
         }
 
         try {
