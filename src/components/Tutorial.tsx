@@ -218,28 +218,35 @@ export default function Tutorial() {
                     </button>
                   </form>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
-                      <div className="flex items-center gap-3 text-white font-bold">
-                        <div className="w-2 h-2 rounded-full bg-[#00F0FF]"></div>
-                        AI Exam Predictor
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                    <h4 className="text-white font-bold text-lg">🚀 Smart Sunrise v2.0</h4>
+                    
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex items-center gap-3 text-[#00F0FF] font-bold">
+                        <BrainCircuit className="w-5 h-5" />
+                        AI Teaching Target Management System
                       </div>
-                      <p className="text-xs text-gray-400">Predict likely exam questions based on historical data and current trends.</p>
+                      <p className="text-xs text-gray-400">Intelligent administration for managing teaching progress, syllabus targets, and real-time performance analytics.</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
-                      <div className="flex items-center gap-3 text-white font-bold">
-                        <div className="w-2 h-2 rounded-full bg-[#B026FF]"></div>
-                        Collaborative Lab
+
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex items-center gap-3 text-[#B026FF] font-bold">
+                        <LayoutGrid className="w-5 h-5" />
+                        Advanced Admin Dashboard
                       </div>
-                      <p className="text-xs text-gray-400">Real-time multiplayer simulations for classroom group activities.</p>
+                      <p className="text-xs text-gray-400">Futuristic control center for visibility over teaching activities, syllabus completion, and classroom performance.</p>
                     </div>
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
-                      <div className="flex items-center gap-3 text-white font-bold">
-                        <div className="w-2 h-2 rounded-full bg-[#10B981]"></div>
-                        Voice-Controlled AI
+
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                      <div className="flex items-center gap-3 text-[#10B981] font-bold">
+                        <Zap className="w-5 h-5" />
+                        AI Timetable & Lesson Planning Automation
                       </div>
-                      <p className="text-xs text-gray-400">Control simulations and generators using natural voice commands.</p>
+                      <p className="text-xs text-gray-400">Intelligent scheduling and planning system that automatically organizes teaching activities for the entire school.</p>
                     </div>
+                    
+                    <p className="text-xs text-gray-500 pt-2 italic">Result: AI Smart School Operating System</p>
+
                     <button 
                       onClick={() => {
                         setIsUnlocked(false);
