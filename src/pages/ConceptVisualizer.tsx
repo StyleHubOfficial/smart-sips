@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { pcmToWav } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, Loader2, Play, Pause, Maximize2, Minimize2, FileText, X, Plus, Volume2 } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -128,7 +129,9 @@ export default function ConceptVisualizer() {
 
   useEffect(() => {
     if (visualizerData?.audioData) {
-      const audioBlob = new Blob([Uint8Array.from(atob(visualizerData.audioData), c => c.charCodeAt(0))], { type: 'audio/wav' });
+      const pcmData = Uint8Array.from(atob(visualizerData.audioData), c => c.charCodeAt(0));
+      const wavData = pcmToWav(pcmData);
+      const audioBlob = new Blob([wavData], { type: 'audio/wav' });
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
       setAudioProgress(100);

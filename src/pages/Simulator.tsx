@@ -8,6 +8,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import SimLoader from '../components/SimLoader';
 import { useLocation } from 'react-router-dom';
 import { generateHinglishExplanation } from '../services/aiExplainerService';
+import { pcmToWav } from '../utils/audio';
 
 export default function Simulator() {
   const { 
@@ -53,7 +54,9 @@ export default function Simulator() {
       const data = await generateHinglishExplanation(query, generatedCode, apiKey);
       setExplainerData(data);
       if (data.audioData) {
-        const audioBlob = await fetch(`data:audio/wav;base64,${data.audioData}`).then(res => res.blob());
+        const pcmData = Uint8Array.from(atob(data.audioData), c => c.charCodeAt(0));
+        const wavData = pcmToWav(pcmData);
+        const audioBlob = new Blob([wavData], { type: 'audio/wav' });
         const url = URL.createObjectURL(audioBlob);
         setAudioUrl(url);
         setIsAudioPlaying(true);
