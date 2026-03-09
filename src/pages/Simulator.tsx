@@ -347,60 +347,7 @@ export default function Simulator() {
       <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#B026FF]/10 rounded-full blur-[80px] pointer-events-none"></div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end relative z-10">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-3 h-3" /> Subject & Mode
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setSubject('physics')}
-                className={`py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  subject === 'physics' 
-                    ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' 
-                    : 'bg-black/40 text-gray-400 hover:text-white border border-white/10'
-                }`}
-              >
-                <Atom className="w-4 h-4" /> Physics
-              </button>
-              <button
-                onClick={() => setSubject('chemistry')}
-                className={`py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                  subject === 'chemistry' 
-                    ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/30' 
-                    : 'bg-black/40 text-gray-400 hover:text-white border border-white/10'
-                }`}
-              >
-                <FlaskConical className="w-4 h-4" /> Chemistry
-              </button>
-            </div>
-            
-            {subject === 'physics' && (
-              <div className="flex bg-black/40 rounded-xl p-1 border border-white/10 mt-2">
-                <button
-                  onClick={() => setMode('2d')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
-                    mode === '2d' 
-                      ? 'bg-[#00F0FF]/20 text-[#00F0FF]' 
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Box className="w-3 h-3" /> 2D
-                </button>
-                <button
-                  onClick={() => setMode('3d')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-2 ${
-                    mode === '3d' 
-                      ? 'bg-[#B026FF]/20 text-[#B026FF]' 
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  <Box className="w-3 h-3" /> 3D
-                </button>
-              </div>
-            )}
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end relative z-10">
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
               <Zap className="w-3 h-3" /> AI Model

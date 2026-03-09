@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -13,7 +13,9 @@ import { useLocation } from 'react-router-dom';
 export default function Practice() {
   const { 
     query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFile, questions, loading, selectedOptions, showSolutions, showHints, analysis, analyzing, whiteboardMode,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFile, setSelectedOption, setShowHint, generateQuestions, analyzeScore, setWhiteboardMode
+    isSourceConverterMode, mixUp, sequenceWise,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFile, setSelectedOption, setShowHint, generateQuestions, analyzeScore, setWhiteboardMode,
+    setIsSourceConverterMode, setMixUp, setSequenceWise
   } = usePracticeStore();
   
   const { role } = useAuthStore();
@@ -28,6 +30,10 @@ export default function Practice() {
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(66); // percentage
   const [isResizing, setIsResizing] = useState(false);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+  const [dashboardSearch, setDashboardSearch] = useState("");
 
   const startResizing = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -89,6 +95,26 @@ export default function Practice() {
   // Check if there's an ongoing upload for this specific practice set
   const isSaving = uploads.some(u => u.status === 'uploading' && u.contextStr.includes(`title=${query} Practice Set`));
 
+  const fetchDashboardFiles = async () => {
+    try {
+      setFetchingFiles(true);
+      const res = await fetch("/api/content");
+      if (res.ok) {
+        const data = await res.json();
+        setDashboardFiles(data.resources || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard files", error);
+    } finally {
+      setFetchingFiles(false);
+    }
+  };
+
+  const handleSelectFromDashboard = async () => {
+    setShowDashboardSelector(true);
+    await fetchDashboardFiles();
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -112,7 +138,11 @@ export default function Practice() {
   };
 
   const handleSearch = async () => {
-    if (!query.trim() && !sourceFile) return;
+    if (isSourceConverterMode && !sourceFile) {
+      addNotification('error', 'Please select a source file first');
+      return;
+    }
+    if (!isSourceConverterMode && !query.trim()) return;
     
     // Robust API Key Retrieval for Vercel & Preview Environments
     let apiKey = '';
@@ -242,7 +272,7 @@ export default function Practice() {
 
   const renderQuestionCard = (q: any, index: number, compact = false) => (
     <motion.div
-      key={q.id}
+      key={`${q.id}-${index}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
@@ -387,89 +417,199 @@ export default function Practice() {
         </div>
       </div>
 
+      {/* Mode Selector */}
+      <div className="flex p-1 bg-black/40 rounded-2xl border border-white/10 mb-8 w-fit mx-auto md:mx-0">
+        <button 
+          onClick={() => {
+            setIsPYQ(false);
+            setSourceFile(null);
+            setIsSourceConverterMode(false);
+          }}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${!isPYQ && !sourceFile && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
+        >
+          <Sparkles className="w-4 h-4" />
+          Question Generator
+        </button>
+        <button 
+          onClick={() => {
+            setIsPYQ(true);
+            setSourceFile(null);
+            setIsSourceConverterMode(false);
+          }}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isPYQ ? 'bg-[#B026FF] text-white shadow-[0_0_20px_rgba(176,38,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
+        >
+          <History className="w-4 h-4" />
+          PYQ Generator
+        </button>
+        <button 
+          onClick={() => {
+            setIsPYQ(false);
+            setIsSourceConverterMode(true);
+          }}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isSourceConverterMode ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'text-gray-400 hover:text-white'}`}
+        >
+          <FileText className="w-4 h-4" />
+          Source Converter
+        </button>
+      </div>
+
       {/* Search Section */}
-      <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4">
-        {/* Row 1: Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
-            <select 
-              value={classLevel}
-              onChange={(e) => setClassLevel(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="Class 6">Class 6</option>
-              <option value="Class 7">Class 7</option>
-              <option value="Class 8">Class 8</option>
-              <option value="Class 9">Class 9</option>
-              <option value="Class 10">Class 10</option>
-              <option value="Class 11">Class 11</option>
-              <option value="Class 12">Class 12</option>
-              <option value="Undergraduate">Undergraduate</option>
-              <option value="Postgraduate">Postgraduate</option>
-            </select>
+      <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden">
+        <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#00F0FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        {/* Mode Specific Header */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+            isPYQ ? 'bg-[#B026FF]/20 border-[#B026FF]/30 text-[#B026FF]' : 
+            isSourceConverterMode ? 'bg-white/10 border-white/20 text-white' : 
+            'bg-[#00F0FF]/20 border-[#00F0FF]/30 text-[#00F0FF]'
+          }`}>
+            {isPYQ ? <History className="w-5 h-5" /> : isSourceConverterMode ? <FileText className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
           </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</label>
-            <select 
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="General">General</option>
-              <option value="Mathematics">Mathematics</option>
-              <option value="Physics">Physics</option>
-              <option value="Chemistry">Chemistry</option>
-              <option value="Biology">Biology</option>
-              <option value="English">English</option>
-              <option value="History">History</option>
-              <option value="Geography">Geography</option>
-              <option value="Polity">Polity</option>
-              <option value="Economics">Economics</option>
-              <option value="Computer Science">Computer Science</option>
-            </select>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exam Type</label>
-            <select 
-              value={examType}
-              onChange={(e) => setExamType(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="General">General</option>
-              <option value="JEE Mains">JEE Mains</option>
-              <option value="JEE Advanced">JEE Advanced</option>
-              <option value="NEET">NEET</option>
-              <option value="NDA">NDA</option>
-              <option value="CDS">CDS</option>
-              <option value="UPSC">UPSC</option>
-              <option value="SSC CGL">SSC CGL</option>
-              <option value="Bank PO">Bank PO</option>
-              <option value="GATE">GATE</option>
-              <option value="CAT">CAT</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</label>
-            <select 
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="Easy">Easy</option>
-              <option value="Medium">Medium</option>
-              <option value="Hard">Hard</option>
-              <option value="Board Level">Board Level</option>
-              <option value="Competition Level">Competition Level</option>
-            </select>
+          <div>
+            <h3 className="font-display font-bold text-white">
+              {isPYQ ? 'PYQ Generator Mode' : isSourceConverterMode ? 'Source Converter Mode' : 'AI Question Generator'}
+            </h3>
+            <p className="text-xs text-gray-500">
+              {isPYQ ? 'Generate authentic previous year questions with search grounding' : 
+               isSourceConverterMode ? (sourceFile ? `Converting ${sourceFile.name} into practice questions` : 'Select a source to convert into questions') : 
+               'Create custom practice sets using advanced AI reasoning'}
+            </p>
           </div>
         </div>
 
+        {/* Row 1: Filters */}
+        {!isSourceConverterMode ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
+              <select 
+                value={classLevel}
+                onChange={(e) => setClassLevel(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="Class 6">Class 6</option>
+                <option value="Class 7">Class 7</option>
+                <option value="Class 8">Class 8</option>
+                <option value="Class 9">Class 9</option>
+                <option value="Class 10">Class 10</option>
+                <option value="Class 11">Class 11</option>
+                <option value="Class 12">Class 12</option>
+                <option value="Undergraduate">Undergraduate</option>
+                <option value="Postgraduate">Postgraduate</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</label>
+              <select 
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="General">General</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+                <option value="English">English</option>
+                <option value="History">History</option>
+                <option value="Geography">Geography</option>
+                <option value="Polity">Polity</option>
+                <option value="Economics">Economics</option>
+                <option value="Computer Science">Computer Science</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exam Type</label>
+              <select 
+                value={examType}
+                onChange={(e) => setExamType(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="General">General</option>
+                <option value="JEE Mains">JEE Mains</option>
+                <option value="JEE Advanced">JEE Advanced</option>
+                <option value="NEET">NEET</option>
+                <option value="NDA">NDA</option>
+                <option value="CDS">CDS</option>
+                <option value="UPSC">UPSC</option>
+                <option value="SSC CGL">SSC CGL</option>
+                <option value="Bank PO">Bank PO</option>
+                <option value="GATE">GATE</option>
+                <option value="CAT">CAT</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</label>
+              <select 
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+                <option value="Board Level">Board Level</option>
+                <option value="Competition Level">Competition Level</option>
+              </select>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {!sourceFile ? (
+              <>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group"
+                >
+                  <div className="p-3 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF] group-hover:scale-110 transition-transform">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-white">Upload from Device</div>
+                    <div className="text-xs text-gray-500">PDF, Images, or Text files</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={handleSelectFromDashboard}
+                  className="flex items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all group"
+                >
+                  <div className="p-3 rounded-xl bg-[#B026FF]/10 text-[#B026FF] group-hover:scale-110 transition-transform">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-white">Select from Dashboard</div>
+                    <div className="text-xs text-gray-500">Use your previously uploaded files</div>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <div className="col-span-2 flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-white/10 text-white">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white truncate max-w-[200px] md:max-w-md">{sourceFile.name}</div>
+                    <div className="text-xs text-gray-500">Source selected for conversion</div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSourceFile(null)}
+                  className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Row 2: Advanced Options */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+        <div className={`grid grid-cols-1 ${isSourceConverterMode ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4 items-end`}>
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Question Type</label>
             <select 
@@ -486,6 +626,32 @@ export default function Practice() {
               <option value="Long Answer">Long Answer</option>
             </select>
           </div>
+
+          {isSourceConverterMode && (
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Order</label>
+              <div className="flex bg-black/40 border border-white/10 rounded-xl p-1">
+                <button 
+                  onClick={() => {
+                    setSequenceWise(true);
+                    setMixUp(false);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${sequenceWise ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-500 hover:text-white'}`}
+                >
+                  Sequential
+                </button>
+                <button 
+                  onClick={() => {
+                    setSequenceWise(false);
+                    setMixUp(true);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mixUp ? 'bg-white/10 text-[#B026FF]' : 'text-gray-500 hover:text-white'}`}
+                >
+                  Mix Up
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exam Format</label>
@@ -533,18 +699,8 @@ export default function Practice() {
           </div>
         </div>
 
-        {/* Row 3: PYQ and Smart Panel */}
+        {/* Row 3: Smart Panel */}
         <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={isPYQ}
-              onChange={(e) => setIsPYQ(e.target.checked)}
-              className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0"
-            />
-            <span className="text-sm font-medium text-white">PYQ Mode</span>
-          </label>
-
           {isPYQ && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Year:</label>
@@ -571,18 +727,6 @@ export default function Practice() {
             />
             <span className="text-sm font-medium text-white">Smart Panel Mode</span>
           </label>
-
-          <div className="flex items-center justify-end">
-             {sourceFile && (
-               <div className="flex items-center gap-2 bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] px-3 py-2 rounded-xl text-sm">
-                 <FileText className="w-4 h-4" />
-                 <span className="truncate max-w-[150px]">{sourceFile.name}</span>
-                 <button onClick={() => setSourceFile(null)} className="hover:text-white transition-colors ml-1">
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-             )}
-          </div>
         </div>
 
         {/* Search Bar */}
@@ -594,26 +738,19 @@ export default function Practice() {
             className="hidden" 
             accept=".pdf,.txt,.csv,.json,.md"
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute left-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors z-10"
-            title="Upload Source File"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
           <input 
             type="text" 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={`e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+            placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : isPYQ ? `Which year's PYQs for ${examType} ${subject}?` : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
+            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
           />
         </div>
         <div className="mt-4 flex justify-end">
           <button 
             onClick={handleSearch}
-            disabled={loading || (!query.trim() && !sourceFile)}
+            disabled={loading || (isSourceConverterMode ? !sourceFile : !query.trim())}
             className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
@@ -760,7 +897,7 @@ export default function Practice() {
                 </div>
                 <div className="space-y-6 flex-1">
                   {questions.map((q, index) => (
-                    <div key={q.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div key={`${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
                       {renderQuestionCard(q, index, true)}
                     </div>
                   ))}
@@ -880,7 +1017,7 @@ export default function Practice() {
                      {questions
                        .slice(currentSlide * slideModeConfig.questionsPerSlide, (currentSlide + 1) * slideModeConfig.questionsPerSlide)
                        .map((q, idx) => (
-                         <div key={q.id} className="animate-fade-in-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                         <div key={`${q.id}-${idx}`} className="animate-fade-in-up" style={{ animationDelay: `${idx * 0.1}s` }}>
                            {renderQuestionCard(q, currentSlide * slideModeConfig.questionsPerSlide + idx, true)}
                          </div>
                        ))
@@ -997,6 +1134,123 @@ export default function Practice() {
           </div>
         )}
       </div>
+
+      {/* Dashboard File Selector Modal */}
+      <AnimatePresence>
+        {showDashboardSelector && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDashboardSelector(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[#B026FF]/10 text-[#B026FF]">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
+                    <p className="text-xs text-gray-500">Choose a previously uploaded file</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowDashboardSelector(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-4 border-b border-white/10 bg-black/20">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input 
+                    type="text"
+                    placeholder="Search your files..."
+                    value={dashboardSearch}
+                    onChange={(e) => setDashboardSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#B026FF]/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {fetchingFiles ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="w-10 h-10 text-[#B026FF] animate-spin" />
+                    <p className="text-gray-500 animate-pulse">Fetching your content...</p>
+                  </div>
+                ) : dashboardFiles.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                    <FileText className="w-16 h-16 opacity-10 mb-4" />
+                    <p>No files found in your dashboard</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {dashboardFiles
+                      .filter(file => file.title.toLowerCase().includes(dashboardSearch.toLowerCase()))
+                      .map((file) => (
+                      <button
+                        key={file.id}
+                        onClick={async () => {
+                          try {
+                            // Fetch the file content and convert to base64
+                            const res = await fetch(file.fileUrl);
+                            const blob = await res.blob();
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              const base64String = (reader.result as string).split(',')[1];
+                              setSourceFile({
+                                name: file.title,
+                                data: base64String,
+                                mimeType: file.type || 'application/pdf'
+                              });
+                              setShowDashboardSelector(false);
+                              addNotification('success', `Selected: ${file.title}`);
+                            };
+                            reader.readAsDataURL(blob);
+                          } catch (error) {
+                            console.error("Failed to load dashboard file", error);
+                            addNotification('error', 'Failed to load file from dashboard');
+                          }
+                        }}
+                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-[#B026FF]/30 hover:bg-[#B026FF]/5 transition-all text-left group"
+                      >
+                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#B026FF] transition-colors">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{file.title}</div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-gray-500">
+                              {file.type?.split('/')[1] || 'FILE'}
+                            </span>
+                            <span className="text-[10px] text-gray-600">
+                              {new Date(file.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Plus className="w-5 h-5 text-[#B026FF]" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

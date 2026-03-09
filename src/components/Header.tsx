@@ -67,7 +67,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
         <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
           <Clock className="w-4 h-4 text-[#00FFFF]" />
           <span className="font-mono text-sm tracking-widest text-[var(--color-text-muted)]">
-            {format(time, "HH:mm:ss")}
+            {format(time, "eeee, MMMM do, yyyy • hh:mm:ss a")}
           </span>
         </div>
 

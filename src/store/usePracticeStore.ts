@@ -30,6 +30,9 @@ interface PracticeState {
   examFormat: string;
   isSmartPanelMode: boolean;
   whiteboardMode: 'none' | 'side' | 'slide';
+  isSourceConverterMode: boolean;
+  mixUp: boolean;
+  sequenceWise: boolean;
   sourceFile: { name: string, data: string, mimeType: string } | null;
   questions: Question[];
   loading: boolean;
@@ -53,6 +56,9 @@ interface PracticeState {
   setExamFormat: (format: string) => void;
   setIsSmartPanelMode: (isSmartPanelMode: boolean) => void;
   setWhiteboardMode: (mode: 'none' | 'side' | 'slide') => void;
+  setIsSourceConverterMode: (isMode: boolean) => void;
+  setMixUp: (mix: boolean) => void;
+  setSequenceWise: (seq: boolean) => void;
   setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
   setSelectedOption: (questionId: string, option: string) => void;
   setShowHint: (questionId: string, show: boolean) => void;
@@ -78,6 +84,9 @@ export const usePracticeStore = create<PracticeState>()(
       examFormat: 'Board exam format',
       isSmartPanelMode: false,
       whiteboardMode: 'none',
+      isSourceConverterMode: false,
+      mixUp: false,
+      sequenceWise: true,
       sourceFile: null,
       questions: [],
       loading: false,
@@ -101,6 +110,9 @@ export const usePracticeStore = create<PracticeState>()(
       setExamFormat: (examFormat) => set({ examFormat }),
       setIsSmartPanelMode: (isSmartPanelMode) => set({ isSmartPanelMode }),
       setWhiteboardMode: (whiteboardMode) => set({ whiteboardMode }),
+      setIsSourceConverterMode: (isSourceConverterMode) => set({ isSourceConverterMode }),
+      setMixUp: (mixUp) => set({ mixUp }),
+      setSequenceWise: (sequenceWise) => set({ sequenceWise }),
       setSourceFile: (sourceFile) => set({ sourceFile }),
       
       setSelectedOption: (questionId, option) => 
@@ -117,7 +129,7 @@ export const usePracticeStore = create<PracticeState>()(
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null }),
 
       generateQuestions: async (apiKey) => {
-        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile } = get();
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise } = get();
         if (!query.trim() && !sourceFile) return;
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null });
@@ -133,24 +145,44 @@ export const usePracticeStore = create<PracticeState>()(
         try {
           const ai = new GoogleGenAI({ apiKey });
           
-          let prompt = `Generate ${questionCount} questions based on this request: "${query}". 
-          Subject: ${subject}
-          Exam Type: ${examType}
-          Class Level: ${classLevel}
-          Difficulty Level: ${difficulty}
-          Question Type: ${questionType}
-          Exam Format: ${examFormat}
-          ${isPYQ ? `THIS IS A PYQ REQUEST. Generate authentic Previous Year Questions from the year ${pyqYear}.` : ''}
+          let prompt = "";
           
-          The questions must be authentic and well-balanced (including conceptual, numerical, diagram-based, and application questions where applicable).
-          Ensure the questions are searched well and are from correct, authentic sources.
-          
-          ${sourceFile ? `
-            [SOURCE MATERIAL PROVIDED]
-            You have been provided with a source file. You MUST extract concepts, facts, and information from this source file to generate the questions.
-            Ensure the questions accurately reflect the content of the uploaded document.
-          ` : ''}
+          if (isSourceConverterMode && sourceFile) {
+            prompt = `You are an expert educational content analyzer and question generator.
+            [TASK]
+            1. ANALYZE the provided source material (PDF/Image/Text).
+            2. GENERATE exactly ${questionCount} questions based ONLY on the content of this source.
+            3. If the source material does not have enough content for ${questionCount} unique questions, generate the maximum possible number of high-quality questions instead.
+            4. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the source.' : 'MIX UP the order of concepts for a more challenging set.'}
+            5. Question Type: ${questionType}
+            6. Difficulty Level: ${difficulty}
+            
+            [CONSTRAINTS]
+            - DO NOT include any information not present in the source.
+            - If the source contains notes, convert them into conceptual and application-based questions.
+            - Ensure questions are authentic and pedagogically sound.`;
+          } else {
+            prompt = `Generate ${questionCount} questions based on this request: "${query}". 
+            Subject: ${subject}
+            Exam Type: ${examType}
+            Class Level: ${classLevel}
+            Difficulty Level: ${difficulty}
+            Question Type: ${questionType}
+            Exam Format: ${examFormat}
+            ${isPYQ ? `THIS IS A PYQ REQUEST. Generate authentic Previous Year Questions from the year ${pyqYear}.` : ''}
+            
+            The questions must be authentic and well-balanced (including conceptual, numerical, diagram-based, and application questions where applicable).
+            Ensure the questions are searched well and are from correct, authentic sources.
+            
+            ${sourceFile ? `
+              [SOURCE MATERIAL PROVIDED]
+              You have been provided with a source file. You MUST extract concepts, facts, and information from this source file to generate the questions.
+              Ensure the questions accurately reflect the content of the uploaded document.
+            ` : ''}`;
+          }
 
+          prompt += `
+          
           CRITICAL INSTRUCTION: You MUST return ONLY a valid JSON array of objects. Do not include any conversational text, markdown formatting, or explanations outside the JSON array.
           
           Each object in the array must have EXACTLY these fields:

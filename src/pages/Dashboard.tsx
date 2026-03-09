@@ -49,12 +49,99 @@ const ContentCard = React.memo(({
   onDelete: (id: string, type: string) => void,
   getFileIcon: (type: string) => React.ReactNode
 }) => {
-  const meta = item.context?.custom || {};
-  const title = meta.title || "Untitled Document";
-  const fileType = meta.fileType || "Unknown";
+  // Cloudinary context can be flat or nested in custom depending on API version/method
+  const meta: any = item.context?.custom || item.context || {};
+  
+  // Improved title derivation
+  const deriveTitle = () => {
+    const rawTitle = meta.title || "";
+    const fileName = item.public_id.split('/').pop() || "";
+    
+    // Simple heuristic for random hashes
+    const isHash = (text: string) => {
+      if (!text) return false;
+      // If it's a long string with no spaces/dashes and looks like a hash
+      return text.length > 15 && !text.includes(' ') && !text.includes('-') && !text.includes('_') && !/[aeiouy]{2,}/i.test(text);
+    };
+
+    // 1. Use title if it exists and isn't just a hash
+    if (rawTitle && rawTitle.length > 1) return rawTitle;
+    
+    // 2. Try to extract from description
+    if (meta.description && meta.description.length > 5 && !isHash(meta.description)) {
+      const firstLine = meta.description.split('\n')[0].split('.')[0].trim();
+      if (firstLine.length > 3 && firstLine.length < 60) return firstLine;
+    }
+
+    // 3. Use cleaned fileName if not a hash
+    if (fileName && !isHash(fileName)) {
+      const cleanName = fileName.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\.[^/.]+$/, "");
+      if (cleanName.length > 2) {
+        return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      }
+    }
+    
+    // 4. Fallback to subject or generic
+    if (meta.subject && meta.subject !== 'All') return `${meta.subject} Resource`;
+    return "Educational Resource";
+  };
+
+  const title = deriveTitle();
+  const fileType = meta.fileType || item.format?.toUpperCase() || "Document";
   const date = new Date(item.created_at);
   const openCoPilotModal = useCoPilotStore(state => state.openModal);
-  const isAiGenerated = meta.teacher === 'AI Assistant' || meta.description?.includes('AI-generated');
+  
+  // Stricter AI detection: Only if explicitly marked as AI Assistant
+  const isAiGenerated = meta.teacher === 'AI Assistant' || (meta.description?.includes('AI-generated') && !meta.teacher);
+
+  // Dynamic background colors based on subject
+  const getSubjectColor = (subject?: string) => {
+    const s = subject?.toLowerCase() || '';
+    if (s.includes('physics')) return 'from-blue-600/40 to-cyan-400/40';
+    if (s.includes('chemistry')) return 'from-purple-600/40 to-pink-400/40';
+    if (s.includes('math')) return 'from-emerald-600/40 to-teal-400/40';
+    if (s.includes('bio')) return 'from-green-600/40 to-lime-400/40';
+    return 'from-[#00F0FF]/30 to-[#B026FF]/40';
+  };
+
+  const subjectColor = getSubjectColor(meta.subject);
+
+  // Thumbnail logic
+  const renderThumbnail = (size: 'sm' | 'lg') => {
+    const isImage = item.resource_type === 'image';
+    const isVideo = item.resource_type === 'video';
+    const isPdf = item.format === 'pdf';
+    
+    if (isImage) {
+      return <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />;
+    }
+    
+    if (isVideo) {
+      // Cloudinary video thumbnail
+      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg');
+      return <img src={thumbUrl} alt={title} className="w-full h-full object-cover" />;
+    }
+    
+    if (isPdf) {
+      // Cloudinary PDF thumbnail (first page)
+      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg');
+      return <img src={thumbUrl} alt={title} className="w-full h-full object-cover" />;
+    }
+
+    // Fallback for AI or other files
+    if (isAiGenerated || size === 'lg') {
+      return (
+        <div className={`w-full h-full bg-gradient-to-br ${subjectColor} flex flex-col items-center justify-center p-2 text-center relative overflow-hidden`}>
+          <div className="absolute inset-0 bg-black/20"></div>
+          {getFileIcon(fileType)}
+          <span className={`${size === 'sm' ? 'text-[6px]' : 'text-[10px]'} font-bold text-white/60 uppercase mt-1 z-10`}>{fileType}</span>
+          {isAiGenerated && <Sparkles className="absolute top-1 right-1 w-2.5 h-2.5 text-[#00F0FF] z-10 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />}
+        </div>
+      );
+    }
+
+    return getFileIcon(fileType);
+  };
 
   if (viewMode === 'list') {
     return (
@@ -68,27 +155,12 @@ const ContentCard = React.memo(({
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
-            {isAiGenerated ? (
-              <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/30 to-[#B026FF]/40 flex flex-col items-center justify-center p-2 text-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-                <span className="text-[7.5px] font-bold text-white uppercase tracking-tighter line-clamp-2 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)] z-10">{title}</span>
-                <Sparkles className="absolute top-1 right-1 w-2.5 h-2.5 text-[#00F0FF] z-10 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />
-                <div className="absolute -bottom-1 -left-1 w-6 h-6 bg-[#00F0FF]/30 rounded-full blur-md animate-pulse"></div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#B026FF]/30 rounded-full blur-md animate-pulse delay-700"></div>
-              </div>
-            ) : item.resource_type === 'image' ? (
-              <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />
-            ) : item.resource_type === 'video' && item.secure_url ? (
-              <video src={item.secure_url} className="w-full h-full object-cover" />
-            ) : (
-              getFileIcon(fileType)
-            )}
+            {renderThumbnail('sm')}
           </div>
           
           <div className="flex-1 min-w-0">
             <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
-            <p className="text-sm text-gray-400 truncate">{meta.subject} • {meta.class} • By {meta.teacher || "Unknown"} • {format(date, "MMM d, yyyy")}</p>
+            <p className="text-sm text-gray-400 truncate">{meta.subject || "General"} • {meta.class || "All Classes"} • By {meta.teacher || "Teacher"} • {format(date, "MMM d, yyyy")}</p>
           </div>
         </div>
 
@@ -187,31 +259,8 @@ const ContentCard = React.memo(({
       )}
 
       <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
-        {isAiGenerated ? (
-          <div className="w-full h-full bg-gradient-to-br from-[#00F0FF]/30 to-[#B026FF]/40 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-            <Sparkles className="w-12 h-12 text-[#00F0FF] mb-3 animate-pulse drop-shadow-[0_0_15px_rgba(0,240,255,0.8)]" />
-            <h4 className="font-display font-bold text-white text-xl leading-tight line-clamp-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] z-10">{title}</h4>
-            <div className="mt-4 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-bold text-[#00F0FF] uppercase tracking-[0.2em] z-10 shadow-[0_0_15px_rgba(0,240,255,0.2)]">AI Generated</div>
-            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-[#00F0FF]/20 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#B026FF]/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-          </div>
-        ) : item.resource_type === 'image' ? (
-          <img src={item.secure_url} alt={title} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-        ) : item.resource_type === 'video' && item.secure_url ? (
-          <video src={item.secure_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
-        ) : item.resource_type === 'raw' && item.secure_url.endsWith('.html') ? (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 p-4 text-center">
-            <FileText className="w-8 h-8 text-[#00F0FF] mb-2" />
-            <h4 className="font-display font-bold text-white text-sm line-clamp-2">{title}</h4>
-          </div>
-        ) : (
-          <div className="transform group-hover:scale-110 transition-transform duration-500">
-            {getFileIcon(fileType)}
-          </div>
-        )}
-        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2">
+        {renderThumbnail('lg')}
+        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2 z-20">
           {getFileIcon(fileType)}
           {fileType}
         </div>
@@ -224,10 +273,10 @@ const ContentCard = React.memo(({
           </div>
           <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
         </div>
-        <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject} • {meta.class}</p>
+        <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject || "General"} • {meta.class || "All Classes"}</p>
         
         <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
-          <span>By {meta.teacher || "Unknown"}</span>
+          <span>By {meta.teacher || "Teacher"}</span>
           <span>{format(date, "MMM d, yyyy")}</span>
         </div>
 
@@ -360,9 +409,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   };
 
   const handleEditClick = (item: ContentItem) => {
-    const meta = item.context?.custom || {};
+    const meta: any = item.context?.custom || item.context || {};
     setEditFormData({
-      title: meta.title || item.public_id,
+      title: meta.title || "",
       teacher: meta.teacher || "",
       className: meta.class || "Class 10",
       subject: meta.subject || "Mathematics",
@@ -388,19 +437,17 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         // Update local state
         setContent(content.map(item => {
           if (item.public_id === editingItem.public_id) {
+            const currentMeta: any = item.context?.custom || item.context || {};
             return {
               ...item,
               context: {
-                ...item.context,
-                custom: {
-                  ...item.context?.custom,
-                  title: editFormData.title,
-                  teacher: editFormData.teacher,
-                  class: editFormData.className,
-                  subject: editFormData.subject,
-                  description: editFormData.description,
-                  fileType: editFormData.fileType
-                }
+                ...currentMeta,
+                title: editFormData.title,
+                teacher: editFormData.teacher,
+                class: editFormData.className,
+                subject: editFormData.subject,
+                description: editFormData.description,
+                fileType: editFormData.fileType
               }
             };
           }
@@ -418,7 +465,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   };
 
   const filteredContent = content.filter((item) => {
-    const meta = item.context?.custom || {};
+    const meta: any = item.context?.custom || item.context || {};
     const title = meta.title || item.public_id;
     const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClass = selectedClass === "All" || meta.class === selectedClass;
@@ -427,8 +474,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
     
     return matchesSearch && matchesClass && matchesSubject && matchesType;
   }).sort((a, b) => {
-    const metaA = a.context?.custom || {};
-    const metaB = b.context?.custom || {};
+    const metaA: any = a.context?.custom || a.context || {};
+    const metaB: any = b.context?.custom || b.context || {};
     const titleA = (metaA.title || a.public_id).toLowerCase();
     const titleB = (metaB.title || b.public_id).toLowerCase();
     const dateA = new Date(a.created_at).getTime();
@@ -457,9 +504,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, filter: "blur(10px)" }}
-      animate={{ opacity: 1, filter: "blur(0px)" }}
-      exit={{ opacity: 0, filter: "blur(10px)" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       className="p-6 md:p-10 max-w-[1600px] mx-auto pb-32"
     >
@@ -492,8 +539,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
             <Bell className="w-5 h-5 text-[#00F0FF]" /> Announcements
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {siteNotifications.slice(0, 3).map(notif => (
-              <div key={notif.id} className="glass-panel rounded-xl p-5 border border-[#00F0FF]/30 bg-gradient-to-br from-[#00F0FF]/5 to-transparent relative overflow-hidden">
+            {siteNotifications.slice(0, 3).map((notif, index) => (
+              <div key={`${notif.id}-${index}`} className="glass-panel rounded-xl p-5 border border-[#00F0FF]/30 bg-gradient-to-br from-[#00F0FF]/5 to-transparent relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#00F0FF]"></div>
                 <h4 className="font-bold text-white mb-1">{notif.title}</h4>
                 <p className="text-sm text-gray-300 mb-3">{notif.message}</p>
@@ -756,9 +803,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           animate="show"
           className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}
         >
-          {filteredContent.map((item) => (
+          {filteredContent.map((item, index) => (
             <ContentCard 
-              key={item.public_id}
+              key={`${item.public_id}-${index}`}
               item={item}
               viewMode={viewMode}
               isAuthenticated={isAuthenticated}
