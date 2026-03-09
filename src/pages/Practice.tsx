@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
+import Whiteboard from '../components/Whiteboard';
 import { useLocation } from 'react-router-dom';
 
 export default function Practice() {
   const { 
-    query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, sourceFile, questions, loading, selectedOptions, showSolutions, analysis, analyzing,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setSourceFile, setSelectedOption, generateQuestions, analyzeScore 
+    query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFile, questions, loading, selectedOptions, showSolutions, showHints, analysis, analyzing, whiteboardMode,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFile, setSelectedOption, setShowHint, generateQuestions, analyzeScore, setWhiteboardMode
   } = usePracticeStore();
   
   const { role } = useAuthStore();
@@ -20,6 +21,7 @@ export default function Practice() {
   const { addUpload, uploads } = useUploadStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
@@ -199,6 +201,134 @@ export default function Practice() {
     }
   };
 
+  const renderQuestionCard = (q: any, index: number, compact = false) => (
+    <motion.div
+      key={q.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={`glass-panel rounded-2xl p-6 border border-white/10 flex flex-col ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'scale-[1.02] shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`}
+    >
+      <div className="flex flex-wrap gap-2 mb-4">
+        {q.difficultyBadge && (
+          <span className="px-2 py-1 rounded-md bg-white/10 text-xs font-medium text-gray-300 border border-white/10">
+            {q.difficultyBadge}
+          </span>
+        )}
+        {q.topicTag && (
+          <span className="px-2 py-1 rounded-md bg-[#00F0FF]/10 text-xs font-medium text-[#00F0FF] border border-[#00F0FF]/20">
+            {q.topicTag}
+          </span>
+        )}
+        {q.type && (
+          <span className="px-2 py-1 rounded-md bg-[#B026FF]/10 text-xs font-medium text-[#B026FF] border border-[#B026FF]/20">
+            {q.type}
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-4 mb-4">
+        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 font-bold text-[#00F0FF]">
+          {index + 1}
+        </div>
+        <div className={`font-medium text-white prose prose-invert max-w-none prose-p:my-0 prose-pre:my-2 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 ${isSmartPanelMode ? 'text-2xl' : 'text-lg'}`}>
+          <Markdown>{q.question}</Markdown>
+        </div>
+      </div>
+      
+      {q.options && q.options.length > 0 && (
+        <div className={`grid gap-3 mb-4 ${viewMode === 'triple' && !compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+          {q.options.map((option: string, optIndex: number) => {
+            const isSelected = selectedOptions[q.id] === option;
+            const isCorrect = q.correctAnswer === option;
+            const showResult = !!selectedOptions[q.id];
+            
+            let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
+            if (showResult) {
+              if (isCorrect) optionClass = "bg-green-500/20 border-green-500/50 text-green-200";
+              else if (isSelected) optionClass = "bg-red-500/20 border-red-500/50 text-red-200";
+              else optionClass = "bg-white/5 border-white/10 opacity-50";
+            }
+
+            return (
+              <button
+                key={optIndex}
+                onClick={() => handleOptionClick(q.id, option)}
+                disabled={showResult}
+                className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass} ${isSmartPanelMode ? 'text-lg p-4' : ''}`}
+              >
+                <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
+                  <Markdown>{option}</Markdown>
+                </div>
+                {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-green-400 shrink-0 ml-2" />}
+                {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {(!q.options || q.options.length === 0) && (
+        <div className="mb-4">
+          <button 
+            onClick={() => handleOptionClick(q.id, q.correctAnswer)}
+            disabled={!!selectedOptions[q.id]}
+            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all text-sm border border-white/10"
+          >
+            {selectedOptions[q.id] ? 'Answer Submitted' : 'Mark as Attempted'}
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
+        {q.hint && (
+          <button 
+            onClick={() => setShowHint(q.id, !showHints[q.id])}
+            className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
+          >
+            {showHints[q.id] ? 'Hide Hint' : 'Show Hint'}
+          </button>
+        )}
+        <button className="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 transition-colors">
+          Step Reveal
+        </button>
+      </div>
+
+      {showHints[q.id] && q.hint && (
+        <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
+          <Markdown>{q.hint}</Markdown>
+        </div>
+      )}
+
+      {showSolutions[q.id] && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
+        >
+          <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
+            <HelpCircle className="w-4 h-4" />
+            <span className="font-bold text-sm uppercase tracking-wider">Solution</span>
+          </div>
+          <div className="text-gray-300 text-sm leading-relaxed mb-3 prose prose-invert max-w-none prose-p:my-1 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
+            <Markdown>{q.solution}</Markdown>
+          </div>
+
+          <button className="mt-2 text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B026FF]/10 text-[#B026FF] border border-[#B026FF]/30 hover:bg-[#B026FF]/20 transition-colors">
+            <BrainCircuit className="w-3.5 h-3.5" />
+            AI Explanation
+          </button>
+
+          {q.sourceLink && (
+            <div className="text-xs text-gray-500 border-t border-white/10 pt-2 mt-3">
+              Source: <a href={q.sourceLink} target="_blank" rel="noopener noreferrer" className="text-[#00F0FF] hover:underline truncate inline-block max-w-full align-bottom">{q.sourceLink}</a>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </motion.div>
+  );
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -300,7 +430,39 @@ export default function Practice() {
         </div>
 
         {/* Row 2: Advanced Options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Question Type</label>
+            <select 
+              value={questionType}
+              onChange={(e) => setQuestionType(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+            >
+              <option value="Mixed">Mixed</option>
+              <option value="MCQ">MCQ</option>
+              <option value="Integer Type">Integer Type</option>
+              <option value="Assertion Reason">Assertion Reason</option>
+              <option value="Numerical">Numerical</option>
+              <option value="Short Answer">Short Answer</option>
+              <option value="Long Answer">Long Answer</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exam Format</label>
+            <select 
+              value={examFormat}
+              onChange={(e) => setExamFormat(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+            >
+              <option value="Board exam format">Board exam format</option>
+              <option value="JEE style">JEE style</option>
+              <option value="NEET style">NEET style</option>
+              <option value="NDA style">NDA style</option>
+              <option value="Concept practice">Concept practice</option>
+            </select>
+          </div>
+
           <div className="space-y-2">
             <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">AI Model</label>
             <select 
@@ -330,8 +492,48 @@ export default function Practice() {
               <span>50</span>
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center justify-end pb-1">
+        {/* Row 3: PYQ and Smart Panel */}
+        <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={isPYQ}
+              onChange={(e) => setIsPYQ(e.target.checked)}
+              className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0"
+            />
+            <span className="text-sm font-medium text-white">PYQ Mode</span>
+          </label>
+
+          {isPYQ && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Year:</label>
+              <select 
+                value={pyqYear}
+                onChange={(e) => setPyqYear(e.target.value)}
+                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+                <option value="2021">2021</option>
+                <option value="Custom range">Custom range</option>
+              </select>
+            </div>
+          )}
+
+          <label className="flex items-center gap-2 cursor-pointer ml-auto">
+            <input 
+              type="checkbox" 
+              checked={isSmartPanelMode}
+              onChange={(e) => setIsSmartPanelMode(e.target.checked)}
+              className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#B026FF] focus:ring-[#B026FF] focus:ring-offset-0"
+            />
+            <span className="text-sm font-medium text-white">Smart Panel Mode</span>
+          </label>
+
+          <div className="flex items-center justify-end">
              {sourceFile && (
                <div className="flex items-center gap-2 bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] px-3 py-2 rounded-xl text-sm">
                  <FileText className="w-4 h-4" />
@@ -403,11 +605,33 @@ export default function Practice() {
             )}
             
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setWhiteboardMode(whiteboardMode === 'side' ? 'none' : 'side')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${whiteboardMode === 'side' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/50' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
+              >
+                <LayoutPanelLeft className="w-4 h-4" />
+                Side Whiteboard
+              </button>
+              <button
+                onClick={() => setWhiteboardMode(whiteboardMode === 'slide' ? 'none' : 'slide')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${whiteboardMode === 'slide' ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/50' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
+              >
+                <Presentation className="w-4 h-4" />
+                Slide Mode
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300">
+                <Timer className="w-4 h-4 text-[#00F0FF]" />
+                <span className="font-mono text-sm">00:00:00</span>
+              </div>
+
               <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
                 <button 
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
-                  title="List View"
+                  onClick={() => setViewMode('linear')}
+                  className={`p-2 rounded-md transition-all ${viewMode === 'linear' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="Linear View"
                 >
                   <List className="w-4 h-4" />
                 </button>
@@ -419,102 +643,98 @@ export default function Practice() {
                   <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button 
-                  onClick={() => setViewMode('box')}
-                  className={`p-2 rounded-md transition-all ${viewMode === 'box' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
-                  title="Box View"
+                  onClick={() => setViewMode('triple')}
+                  className={`p-2 rounded-md transition-all ${viewMode === 'triple' ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="Triple Grid View"
                 >
                   <Square className="w-4 h-4" />
                 </button>
               </div>
 
-              <button 
-                onClick={handleSaveToDashboard}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all disabled:opacity-50 border border-white/10"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {isSaving ? 'Saving...' : 'Save to Dashboard'}
-              </button>
+              <div className="relative group">
+                <button 
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all border border-[#00F0FF]/30"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {isSaving ? 'Saving...' : 'Export'}
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                  <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4" /> Save to Dashboard
+                  </button>
+                  <button onClick={() => addNotification('info', 'PDF Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Export as PDF
+                  </button>
+                  <button onClick={() => addNotification('info', 'Worksheet Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Export as Worksheet
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         <AnimatePresence>
-          <div className={
-            viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 
-            viewMode === 'box' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
-            'space-y-6'
-          }>
-            {!loading && questions.map((q, index) => (
-              <motion.div
-                key={q.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`glass-panel rounded-2xl p-6 border border-white/10 flex flex-col ${viewMode === 'box' ? 'h-full' : ''}`}
-              >
-                <div className="flex gap-4 mb-4">
-                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 font-bold text-[#00F0FF]">
-                    {index + 1}
-                  </div>
-                  <div className="text-lg font-medium text-white prose prose-invert max-w-none prose-p:my-0 prose-pre:my-2 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
-                    <Markdown>{q.question}</Markdown>
-                  </div>
+          {whiteboardMode === 'side' ? (
+            <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
+              {/* Left side: Questions */}
+              <div className="w-full lg:w-1/3 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
+                {questions.map((q, index) => renderQuestionCard(q, index))}
+              </div>
+              {/* Right side: Whiteboard */}
+              <div className="w-full lg:w-2/3 h-full">
+                <Whiteboard onClose={() => setWhiteboardMode('none')} className="h-full" />
+              </div>
+            </div>
+          ) : whiteboardMode === 'slide' ? (
+            <div className="flex flex-col h-[80vh] min-h-[600px] bg-[#0f172a] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+              {/* Slide Navigation Bar */}
+              <div className="flex items-center justify-between p-4 bg-black/40 border-b border-white/10">
+                <div className="flex items-center gap-4">
+                  <span className="text-white font-medium">Slide {currentSlide + 1} of {questions.length}</span>
                 </div>
-                
-                <div className={`grid gap-3 mb-4 ${viewMode === 'box' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-                  {q.options.map((option, optIndex) => {
-                    const isSelected = selectedOptions[q.id] === option;
-                    const isCorrect = q.correctAnswer === option;
-                    const showResult = !!selectedOptions[q.id];
-                    
-                    let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
-                    if (showResult) {
-                      if (isCorrect) optionClass = "bg-green-500/20 border-green-500/50 text-green-200";
-                      else if (isSelected) optionClass = "bg-red-500/20 border-red-500/50 text-red-200";
-                      else optionClass = "bg-white/5 border-white/10 opacity-50";
-                    }
-
-                    return (
-                      <button
-                        key={optIndex}
-                        onClick={() => handleOptionClick(q.id, option)}
-                        disabled={showResult}
-                        className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass}`}
-                      >
-                        <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
-                          <Markdown>{option}</Markdown>
-                        </div>
-                        {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-green-400 shrink-0 ml-2" />}
-                        {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {showSolutions[q.id] && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+                    disabled={currentSlide === 0}
+                    className="p-2 rounded-lg bg-white/5 text-white hover:bg-white/10 disabled:opacity-50 transition-colors"
                   >
-                    <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
-                      <HelpCircle className="w-4 h-4" />
-                      <span className="font-bold text-sm uppercase tracking-wider">Solution</span>
-                    </div>
-                    <div className="text-gray-300 text-sm leading-relaxed mb-3 prose prose-invert max-w-none prose-p:my-1 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
-                      <Markdown>{q.solution}</Markdown>
-                    </div>
-                    {q.sourceLink && (
-                      <div className="text-xs text-gray-500 border-t border-white/10 pt-2 mt-2">
-                        Source: <a href={q.sourceLink} target="_blank" rel="noopener noreferrer" className="text-[#00F0FF] hover:underline truncate inline-block max-w-full align-bottom">{q.sourceLink}</a>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </motion.div>
-            ))}
-          </div>
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => setCurrentSlide(Math.min(questions.length - 1, currentSlide + 1))}
+                    disabled={currentSlide === questions.length - 1}
+                    className="p-2 rounded-lg bg-[#00F0FF]/20 text-[#00F0FF] hover:bg-[#00F0FF]/30 disabled:opacity-50 transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setWhiteboardMode('none')} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-4">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Slide Content */}
+              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+                {/* Question Area */}
+                <div className="w-full lg:w-1/3 p-6 overflow-y-auto border-r border-white/10 bg-[#1e293b]/50 custom-scrollbar">
+                   {questions[currentSlide] && renderQuestionCard(questions[currentSlide], currentSlide, true)}
+                </div>
+                {/* Whiteboard Area */}
+                <div className="w-full lg:w-2/3 h-full relative">
+                  <Whiteboard className="h-full rounded-none border-0" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className={
+              viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 
+              viewMode === 'triple' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
+              'space-y-6'
+            }>
+              {!loading && questions.map((q, index) => renderQuestionCard(q, index))}
+            </div>
+          )}
         </AnimatePresence>
         
         {questions.length > 0 && !loading && (

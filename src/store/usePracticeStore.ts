@@ -5,10 +5,14 @@ import { GoogleGenAI } from '@google/genai';
 export interface Question {
   id: string;
   question: string;
-  options: string[];
+  options?: string[];
   correctAnswer: string;
   solution: string;
   sourceLink?: string;
+  difficultyBadge?: string;
+  topicTag?: string;
+  hint?: string;
+  type?: string;
 }
 
 interface PracticeState {
@@ -18,13 +22,20 @@ interface PracticeState {
   examType: string;
   classLevel: string;
   model: string;
-  viewMode: 'list' | 'grid' | 'box';
+  viewMode: 'linear' | 'grid' | 'triple';
   difficulty: string;
+  isPYQ: boolean;
+  pyqYear: string;
+  questionType: string;
+  examFormat: string;
+  isSmartPanelMode: boolean;
+  whiteboardMode: 'none' | 'side' | 'slide';
   sourceFile: { name: string, data: string, mimeType: string } | null;
   questions: Question[];
   loading: boolean;
   selectedOptions: Record<string, string>;
   showSolutions: Record<string, boolean>;
+  showHints: Record<string, boolean>;
   analysis: string | null;
   analyzing: boolean;
   
@@ -34,10 +45,17 @@ interface PracticeState {
   setExamType: (examType: string) => void;
   setClassLevel: (classLevel: string) => void;
   setModel: (model: string) => void;
-  setViewMode: (viewMode: 'list' | 'grid' | 'box') => void;
+  setViewMode: (viewMode: 'linear' | 'grid' | 'triple') => void;
   setDifficulty: (difficulty: string) => void;
+  setIsPYQ: (isPYQ: boolean) => void;
+  setPyqYear: (year: string) => void;
+  setQuestionType: (type: string) => void;
+  setExamFormat: (format: string) => void;
+  setIsSmartPanelMode: (isSmartPanelMode: boolean) => void;
+  setWhiteboardMode: (mode: 'none' | 'side' | 'slide') => void;
   setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
   setSelectedOption: (questionId: string, option: string) => void;
+  setShowHint: (questionId: string, show: boolean) => void;
   generateQuestions: (apiKey: string) => Promise<void>;
   analyzeScore: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
@@ -52,13 +70,20 @@ export const usePracticeStore = create<PracticeState>()(
       examType: 'General',
       classLevel: 'Class 12',
       model: 'gemini-2.5-flash',
-      viewMode: 'list',
+      viewMode: 'linear',
       difficulty: 'Medium',
+      isPYQ: false,
+      pyqYear: '2024',
+      questionType: 'Mixed',
+      examFormat: 'Board exam format',
+      isSmartPanelMode: false,
+      whiteboardMode: 'none',
       sourceFile: null,
       questions: [],
       loading: false,
       selectedOptions: {},
       showSolutions: {},
+      showHints: {},
       analysis: null,
       analyzing: false,
 
@@ -70,6 +95,12 @@ export const usePracticeStore = create<PracticeState>()(
       setModel: (model) => set({ model }),
       setViewMode: (viewMode) => set({ viewMode }),
       setDifficulty: (difficulty) => set({ difficulty }),
+      setIsPYQ: (isPYQ) => set({ isPYQ }),
+      setPyqYear: (pyqYear) => set({ pyqYear }),
+      setQuestionType: (questionType) => set({ questionType }),
+      setExamFormat: (examFormat) => set({ examFormat }),
+      setIsSmartPanelMode: (isSmartPanelMode) => set({ isSmartPanelMode }),
+      setWhiteboardMode: (whiteboardMode) => set({ whiteboardMode }),
       setSourceFile: (sourceFile) => set({ sourceFile }),
       
       setSelectedOption: (questionId, option) => 
@@ -78,13 +109,18 @@ export const usePracticeStore = create<PracticeState>()(
           showSolutions: { ...state.showSolutions, [questionId]: true }
         })),
 
-      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, analysis: null }),
+      setShowHint: (questionId, show) =>
+        set((state) => ({
+          showHints: { ...state.showHints, [questionId]: show }
+        })),
+
+      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null }),
 
       generateQuestions: async (apiKey) => {
-        const { query, questionCount, subject, examType, classLevel, model, difficulty, sourceFile } = get();
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile } = get();
         if (!query.trim() && !sourceFile) return;
 
-        set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, analysis: null });
+        set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null });
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
@@ -97,13 +133,16 @@ export const usePracticeStore = create<PracticeState>()(
         try {
           const ai = new GoogleGenAI({ apiKey });
           
-          let prompt = `Generate ${questionCount} multiple choice questions based on this request: "${query}". 
+          let prompt = `Generate ${questionCount} questions based on this request: "${query}". 
           Subject: ${subject}
           Exam Type: ${examType}
           Class Level: ${classLevel}
           Difficulty Level: ${difficulty}
+          Question Type: ${questionType}
+          Exam Format: ${examFormat}
+          ${isPYQ ? `THIS IS A PYQ REQUEST. Generate authentic Previous Year Questions from the year ${pyqYear}.` : ''}
           
-          The questions must be authentic competitive exam questions (like NDA, JEE, NEET, UPSC, etc.) from any reputable source.
+          The questions must be authentic and well-balanced (including conceptual, numerical, diagram-based, and application questions where applicable).
           Ensure the questions are searched well and are from correct, authentic sources.
           
           ${sourceFile ? `
@@ -116,11 +155,15 @@ export const usePracticeStore = create<PracticeState>()(
           
           Each object in the array must have EXACTLY these fields:
           - "id": a unique string
-          - "question": string text of the question (can use markdown)
-          - "options": array of exactly 4 strings (can use markdown)
-          - "correctAnswer": string (must match exactly one of the options)
-          - "solution": string (detailed explanation, can use markdown)
-          - "sourceLink": string (A valid, authentic URL where this specific question or concept can be found. Do not restrict to examside.com.)`;
+          - "question": string text of the question (can use markdown, include diagram descriptions if needed)
+          - "options": array of strings (provide exactly 4 options if it's an MCQ, otherwise leave empty array [])
+          - "correctAnswer": string (must match exactly one of the options for MCQ, or the exact answer string for others)
+          - "solution": string (detailed step-by-step explanation, can use markdown)
+          - "sourceLink": string (A valid, authentic URL where this specific question or concept can be found)
+          - "difficultyBadge": string (e.g., "Easy", "Medium", "Hard", "HOTS")
+          - "topicTag": string (e.g., "Kinematics", "Organic Chemistry")
+          - "hint": string (a helpful hint to solve the question)
+          - "type": string (e.g., "MCQ", "Numerical", "Assertion Reason", "Short Answer")`;
 
           const contents: any = [];
           
@@ -191,10 +234,11 @@ export const usePracticeStore = create<PracticeState>()(
           
           Please provide an advanced score analysis formatted in Markdown. Include:
           1. **Overall Performance Summary**: A brief, encouraging overview of how they did.
-          2. **Strong Concepts**: Identify the topics or types of questions they excelled at.
-          3. **Weaker Concepts**: Identify the specific areas where they struggled or made mistakes.
-          4. **Actionable Advice & Tips**: Provide concrete study tips and strategies to improve on the weaker concepts.
-          5. **Suggested Next Steps**: Recommend specific types of questions or topics they should practice next to strengthen their understanding.
+          2. **Difficulty Breakdown**: Analyze their performance across different difficulty levels.
+          3. **Strong Concepts**: Identify the topics or types of questions they excelled at.
+          4. **Weaker Concepts**: Identify the specific areas where they struggled or made mistakes.
+          5. **Actionable Advice & Tips**: Provide concrete study tips and strategies to improve on the weaker concepts.
+          6. **Suggested Next Steps**: Recommend specific types of questions or topics they should practice next to strengthen their understanding.
           
           Keep the tone constructive, educational, and motivating.`;
 
@@ -219,7 +263,12 @@ export const usePracticeStore = create<PracticeState>()(
         classLevel: state.classLevel,
         model: state.model,
         viewMode: state.viewMode,
-        difficulty: state.difficulty
+        difficulty: state.difficulty,
+        isPYQ: state.isPYQ,
+        pyqYear: state.pyqYear,
+        questionType: state.questionType,
+        examFormat: state.examFormat,
+        isSmartPanelMode: state.isSmartPanelMode
       }),
     }
   )

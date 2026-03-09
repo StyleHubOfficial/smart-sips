@@ -4,7 +4,7 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Smart Sunrise v2.0",
+    title: "Smart Sunrise v2.5",
     content: "Welcome to the Advanced Edition! We've upgraded our AI engines and added powerful new laboratory tools.",
     icon: Sparkles,
     color: "#00F0FF",
@@ -40,10 +40,123 @@ const steps = [
   }
 ];
 
+const upcomingFeatures = [
+  {
+    id: 'target-management',
+    title: "AI Teaching Target Management System",
+    icon: BrainCircuit,
+    color: "#00F0FF",
+    description: `A powerful administration system designed to help schools manage teaching progress intelligently.
+Administrators can assign weekly or monthly syllabus targets to individual teachers or entire departments. The system continuously analyzes uploaded teaching content using AI to estimate real progress and compare it with assigned goals.
+Key Capabilities:
+• Assign syllabus targets per teacher or per class
+• Track real-time teaching progress
+• AI-based syllabus completion analysis
+• Smart alerts for delayed chapters
+• Performance monitoring for teachers
+• Intelligent reminders and guidance notifications
+This system transforms the platform into an AI-powered academic management system for smart classrooms.`
+  },
+  {
+    id: 'admin-dashboard',
+    title: "Advanced Admin Dashboard",
+    icon: LayoutGrid,
+    color: "#B026FF",
+    description: `A futuristic control center that provides administrators with complete visibility over teaching activities, syllabus completion, and classroom performance.
+The dashboard displays real-time analytics and visual insights that help school management monitor academic progress efficiently.
+Key Capabilities:
+• Real-time teacher activity monitoring
+• Class-wise and subject-wise progress tracking
+• Teaching performance analytics
+• AI-generated insights and recommendations
+• Interactive progress graphs and charts
+• Notification broadcasting system
+The dashboard is designed with a premium interface optimized for large displays and administrative control.`
+  },
+  {
+    id: 'timetable-automation',
+    title: "AI Timetable & Lesson Planning Automation",
+    icon: Zap,
+    color: "#10B981",
+    description: `An intelligent scheduling and planning system that automatically organizes teaching activities for the entire school.
+The AI analyzes available teachers, subjects, syllabus requirements, and exam timelines to create optimized weekly timetables and structured lesson plans.
+Key Capabilities:
+• Automatic timetable generation
+• Conflict-free teacher scheduling
+• AI-generated lesson plans for each topic
+• Smart integration with simulations and diagrams
+• Syllabus completion prediction
+• Adaptive planning before exams
+This feature ensures efficient academic planning while reducing manual workload for administrators and teachers.`
+  },
+  {
+    id: 'slide-whiteboard',
+    title: "Slide Whiteboard Mode (Presentation Solver)",
+    icon: MonitorPlay,
+    color: "#FACC15",
+    description: `🔹 Brief Description
+A presentation-style question solving mode where each question becomes a teaching slide with a fully interactive whiteboard. Teachers can write, draw, highlight, and annotate directly beside or on top of the question while explaining the solution.
+Questions appear one-by-one or two-per-slide, allowing teachers to move through them like a presentation while solving problems step-by-step. This mode transforms Practice Arena into a live classroom solving environment.
+Key Highlights
+• Slide-based question solving
+• Write directly on question
+• Full-screen teaching mode
+• Next / previous slide navigation
+• Multi-layer annotations
+• Smart panel friendly interface
+• Save solved question slides`
+  },
+  {
+    id: 'side-whiteboard',
+    title: "Side Whiteboard Mode (Inline Question Solver)",
+    icon: GitGraph,
+    color: "#EF4444",
+    description: `🔹 Brief Description
+A powerful inline whiteboard mode that allows teachers to solve and explain questions directly while viewing the question list. When activated, a smooth collapsible digital whiteboard appears beside the questions, allowing teachers to write, draw diagrams, or explain concepts in real time while scrolling through questions.
+The whiteboard can be expanded, collapsed, or resized, ensuring flexible teaching during classroom discussions. This feature is optimized for smart panels and classroom teaching, making question solving interactive and visual.
+Key Highlights
+• Collapsible side whiteboard
+• Smooth scrolling question list
+• Diagram drawing tools
+• Math writing support
+• Instant erase and undo
+• Smart panel optimized layout
+• Save explanation as image/PDF`
+  },
+  {
+    id: 'smart-dashboard',
+    title: "🚀 Smart Classroom Dashboard (v3.0)",
+    icon: LayoutGrid,
+    color: "#3B82F6",
+    description: `A completely redesigned Smart Classroom Dashboard that acts as the central control screen for the entire learning platform. This dashboard is designed for public classroom display on smart panels, allowing teachers and students to instantly access educational resources and AI-powered tools.
+The interface is extremely smooth, professional, and visually engaging, making it ideal as the main landing page of the platform.
+Key Highlights
+• Ultra-smooth and professional UI optimized for smart panels
+• Intelligent content discovery with advanced filters
+• AI-generated thumbnails and smart topic formatting
+• Automatic content organization for better readability
+• Smart panel presentation mode for classroom use`
+  },
+  {
+    id: 'copilot-panel',
+    title: "🧠 AI Classroom Copilot Panel",
+    icon: BrainCircuit,
+    color: "#8B5CF6",
+    description: `An advanced AI assistant integrated directly into the dashboard that continuously analyzes uploaded classroom content and automatically suggests useful teaching resources.
+The system intelligently detects topics and recommends tools such as:
+• practice quizzes
+• concept diagrams
+• physics simulations
+• AI lesson plans
+This transforms the platform into a real-time AI teaching assistant, helping teachers instantly generate interactive learning materials.`
+  }
+];
+
 export default function Tutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<typeof upcomingFeatures[0] | null>(null);
   const [accessCode, setAccessCode] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -219,46 +332,43 @@ export default function Tutorial() {
                   </form>
                 ) : (
                   <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                    <h4 className="text-white font-bold text-lg">🚀 Smart Sunrise v2.0</h4>
-                    
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
-                      <div className="flex items-center gap-3 text-[#00F0FF] font-bold">
-                        <BrainCircuit className="w-5 h-5" />
-                        AI Teaching Target Management System
+                    {!selectedFeature ? (
+                      <>
+                        <h4 className="text-white font-bold text-lg">🚀 Smart Sunrise v2.5</h4>
+                        {upcomingFeatures.map((feature) => (
+                          <button
+                            key={feature.id}
+                            onClick={() => setSelectedFeature(feature)}
+                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left group"
+                          >
+                            <div className="flex items-center gap-3 font-bold" style={{ color: feature.color }}>
+                              <feature.icon className="w-5 h-5" />
+                              {feature.title}
+                            </div>
+                          </button>
+                        ))}
+                        <p className="text-xs text-gray-500 pt-2 italic">Result: AI Smart School Operating System</p>
+                      </>
+                    ) : (
+                      <div className="space-y-4">
+                        <button 
+                          onClick={() => setSelectedFeature(null)}
+                          className="text-gray-500 hover:text-white text-sm flex items-center gap-1"
+                        >
+                          <ChevronLeft className="w-4 h-4" /> Back to Roadmap
+                        </button>
+                        <h4 className="text-xl font-bold" style={{ color: selectedFeature.color }}>{selectedFeature.title}</h4>
+                        <div className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
+                          {selectedFeature.description}
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-400">Intelligent administration for managing teaching progress, syllabus targets, and real-time performance analytics.</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
-                      <div className="flex items-center gap-3 text-[#B026FF] font-bold">
-                        <LayoutGrid className="w-5 h-5" />
-                        Advanced Admin Dashboard
-                      </div>
-                      <p className="text-xs text-gray-400">Futuristic control center for visibility over teaching activities, syllabus completion, and classroom performance.</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
-                      <div className="flex items-center gap-3 text-[#10B981] font-bold">
-                        <Zap className="w-5 h-5" />
-                        AI Timetable & Lesson Planning Automation
-                      </div>
-                      <p className="text-xs text-gray-400">Intelligent scheduling and planning system that automatically organizes teaching activities for the entire school.</p>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-2">
-                      <div className="flex items-center gap-3 text-[#FACC15] font-bold">
-                        <MonitorPlay className="w-5 h-5" />
-                        🚀 AI Teacher Command Center (v3.0)
-                      </div>
-                      <p className="text-xs text-gray-400">A futuristic classroom command center with AI lesson suggestions, real-time syllabus progress, and smart teaching insights.</p>
-                    </div>
-                    
-                    <p className="text-xs text-gray-500 pt-2 italic">Result: AI Smart School Operating System</p>
+                    )}
 
                     <button 
                       onClick={() => {
                         setIsUnlocked(false);
                         setShowUpcoming(false);
+                        setSelectedFeature(null);
                       }}
                       className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all"
                     >
