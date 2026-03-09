@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -22,6 +22,45 @@ export default function Practice() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [slideModeConfig, setSlideModeConfig] = useState<{ questionsPerSlide: 1 | 2, overlay: boolean }>({ questionsPerSlide: 1, overlay: false });
+  const [slideWhiteboardData, setSlideWhiteboardData] = useState<Record<number, ImageData>>({});
+  const [sideWhiteboardData, setSideWhiteboardData] = useState<ImageData | undefined>(undefined);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(66); // percentage
+  const [isResizing, setIsResizing] = useState(false);
+
+  const startResizing = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = ((window.innerWidth - e.clientX) / window.innerWidth) * 100;
+      if (newWidth > 20 && newWidth < 80) {
+        setSideWhiteboardWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => setIsResizing(false);
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  useEffect(() => {
+    if (whiteboardMode !== 'none') {
+      setShowFullscreenPrompt(true);
+      const timer = setTimeout(() => setShowFullscreenPrompt(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [whiteboardMode]);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
@@ -607,17 +646,17 @@ export default function Practice() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setWhiteboardMode(whiteboardMode === 'side' ? 'none' : 'side')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${whiteboardMode === 'side' ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/50' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${whiteboardMode === 'side' ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.4)]' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
               >
-                <LayoutPanelLeft className="w-4 h-4" />
-                Side Whiteboard
+                <LayoutPanelLeft className="w-5 h-5" />
+                Open Whiteboard in Side
               </button>
               <button
                 onClick={() => setWhiteboardMode(whiteboardMode === 'slide' ? 'none' : 'slide')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${whiteboardMode === 'slide' ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/50' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${whiteboardMode === 'slide' ? 'bg-[#B026FF] text-white shadow-[0_0_20px_rgba(176,38,255,0.4)]' : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'}`}
               >
-                <Presentation className="w-4 h-4" />
-                Slide Mode
+                <Presentation className="w-5 h-5" />
+                Open Questions with Whiteboard
               </button>
             </div>
             
@@ -668,64 +707,219 @@ export default function Practice() {
                   <button onClick={() => addNotification('info', 'Worksheet Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Export as Worksheet
                   </button>
+                  <button onClick={() => addNotification('info', 'Exporting solved slides...')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <Presentation className="w-4 h-4" /> Export Solved Slides
+                  </button>
+                  <button onClick={() => addNotification('info', 'Exporting solved questions...')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" /> Export Solved Questions
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
+          {showFullscreenPrompt && (
+            <motion.div 
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] bg-[#00F0FF] text-black px-6 py-3 rounded-2xl font-bold shadow-[0_0_30px_rgba(0,240,255,0.4)] flex items-center gap-3"
+            >
+              <Maximize2 className="w-5 h-5" />
+              Please use Fullscreen mode for the best whiteboard experience
+              <button onClick={() => setShowFullscreenPrompt(false)} className="ml-4 p-1 hover:bg-black/10 rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+
           {whiteboardMode === 'side' ? (
-            <div className="flex flex-col lg:flex-row gap-6 h-[800px]">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="fixed inset-0 z-50 bg-[#0a0b14] flex overflow-hidden"
+            >
               {/* Left side: Questions */}
-              <div className="w-full lg:w-1/3 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-                {questions.map((q, index) => renderQuestionCard(q, index))}
-              </div>
-              {/* Right side: Whiteboard */}
-              <div className="w-full lg:w-2/3 h-full">
-                <Whiteboard onClose={() => setWhiteboardMode('none')} className="h-full" />
-              </div>
-            </div>
-          ) : whiteboardMode === 'slide' ? (
-            <div className="flex flex-col h-[80vh] min-h-[600px] bg-[#0f172a] rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
-              {/* Slide Navigation Bar */}
-              <div className="flex items-center justify-between p-4 bg-black/40 border-b border-white/10">
-                <div className="flex items-center gap-4">
-                  <span className="text-white font-medium">Slide {currentSlide + 1} of {questions.length}</span>
+              <div 
+                className="h-full border-r border-white/10 overflow-y-auto p-6 bg-black/40 custom-scrollbar flex flex-col"
+                style={{ width: `${100 - sideWhiteboardWidth}%` }}
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#00F0FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
+                      <List className="w-5 h-5 text-[#00F0FF]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-display font-bold text-white">Question List</h3>
+                      <p className="text-xs text-gray-500">Scroll to solve</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="space-y-6 flex-1">
+                  {questions.map((q, index) => (
+                    <div key={q.id} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                      {renderQuestionCard(q, index, true)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resizer Handle */}
+              <div 
+                onMouseDown={startResizing}
+                className={`w-1.5 h-full cursor-col-resize hover:bg-[#00F0FF] transition-colors flex items-center justify-center group ${isResizing ? 'bg-[#00F0FF]' : 'bg-white/5'}`}
+              >
+                <div className="w-0.5 h-8 bg-white/20 group-hover:bg-black/40 rounded-full"></div>
+              </div>
+
+              {/* Right side: Whiteboard */}
+              <div className="h-full flex flex-col relative" style={{ width: `${sideWhiteboardWidth}%` }}>
+                <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+                  <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
+                    Side Whiteboard Mode
+                  </div>
                   <button 
-                    onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
-                    disabled={currentSlide === 0}
-                    className="p-2 rounded-lg bg-white/5 text-white hover:bg-white/10 disabled:opacity-50 transition-colors"
+                    onClick={() => setWhiteboardMode('none')}
+                    className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <X className="w-5 h-5" />
                   </button>
+                </div>
+                <Whiteboard 
+                  className="flex-1 rounded-none border-0" 
+                  initialData={sideWhiteboardData}
+                  onSave={(data) => setSideWhiteboardData(data)}
+                />
+              </div>
+            </motion.div>
+          ) : whiteboardMode === 'slide' ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              className="flex flex-col h-[85vh] min-h-[700px] bg-[#0f172a] rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative"
+            >
+              {/* Slide Navigation Bar */}
+              <div className="flex items-center justify-between p-4 bg-black/60 border-b border-white/10 backdrop-blur-xl z-20">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-[#B026FF]/20 flex items-center justify-center border border-[#B026FF]/30">
+                      <Presentation className="w-5 h-5 text-[#B026FF]" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-bold leading-none">Presentation Mode</h4>
+                      <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">Slide {currentSlide + 1} of {Math.ceil(questions.length / slideModeConfig.questionsPerSlide)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="h-8 w-px bg-white/10 mx-2"></div>
+                  
+                  <div className="flex items-center gap-2 bg-white/5 rounded-xl p-1 border border-white/10">
+                    <button 
+                      onClick={() => setSlideModeConfig(prev => ({ ...prev, questionsPerSlide: 1 }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${slideModeConfig.questionsPerSlide === 1 ? 'bg-[#00F0FF] text-black' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      1 Q/Slide
+                    </button>
+                    <button 
+                      onClick={() => setSlideModeConfig(prev => ({ ...prev, questionsPerSlide: 2 }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${slideModeConfig.questionsPerSlide === 2 ? 'bg-[#00F0FF] text-black' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      2 Q/Slide
+                    </button>
+                  </div>
+
+                  <div className="h-8 w-px bg-white/10 mx-2"></div>
+
                   <button 
-                    onClick={() => setCurrentSlide(Math.min(questions.length - 1, currentSlide + 1))}
-                    disabled={currentSlide === questions.length - 1}
-                    className="p-2 rounded-lg bg-[#00F0FF]/20 text-[#00F0FF] hover:bg-[#00F0FF]/30 disabled:opacity-50 transition-colors"
+                    onClick={() => setSlideModeConfig(prev => ({ ...prev, overlay: !prev.overlay }))}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${slideModeConfig.overlay ? 'bg-[#00F0FF]/20 border-[#00F0FF]/50 text-[#00F0FF]' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    {slideModeConfig.overlay ? 'Overlay: ON' : 'Overlay: OFF'}
                   </button>
-                  <button onClick={() => setWhiteboardMode('none')} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-4">
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 mr-4">
+                    <button 
+                      onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+                      disabled={currentSlide === 0}
+                      className="p-2.5 rounded-xl bg-white/5 text-white hover:bg-white/10 disabled:opacity-30 transition-all border border-white/10"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div className="px-4 py-2 bg-black/40 rounded-xl border border-white/10 font-mono text-sm text-[#00F0FF]">
+                      {currentSlide + 1}
+                    </div>
+                    <button 
+                      onClick={() => setCurrentSlide(Math.min(Math.ceil(questions.length / slideModeConfig.questionsPerSlide) - 1, currentSlide + 1))}
+                      disabled={currentSlide === Math.ceil(questions.length / slideModeConfig.questionsPerSlide) - 1}
+                      className="p-2.5 rounded-xl bg-[#00F0FF]/20 text-[#00F0FF] hover:bg-[#00F0FF]/30 disabled:opacity-30 transition-all border border-[#00F0FF]/30"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => setWhiteboardMode('none')} 
+                    className="p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/20"
+                  >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
               
               {/* Slide Content */}
-              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative">
                 {/* Question Area */}
-                <div className="w-full lg:w-1/3 p-6 overflow-y-auto border-r border-white/10 bg-[#1e293b]/50 custom-scrollbar">
-                   {questions[currentSlide] && renderQuestionCard(questions[currentSlide], currentSlide, true)}
+                <div className={`${slideModeConfig.overlay ? 'absolute inset-0 z-0' : 'w-full lg:w-1/3 border-r border-white/10'} p-8 overflow-y-auto bg-black/40 custom-scrollbar`}>
+                   <div className={`space-y-8 ${slideModeConfig.overlay ? 'max-w-4xl mx-auto' : ''}`}>
+                     {questions
+                       .slice(currentSlide * slideModeConfig.questionsPerSlide, (currentSlide + 1) * slideModeConfig.questionsPerSlide)
+                       .map((q, idx) => (
+                         <div key={q.id} className="animate-fade-in-up" style={{ animationDelay: `${idx * 0.1}s` }}>
+                           {renderQuestionCard(q, currentSlide * slideModeConfig.questionsPerSlide + idx, true)}
+                         </div>
+                       ))
+                     }
+                   </div>
+                   
+                   {!slideModeConfig.overlay && (
+                     <div className="mt-12 pt-8 border-t border-white/5">
+                       <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">Slide Overview</h5>
+                       <div className="grid grid-cols-5 gap-2">
+                         {Array.from({ length: Math.ceil(questions.length / slideModeConfig.questionsPerSlide) }).map((_, i) => (
+                           <button
+                             key={i}
+                             onClick={() => setCurrentSlide(i)}
+                             className={`h-8 rounded-lg border transition-all text-[10px] font-bold ${currentSlide === i ? 'bg-[#00F0FF] border-[#00F0FF] text-black' : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30'}`}
+                           >
+                             {i + 1}
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
                 </div>
                 {/* Whiteboard Area */}
-                <div className="w-full lg:w-2/3 h-full relative">
-                  <Whiteboard className="h-full rounded-none border-0" />
+                <div className={`${slideModeConfig.overlay ? 'absolute inset-0 z-10 bg-transparent' : 'w-full lg:w-2/3'} h-full relative`}>
+                  <Whiteboard 
+                    key={`slide-${currentSlide}-${slideModeConfig.overlay}`}
+                    className={`h-full rounded-none border-0 ${slideModeConfig.overlay ? 'bg-transparent' : 'bg-[#1a1b26]'}`} 
+                    initialData={slideWhiteboardData[currentSlide]}
+                    onSave={(data) => setSlideWhiteboardData(prev => ({ ...prev, [currentSlide]: data }))}
+                  />
+                  <div className="absolute top-4 right-4 pointer-events-none z-10">
+                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
+                      {slideModeConfig.overlay ? 'Overlay Annotation Active' : 'Side-by-Side Mode'}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ) : (
             <div className={
               viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 

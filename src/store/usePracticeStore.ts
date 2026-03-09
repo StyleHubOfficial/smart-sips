@@ -182,7 +182,8 @@ export const usePracticeStore = create<PracticeState>()(
             model: selectedModel,
             contents: { parts: contents },
             config: {
-              responseMimeType: "application/json"
+              responseMimeType: "application/json",
+              tools: isPYQ ? [{ googleSearch: {} }] : undefined
             }
           });
           

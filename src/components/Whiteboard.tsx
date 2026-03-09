@@ -1,61 +1,58 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X } from 'lucide-react';
+import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2 } from 'lucide-react';
 
 interface WhiteboardProps {
   onClose?: () => void;
   className?: string;
+  initialData?: ImageData;
+  onSave?: (data: ImageData) => void;
 }
 
-export default function Whiteboard({ onClose, className = '' }: WhiteboardProps) {
+export default function Whiteboard({ onClose, className = '', initialData, onSave }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pen' | 'eraser' | 'rect' | 'circle' | 'line' | 'text'>('pen');
+  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text'>('pen');
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [snapshot, setSnapshot] = useState<ImageData | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
     const resizeCanvas = () => {
       const rect = container.getBoundingClientRect();
-      // Only resize if dimensions actually changed to prevent clearing
       if (canvas.width !== rect.width || canvas.height !== rect.height) {
-        // Save current state before resize
-        const ctx = canvas.getContext('2d');
-        let tempImageData: ImageData | null = null;
-        if (ctx && canvas.width > 0 && canvas.height > 0) {
-          tempImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        }
-
+        const tempImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         canvas.width = rect.width;
         canvas.height = rect.height;
-
-        // Restore state after resize
-        if (ctx && tempImageData) {
-          ctx.putImageData(tempImageData, 0, 0);
-        } else if (ctx) {
-          // Initial background
-          ctx.fillStyle = 'transparent';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          saveState();
-        }
+        ctx.putImageData(tempImageData, 0, 0);
       }
     };
 
     resizeCanvas();
+    
+    if (initialData) {
+      ctx.putImageData(initialData, 0, 0);
+    }
+
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  }, [initialData]);
 
   const saveState = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -63,99 +60,150 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
     newHistory.push(imageData);
     setHistory(newHistory);
     setHistoryStep(newHistory.length - 1);
+    
+    if (onSave) {
+      onSave(imageData);
+    }
   };
 
   const undo = () => {
     if (historyStep > 0) {
       const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
+      const ctx = canvas?.getContext('2d', { willReadFrequently: true });
       if (!canvas || !ctx) return;
 
-      setHistoryStep(historyStep - 1);
-      ctx.putImageData(history[historyStep - 1], 0, 0);
+      const prevStep = historyStep - 1;
+      setHistoryStep(prevStep);
+      ctx.putImageData(history[prevStep], 0, 0);
+      if (onSave) onSave(history[prevStep]);
     }
   };
 
   const redo = () => {
     if (historyStep < history.length - 1) {
       const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d');
+      const ctx = canvas?.getContext('2d', { willReadFrequently: true });
       if (!canvas || !ctx) return;
 
-      setHistoryStep(historyStep + 1);
-      ctx.putImageData(history[historyStep + 1], 0, 0);
+      const nextStep = historyStep + 1;
+      setHistoryStep(nextStep);
+      ctx.putImageData(history[nextStep], 0, 0);
+      if (onSave) onSave(history[nextStep]);
     }
   };
 
   const clear = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     saveState();
   };
 
+  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
 
+    const pos = getPos(e);
+    setStartPos(pos);
     setIsDrawing(true);
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
-    ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    // Take snapshot for shape drawing
+    setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') {
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
     
     if (tool === 'text') {
       const text = prompt('Enter text:');
       if (text) {
         ctx.font = `${lineWidth * 5}px Inter, sans-serif`;
         ctx.fillStyle = color;
-        ctx.fillText(text, clientX - rect.left, clientY - rect.top);
+        ctx.fillText(text, pos.x, pos.y);
         saveState();
       }
       setIsDrawing(false);
     }
   };
 
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) => {
+    const headlen = 15;
+    const angle = Math.atan2(toY - fromY, toX - fromX);
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  };
+
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
     
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
+    if (!canvas || !ctx || !snapshot) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const pos = getPos(e);
 
-    if (tool === 'pen' || tool === 'eraser') {
-      ctx.lineTo(clientX - rect.left, clientY - rect.top);
-      ctx.strokeStyle = tool === 'eraser' ? '#1a1b26' : color; // Assuming dark background
-      ctx.lineWidth = tool === 'eraser' ? lineWidth * 3 : lineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      
-      if (tool === 'eraser') {
-        ctx.globalCompositeOperation = 'destination-out';
-      } else {
-        ctx.globalCompositeOperation = 'source-over';
-      }
-      
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = tool === 'highlighter' ? 0.3 : 1.0;
+    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') {
+      if (tool === 'eraser') ctx.lineWidth = lineWidth * 5;
+      ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+    } else {
+      // For shapes, restore snapshot first
+      ctx.putImageData(snapshot, 0, 0);
+      
+      if (tool === 'rect') {
+        ctx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
+      } else if (tool === 'circle') {
+        const radius = Math.sqrt(Math.pow(pos.x - startPos.x, 2) + Math.pow(pos.y - startPos.y, 2));
+        ctx.beginPath();
+        ctx.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (tool === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      } else if (tool === 'arrow') {
+        drawArrow(ctx, startPos.x, startPos.y, pos.x, pos.y);
+      }
     }
-    // For shapes (rect, circle, line), we'd typically need a temporary canvas or redraw loop.
-    // For simplicity in this implementation, we'll stick to freehand drawing and text.
-    // A full implementation would use a library like Fabric.js or Konva for complex shapes.
   };
 
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false);
       saveState();
+      setSnapshot(null);
     }
   };
 
@@ -163,30 +211,48 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
     const canvas = canvasRef.current;
     if (!canvas) return;
     
-    // Create a temporary canvas to draw background
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext('2d');
     if (tempCtx) {
-      tempCtx.fillStyle = '#1a1b26'; // Match background
+      tempCtx.fillStyle = '#1a1b26';
       tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
       tempCtx.drawImage(canvas, 0, 0);
       
       const link = document.createElement('a');
-      link.download = 'whiteboard-explanation.png';
+      link.download = `whiteboard-${Date.now()}.png`;
       link.href = tempCanvas.toDataURL('image/png');
       link.click();
     }
   };
 
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
   return (
-    <div className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl ${className}`}>
+    <div 
+      ref={containerRef}
+      className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
+    >
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-3 bg-black/40 border-b border-white/10 backdrop-blur-md">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+      <div className="flex items-center justify-between p-3 bg-black/40 border-b border-white/10 backdrop-blur-md z-10">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4">
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
+            <Highlighter className="w-5 h-5" />
           </button>
           <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
             <Eraser className="w-5 h-5" />
@@ -196,24 +262,40 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
           </button>
           
           <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+          <button onClick={() => setTool('rect')} className={`p-2 rounded-lg transition-colors ${tool === 'rect' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Rectangle">
+            <Square className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTool('circle')} className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Circle">
+            <Circle className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTool('line')} className={`p-2 rounded-lg transition-colors ${tool === 'line' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Line">
+            <Minus className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTool('arrow')} className={`p-2 rounded-lg transition-colors ${tool === 'arrow' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Arrow">
+            <ArrowUpRight className="w-5 h-5" />
+          </button>
           
-          <input 
-            type="color" 
-            value={color} 
-            onChange={(e) => setColor(e.target.value)}
-            className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-            title="Color"
-          />
+          <div className="w-px h-6 bg-white/10 mx-1"></div>
           
-          <input 
-            type="range" 
-            min="1" 
-            max="20" 
-            value={lineWidth} 
-            onChange={(e) => setLineWidth(parseInt(e.target.value))}
-            className="w-24 accent-[#00F0FF]"
-            title="Stroke Thickness"
-          />
+          <div className="flex items-center gap-2 px-2">
+            <input 
+              type="color" 
+              value={color} 
+              onChange={(e) => setColor(e.target.value)}
+              className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+              title="Color"
+            />
+            <input 
+              type="range" 
+              min="1" 
+              max="20" 
+              value={lineWidth} 
+              onChange={(e) => setLineWidth(parseInt(e.target.value))}
+              className="w-20 accent-[#00F0FF]"
+              title="Stroke Thickness"
+            />
+          </div>
           
           <div className="w-px h-6 bg-white/10 mx-1"></div>
           
@@ -225,7 +307,10 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
           </button>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <button onClick={toggleFullscreen} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Toggle Fullscreen">
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </button>
           <button onClick={clear} className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Clear All">
             <Trash2 className="w-5 h-5" />
           </button>
@@ -233,7 +318,7 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
             <Download className="w-5 h-5" />
           </button>
           {onClose && (
-            <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Close Whiteboard">
+            <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-1" title="Close Whiteboard">
               <X className="w-5 h-5" />
             </button>
           )}
@@ -241,7 +326,7 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
       </div>
 
       {/* Canvas Area */}
-      <div ref={containerRef} className="flex-1 relative cursor-crosshair touch-none">
+      <div className="flex-1 relative cursor-crosshair touch-none bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-[size:20px_20px]">
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -253,7 +338,16 @@ export default function Whiteboard({ onClose, className = '' }: WhiteboardProps)
           onTouchEnd={stopDrawing}
           className="absolute inset-0 w-full h-full"
         />
+        
+        {isFullscreen && (
+          <div className="absolute top-4 right-4 pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
+              Smart Panel Mode Active • High Precision Drawing
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
