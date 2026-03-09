@@ -1197,7 +1197,7 @@ export default function Practice() {
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
                     {dashboardFiles
-                      .filter(file => file.title.toLowerCase().includes(dashboardSearch.toLowerCase()))
+                      .filter(file => (file.title || "").toLowerCase().includes(dashboardSearch.toLowerCase()))
                       .map((file) => (
                       <button
                         key={file.id}

@@ -466,7 +466,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
   const filteredContent = content.filter((item) => {
     const meta: any = item.context?.custom || item.context || {};
-    const title = meta.title || item.public_id;
+    const title = meta.title || item.public_id || "";
     const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClass = selectedClass === "All" || meta.class === selectedClass;
     const matchesSubject = selectedSubject === "All" || meta.subject === selectedSubject;
@@ -476,8 +476,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   }).sort((a, b) => {
     const metaA: any = a.context?.custom || a.context || {};
     const metaB: any = b.context?.custom || b.context || {};
-    const titleA = (metaA.title || a.public_id).toLowerCase();
-    const titleB = (metaB.title || b.public_id).toLowerCase();
+    const titleA = (metaA.title || a.public_id || "").toLowerCase();
+    const titleB = (metaB.title || b.public_id || "").toLowerCase();
     const dateA = new Date(a.created_at).getTime();
     const dateB = new Date(b.created_at).getTime();
 
