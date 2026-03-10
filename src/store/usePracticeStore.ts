@@ -39,6 +39,8 @@ interface PracticeState {
   selectedOptions: Record<string, string>;
   showSolutions: Record<string, boolean>;
   showHints: Record<string, boolean>;
+  showSourceLinks: boolean;
+  stepReveals: Record<string, number>;
   analysis: string | null;
   analyzing: boolean;
   
@@ -62,7 +64,11 @@ interface PracticeState {
   setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
   setSelectedOption: (questionId: string, option: string) => void;
   setShowHint: (questionId: string, show: boolean) => void;
+  setShowSolution: (questionId: string, show: boolean) => void;
+  setShowSourceLinks: (show: boolean) => void;
+  setStepReveal: (questionId: string, step: number) => void;
   generateQuestions: (apiKey: string) => Promise<void>;
+  generateSimilarQuestions: (apiKey: string, question: Question, type: 'ai' | 'pyq' | 'search') => Promise<void>;
   analyzeScore: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
 }
@@ -93,6 +99,8 @@ export const usePracticeStore = create<PracticeState>()(
       selectedOptions: {},
       showSolutions: {},
       showHints: {},
+      showSourceLinks: false,
+      stepReveals: {},
       analysis: null,
       analyzing: false,
 
@@ -117,8 +125,7 @@ export const usePracticeStore = create<PracticeState>()(
       
       setSelectedOption: (questionId, option) => 
         set((state) => ({
-          selectedOptions: { ...state.selectedOptions, [questionId]: option },
-          showSolutions: { ...state.showSolutions, [questionId]: true }
+          selectedOptions: { ...state.selectedOptions, [questionId]: option }
         })),
 
       setShowHint: (questionId, show) =>
@@ -126,7 +133,19 @@ export const usePracticeStore = create<PracticeState>()(
           showHints: { ...state.showHints, [questionId]: show }
         })),
 
-      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null }),
+      setShowSolution: (questionId, show) =>
+        set((state) => ({
+          showSolutions: { ...state.showSolutions, [questionId]: show }
+        })),
+
+      setShowSourceLinks: (show) => set({ showSourceLinks: show }),
+
+      setStepReveal: (questionId, step) =>
+        set((state) => ({
+          stepReveals: { ...state.stepReveals, [questionId]: step }
+        })),
+
+      clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null }),
 
       generateQuestions: async (apiKey) => {
         const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise } = get();
@@ -194,6 +213,7 @@ export const usePracticeStore = create<PracticeState>()(
           - "sourceLink": string (A valid, authentic URL where this specific question or concept can be found)
           - "difficultyBadge": string (e.g., "Easy", "Medium", "Hard", "HOTS")
           - "topicTag": string (e.g., "Kinematics", "Organic Chemistry")
+          - "pyqYear": string (If this is a PYQ, mention the year and exam, e.g., "JEE Main 2024". Otherwise, leave empty string "")
           - "hint": string (a helpful hint to solve the question)
           - "type": string (e.g., "MCQ", "Numerical", "Assertion Reason", "Short Answer")`;
 
@@ -214,8 +234,7 @@ export const usePracticeStore = create<PracticeState>()(
             model: selectedModel,
             contents: { parts: contents },
             config: {
-              responseMimeType: "application/json",
-              tools: isPYQ ? [{ googleSearch: {} }] : undefined
+              responseMimeType: "application/json"
             }
           });
           
@@ -233,6 +252,99 @@ export const usePracticeStore = create<PracticeState>()(
           set({ questions: parsedQuestions, loading: false });
         } catch (error) {
           console.error('Error fetching questions:', error);
+          set({ loading: false });
+          throw error;
+        }
+      },
+
+      generateSimilarQuestions: async (apiKey, question, type) => {
+        const { subject, examType, classLevel, model, difficulty, questionType, examFormat } = get();
+        
+        set({ loading: true });
+
+        let selectedModel = model;
+        const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
+        if (!validModels.includes(selectedModel)) {
+          selectedModel = 'gemini-2.5-flash';
+          set({ model: selectedModel });
+        }
+
+        try {
+          const genAI = new GoogleGenAI({ apiKey });
+          
+          let prompt = `
+          Generate 5 similar questions based on the following original question:
+          
+          Original Question: "${question.question}"
+          Original Correct Answer: "${question.correctAnswer}"
+          Original Topic: "${question.topicTag}"
+          Original Difficulty: "${question.difficultyBadge}"
+          
+          Context:
+          Subject: ${subject}
+          Exam Type: ${examType}
+          Class Level: ${classLevel}
+          Difficulty Level: ${difficulty}
+          Question Type: ${questionType}
+          Exam Format: ${examFormat}
+          `;
+
+          if (type === 'pyq') {
+            prompt += `\nTHIS IS A PYQ REQUEST. Generate authentic Previous Year Questions that are similar to the original question.`;
+          } else if (type === 'search') {
+            prompt += `\nUse the googleSearch tool to find recent or real-world examples similar to this question.`;
+          } else {
+            prompt += `\nGenerate AI-crafted questions that test the same concept but with different values, scenarios, or phrasing.`;
+          }
+
+          prompt += `
+          
+          CRITICAL INSTRUCTION: You MUST return ONLY a valid JSON array of objects. Do not include any conversational text, markdown formatting, or explanations outside the JSON array.
+          
+          Each object in the array must have EXACTLY these fields:
+          - "id": a unique string
+          - "question": string text of the question (can use markdown, include diagram descriptions if needed)
+          - "options": array of strings (provide exactly 4 options if it's an MCQ, otherwise leave empty array [])
+          - "correctAnswer": string (must match exactly one of the options for MCQ, or the exact answer string for others)
+          - "solution": string (detailed step-by-step explanation, can use markdown)
+          - "sourceLink": string (A valid, authentic URL where this specific question or concept can be found)
+          - "difficultyBadge": string (e.g., "Easy", "Medium", "Hard", "HOTS")
+          - "topicTag": string (e.g., "Kinematics", "Organic Chemistry")
+          - "pyqYear": string (If this is a PYQ, mention the year and exam, e.g., "JEE Main 2024". Otherwise, leave empty string "")
+          - "hint": string (a helpful hint to solve the question)
+          - "type": string (e.g., "MCQ", "Numerical", "Assertion Reason", "Short Answer")`;
+
+          const config: any = {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+          };
+
+          if (type === 'pyq' || type === 'search') {
+            config.tools = [{ googleSearch: {} }];
+          }
+
+          const response = await genAI.models.generateContent({
+            model: selectedModel,
+            contents: prompt,
+            config
+          });
+
+          const text = response.text || '';
+          const jsonMatch = text.match(/\[[\s\S]*\]/);
+          
+          if (!jsonMatch) {
+            console.error("Failed to parse JSON from response:", text);
+            throw new Error("Invalid response format from AI");
+          }
+
+          const generatedQuestions = JSON.parse(jsonMatch[0]);
+          set((state) => ({ 
+            questions: [...state.questions, ...generatedQuestions],
+            loading: false 
+          }));
+        } catch (error) {
+          console.error('Error generating similar questions:', error);
           set({ loading: false });
           throw error;
         }

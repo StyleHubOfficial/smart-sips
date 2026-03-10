@@ -228,16 +228,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
+    setIsFullscreen(!isFullscreen);
   };
 
   return (
@@ -245,8 +236,31 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ref={containerRef}
       className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
     >
-      {/* Toolbar */}
-      <div className="flex items-center justify-between p-3 bg-black/40 border-b border-white/10 backdrop-blur-md z-10">
+      {/* Canvas Area */}
+      <div className="flex-1 relative cursor-crosshair touch-none bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-[size:20px_20px]">
+        <canvas
+          ref={canvasRef}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseOut={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          className="absolute inset-0 w-full h-full"
+        />
+        
+        {isFullscreen && (
+          <div className="absolute top-4 right-4 pointer-events-none">
+            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
+              Smart Panel Mode Active • High Precision Drawing
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Toolbar (Shifted to Bottom) */}
+      <div className="flex items-center justify-between p-3 bg-black/40 border-t border-white/10 backdrop-blur-md z-10">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4">
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
@@ -254,9 +268,25 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
             <Highlighter className="w-5 h-5" />
           </button>
-          <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
-            <Eraser className="w-5 h-5" />
-          </button>
+          
+          {/* Advanced Eraser */}
+          <div className="relative group flex items-center">
+            <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
+              <Eraser className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
+              <button onClick={() => { setTool('eraser'); setLineWidth(20); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
+                Large Eraser
+              </button>
+              <button onClick={() => { setTool('eraser'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
+                Small Eraser
+              </button>
+              <button onClick={clear} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5">
+                Erase All
+              </button>
+            </div>
+          </div>
+
           <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">
             <Type className="w-5 h-5" />
           </button>
@@ -323,29 +353,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             </button>
           )}
         </div>
-      </div>
-
-      {/* Canvas Area */}
-      <div className="flex-1 relative cursor-crosshair touch-none bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-[size:20px_20px]">
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseOut={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className="absolute inset-0 w-full h-full"
-        />
-        
-        {isFullscreen && (
-          <div className="absolute top-4 right-4 pointer-events-none">
-            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
-              Smart Panel Mode Active • High Precision Drawing
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
