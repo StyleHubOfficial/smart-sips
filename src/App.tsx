@@ -49,54 +49,9 @@ export default function App() {
     }
   };
 
-  if (showEntryAnimation) {
-    return <IntroSequence onComplete={() => setShowEntryAnimation(false)} />;
-  }
-
-  if (false && !isUnlocked) {
-    return (
-      <div className="fixed inset-0 bg-[var(--color-background)] flex items-center justify-center z-50 p-6">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md glass-panel rounded-3xl p-8 border border-white/10 shadow-2xl relative z-10"
-        >
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 rounded-2xl flex items-center justify-center mb-4 border border-white/10">
-              <span className="text-3xl">🔐</span>
-            </div>
-            <h2 className="text-3xl font-display font-bold text-white mb-2">Access Required</h2>
-            <p className="text-gray-400 text-sm">Please enter your access code to enter Smart Sunrise v2.5</p>
-          </div>
-
-          <form onSubmit={handleUnlock} className="space-y-4">
-            <input 
-              type="password"
-              value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value)}
-              placeholder="Enter Access Code"
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 text-white text-center text-lg focus:outline-none focus:border-[#00F0FF]/50 transition-all"
-              autoFocus
-            />
-            <button 
-              type="submit"
-              className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] transition-all active:scale-95"
-            >
-              Enter Platform
-            </button>
-          </form>
-          
-          <p className="text-center text-gray-500 text-[10px] mt-8 uppercase tracking-widest">
-            Smart Sunrise Advanced AI Edition
-          </p>
-        </motion.div>
-      </div>
-    );
-  }
-
   return (
     <MotionConfig reducedMotion={isSimpleMode ? "always" : "never"}>
+      {showEntryAnimation && <IntroSequence onComplete={() => setShowEntryAnimation(false)} />}
       <BrowserRouter>
         <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative overflow-hidden ${isSmartPanelMode ? 'text-lg' : ''}`}>
           {/* Animated background grid lines */}
