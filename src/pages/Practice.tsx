@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -34,6 +34,35 @@ export default function Practice() {
   const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
+  const [isLiveGeneration, setIsLiveGeneration] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [targetTimerSeconds, setTargetTimerSeconds] = useState(0);
+  const [showTimerModal, setShowTimerModal] = useState(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => {
+          if (targetTimerSeconds > 0 && prev >= targetTimerSeconds) {
+            setIsTimerRunning(false);
+            addNotification('info', 'Timer reached target time!');
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, targetTimerSeconds]);
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const startResizing = (e: React.MouseEvent) => {
     setIsResizing(true);
@@ -403,7 +432,18 @@ export default function Practice() {
             {showSolutions[q.id] ? (
               <Markdown>{q.solution}</Markdown>
             ) : (
-              <Markdown>{q.solution.split('\n').filter((s: string) => s.trim() !== '').slice(0, stepReveals[q.id] || 0).join('\n\n')}</Markdown>
+              <Markdown>
+                {(() => {
+                  // More robust splitting that handles various step formats
+                  const steps = q.solution.split(/\n(?=\s*(?:\d+[\.\)]|Step|Phase|Part|•|\*))/i).filter(s => s.trim());
+                  if (steps.length <= 1) {
+                    // Fallback: split by sentences if no step markers found
+                    const sentences = q.solution.split(/(?<=[.!?])\s+/);
+                    return sentences.slice(0, (stepReveals[q.id] || 0) * 2).join(' ');
+                  }
+                  return steps.slice(0, stepReveals[q.id] || 0).join('\n\n');
+                })()}
+              </Markdown>
             )}
           </div>
 
@@ -816,6 +856,26 @@ export default function Practice() {
           <label className="flex items-center gap-2 cursor-pointer ml-4">
             <input 
               type="checkbox" 
+              checked={showSourceLinks}
+              onChange={(e) => setShowSourceLinks(e.target.checked)}
+              className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0"
+            />
+            <span className="text-sm font-medium text-white">Source Links</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer ml-4">
+            <input 
+              type="checkbox" 
+              checked={isLiveGeneration}
+              onChange={(e) => setIsLiveGeneration(e.target.checked)}
+              className="w-5 h-5 rounded border-white/10 bg-black/40 text-emerald-400 focus:ring-emerald-400 focus:ring-offset-0"
+            />
+            <span className="text-sm font-medium text-white">Live Generation</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer ml-4">
+            <input 
+              type="checkbox" 
               checked={isSmartPanelMode}
               onChange={(e) => setIsSmartPanelMode(e.target.checked)}
               className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#B026FF] focus:ring-[#B026FF] focus:ring-offset-0"
@@ -893,10 +953,21 @@ export default function Practice() {
             </div>
             
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300">
-                <Timer className="w-4 h-4 text-[#00F0FF]" />
-                <span className="font-mono text-sm">00:00:00</span>
+              <div 
+                onClick={() => setShowTimerModal(true)}
+                className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300 cursor-pointer hover:bg-white/5 transition-colors"
+              >
+                <Timer className={`w-4 h-4 ${isTimerRunning ? 'text-emerald-400 animate-pulse' : 'text-[#00F0FF]'}`} />
+                <span className="font-mono text-sm">{formatTime(timerSeconds)}</span>
               </div>
+              
+              <button
+                onClick={() => setIsTimerRunning(!isTimerRunning)}
+                className={`p-2 rounded-lg border transition-all ${isTimerRunning ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}
+              >
+                {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </button>
+            </div>
 
               <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
                 <button 
@@ -950,7 +1021,6 @@ export default function Practice() {
                 </div>
               </div>
             </div>
-          </div>
         )}
 
         <AnimatePresence mode="wait">
@@ -1180,27 +1250,29 @@ export default function Practice() {
             )}
 
             {!analysis && (
-              <button 
-                onClick={async () => {
-                  let apiKey = '';
-                  if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-                    apiKey = process.env.GEMINI_API_KEY;
-                  }
-                  if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-                    apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                  }
-                  if (!apiKey) {
-                    addNotification('error', 'Gemini API key is missing');
-                    return;
-                  }
-                  await analyzeScore(apiKey);
-                }}
-                disabled={analyzing || Object.keys(selectedOptions).length === 0}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
-              >
-                {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
-                {analyzing ? 'Analyzing Performance...' : 'Analyze Score & Get Tips'}
-              </button>
+              <div className="mb-12">
+                <button 
+                  onClick={async () => {
+                    let apiKey = '';
+                    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+                      apiKey = process.env.GEMINI_API_KEY;
+                    }
+                    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+                      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+                    }
+                    if (!apiKey) {
+                      addNotification('error', 'Gemini API key is missing');
+                      return;
+                    }
+                    await analyzeScore(apiKey);
+                  }}
+                  disabled={analyzing || Object.keys(selectedOptions).length === 0}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
+                >
+                  {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
+                  {analyzing ? 'Analyzing Performance...' : 'Analyze Score & Get Tips'}
+                </button>
+              </div>
             )}
 
             {analysis && (

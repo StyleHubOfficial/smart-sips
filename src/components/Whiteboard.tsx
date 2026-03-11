@@ -13,7 +13,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text'>('pen');
+  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase'>('pen');
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
   const [history, setHistory] = useState<ImageData[]>([]);
@@ -125,7 +125,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     // Take snapshot for shape drawing
     setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') {
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'selection-erase') {
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
     }
@@ -177,6 +177,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       if (tool === 'eraser') ctx.lineWidth = lineWidth * 5;
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+    } else if (tool === 'selection-erase') {
+      ctx.putImageData(snapshot, 0, 0);
+      ctx.fillStyle = '#1a1b26';
+      ctx.fillRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
     } else {
       // For shapes, restore snapshot first
       ctx.putImageData(snapshot, 0, 0);
@@ -280,6 +284,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               </button>
               <button onClick={() => { setTool('eraser'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
                 Small Eraser
+              </button>
+              <button onClick={() => setTool('selection-erase')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
+                Selection Erase
               </button>
               <button onClick={clear} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5">
                 Erase All

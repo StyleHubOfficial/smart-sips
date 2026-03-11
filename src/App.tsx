@@ -23,7 +23,7 @@ import Tutorial from "./components/Tutorial";
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(true);
-  const [isUnlocked, setIsUnlocked] = useState(() => localStorage.getItem('sunrise_unlocked') === 'true');
+  const [isUnlocked, setIsUnlocked] = useState(true);
   const [accessCode, setAccessCode] = useState("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -82,7 +82,7 @@ export default function App() {
     );
   }
 
-  if (!isUnlocked) {
+  if (false && !isUnlocked) {
     return (
       <div className="fixed inset-0 bg-[var(--color-background)] flex items-center justify-center z-50 p-6">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>

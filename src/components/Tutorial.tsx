@@ -158,7 +158,7 @@ export default function Tutorial() {
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<typeof upcomingFeatures[0] | null>(null);
   const [accessCode, setAccessCode] = useState("");
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -298,7 +298,7 @@ export default function Tutorial() {
                   <p className="text-gray-400 text-sm">Enter the developer access code to view upcoming features roadmap.</p>
                 </div>
 
-                {!isUnlocked ? (
+                {false && !isUnlocked ? (
                   <form onSubmit={handleUnlock} className="space-y-4">
                     <div className="relative">
                       <input 

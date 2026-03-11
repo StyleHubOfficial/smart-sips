@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles } from "lucide-react";
+import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Presentation, Activity, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
@@ -112,29 +112,67 @@ const ContentCard = React.memo(({
     const isVideo = item.resource_type === 'video';
     const isPdf = item.format === 'pdf';
     
+    const neonBorderClass = size === 'lg' ? 'shadow-[0_0_15px_rgba(0,240,255,0.3)] border-[#00F0FF]/30' : 'border-white/10';
+    
     if (isImage) {
-      return <img src={item.secure_url} alt={title} className="w-full h-full object-cover" />;
+      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
     
     if (isVideo) {
       // Cloudinary video thumbnail
       const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg');
-      return <img src={thumbUrl} alt={title} className="w-full h-full object-cover" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
     
     if (isPdf) {
       // Cloudinary PDF thumbnail (first page)
       const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg');
-      return <img src={thumbUrl} alt={title} className="w-full h-full object-cover" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
     // Fallback for AI or other files
     if (isAiGenerated || size === 'lg') {
+      // Subject-based neon colors
+      const getNeonColor = (subject?: string) => {
+        const s = subject?.toLowerCase() || '';
+        if (s.includes('physic')) return 'from-[#00F0FF] to-[#0066FF]'; // Cyan/Blue
+        if (s.includes('chem')) return 'from-[#FF00E5] to-[#B026FF]'; // Pink/Purple
+        if (s.includes('math')) return 'from-[#00FF85] to-[#00A3FF]'; // Green/Blue
+        if (s.includes('bio')) return 'from-[#FFD600] to-[#FF8A00]'; // Yellow/Orange
+        return 'from-[#00F0FF] to-[#B026FF]'; // Default Neon
+      };
+
+      const neonGradient = getNeonColor(meta.subject);
+
       return (
-        <div className={`w-full h-full bg-gradient-to-br ${subjectColor} flex flex-col items-center justify-center p-2 text-center relative overflow-hidden`}>
-          <div className="absolute inset-0 bg-black/20"></div>
-          {getFileIcon(fileType)}
-          <span className={`${size === 'sm' ? 'text-[6px]' : 'text-[10px]'} font-bold text-white/60 uppercase mt-1 z-10`}>{fileType}</span>
+        <div className={`w-full h-full bg-gradient-to-br ${neonGradient} opacity-20 flex flex-col items-center justify-center p-2 text-center relative overflow-hidden group border ${neonBorderClass}`}>
+          <div className="absolute inset-0 bg-black/40"></div>
+          
+          {/* Metadata Overlay (Only for Large) */}
+          {size === 'lg' && (
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-4 z-20">
+              <div className="space-y-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
+                    {meta.class || "All Classes"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-bold text-[#00F0FF] uppercase tracking-wider">
+                    {meta.subject || "General"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-gray-400 font-medium line-clamp-1">{meta.topic || meta.description || "Educational Resource"}</p>
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                  <span className="text-[9px] text-gray-500 font-mono">{format(date, "MMM d, yyyy")}</span>
+                  <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{fileType}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`relative z-10 ${size === 'lg' ? 'group-hover:opacity-0' : ''} transition-opacity duration-300`}>
+            {getFileIcon(fileType)}
+            <span className={`${size === 'sm' ? 'text-[6px]' : 'text-[10px]'} font-bold text-white/60 uppercase mt-1 block`}>{fileType}</span>
+          </div>
           {isAiGenerated && <Sparkles className="absolute top-1 right-1 w-2.5 h-2.5 text-[#00F0FF] z-10 drop-shadow-[0_0_5px_rgba(0,240,255,0.8)]" />}
         </div>
       );
@@ -177,17 +215,25 @@ const ContentCard = React.memo(({
             target="_blank" 
             rel="noopener noreferrer"
             onClick={async (e) => {
-              if (item.resource_type === 'raw' && (item.secure_url.includes('.html') || fileType.includes('HTML'))) {
-                e.preventDefault();
+              e.preventDefault();
+              const url = item.secure_url;
+              const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+              
+              if (isHtml) {
                 try {
-                  const response = await fetch(item.secure_url);
+                  const response = await fetch(url);
+                  if (!response.ok) throw new Error('Fetch failed');
                   const text = await response.text();
                   const blob = new Blob([text], { type: 'text/html' });
                   const blobUrl = URL.createObjectURL(blob);
                   window.open(blobUrl, '_blank');
                 } catch (err) {
-                  window.open(item.secure_url, '_blank');
+                  const win = window.open(url, '_blank');
+                  if (win) win.focus();
                 }
+              } else {
+                const win = window.open(url, '_blank');
+                if (win) win.focus();
               }
             }}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
@@ -196,8 +242,28 @@ const ContentCard = React.memo(({
             <Eye className="w-4 h-4" />
           </a>
           <a 
-            href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
+            href={item.secure_url.includes('/upload/') ? item.secure_url.replace('/upload/', '/upload/fl_attachment/') : item.secure_url} 
             download
+            onClick={(e) => {
+              if (!item.secure_url.includes('/upload/')) {
+                // If not a Cloudinary URL, we can't easily force download via URL manipulation
+                // but we can try to fetch and create a blob
+                e.preventDefault();
+                fetch(item.secure_url)
+                  .then(resp => resp.blob())
+                  .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = title + '.' + (item.format || 'file');
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  })
+                  .catch(() => window.open(item.secure_url, '_blank'));
+              }
+            }}
             className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-colors text-white"
             title="Download"
           >
@@ -293,17 +359,25 @@ const ContentCard = React.memo(({
             target="_blank" 
             rel="noopener noreferrer"
             onClick={async (e) => {
-              if (item.resource_type === 'raw' && (item.secure_url.includes('.html') || fileType.includes('HTML'))) {
-                e.preventDefault();
+              e.preventDefault();
+              const url = item.secure_url;
+              const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+              
+              if (isHtml) {
                 try {
-                  const response = await fetch(item.secure_url);
+                  const response = await fetch(url);
+                  if (!response.ok) throw new Error('Fetch failed');
                   const text = await response.text();
                   const blob = new Blob([text], { type: 'text/html' });
                   const blobUrl = URL.createObjectURL(blob);
                   window.open(blobUrl, '_blank');
                 } catch (err) {
-                  window.open(item.secure_url, '_blank');
+                  const win = window.open(url, '_blank');
+                  if (win) win.focus();
                 }
+              } else {
+                const win = window.open(url, '_blank');
+                if (win) win.focus();
               }
             }}
             className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
@@ -312,8 +386,26 @@ const ContentCard = React.memo(({
             <Eye className="w-4 h-4" /> View
           </a>
           <a 
-            href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
+            href={item.secure_url.includes('/upload/') ? item.secure_url.replace('/upload/', '/upload/fl_attachment/') : item.secure_url} 
             download
+            onClick={(e) => {
+              if (!item.secure_url.includes('/upload/')) {
+                e.preventDefault();
+                fetch(item.secure_url)
+                  .then(resp => resp.blob())
+                  .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = title + '.' + (item.format || 'file');
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                  })
+                  .catch(() => window.open(item.secure_url, '_blank'));
+              }
+            }}
             className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white"
             title="Download Content"
           >
@@ -817,6 +909,59 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           ))}
         </motion.div>
       )}
+
+      {/* Visual Learning Simulations (VLS) Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-16"
+      >
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-display font-bold text-white mb-2 flex items-center gap-3">
+              <Presentation className="w-8 h-8 text-[#00F0FF]" />
+              Visual Learning <span className="text-gradient">Simulations</span> (VLS)
+            </h2>
+            <p className="text-gray-400">Interactive 3D and 2D simulations for complex concepts</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all">
+              View All
+            </button>
+            <button className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-[#00F0FF] font-bold hover:from-[#00F0FF]/30 hover:to-[#B026FF]/30 transition-all flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4" />
+              Cases
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { title: "Quantum Mechanics", subject: "Physics", icon: <Sparkles className="w-6 h-6" />, color: "from-blue-500/20 to-indigo-500/20" },
+            { title: "Organic Synthesis", subject: "Chemistry", icon: <Activity className="w-6 h-6" />, color: "from-emerald-500/20 to-teal-500/20" },
+            { title: "Neural Networks", subject: "Biology/CS", icon: <BrainCircuit className="w-6 h-6" />, color: "from-purple-500/20 to-pink-500/20" },
+            { title: "Calculus Visualizer", subject: "Mathematics", icon: <LayoutGrid className="w-6 h-6" />, color: "from-orange-500/20 to-red-500/20" }
+          ].map((vls, i) => (
+            <motion.div 
+              key={i}
+              whileHover={{ y: -5, scale: 1.02 }}
+              className="glass-panel rounded-2xl p-6 border border-white/10 group cursor-pointer relative overflow-hidden"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${vls.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+              <div className="relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-[#00F0FF] group-hover:scale-110 transition-transform duration-300">
+                  {vls.icon}
+                </div>
+                <h3 className="font-display font-bold text-lg text-white mb-1 group-hover:text-[#00F0FF] transition-colors">{vls.title}</h3>
+                <p className="text-sm text-gray-400">{vls.subject}</p>
+              </div>
+              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ArrowUpRight className="w-5 h-5 text-[#00F0FF]" />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Auto Suggest Modal */}
       <AutoSuggestModal />

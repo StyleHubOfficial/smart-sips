@@ -13,6 +13,7 @@ export interface Question {
   topicTag?: string;
   hint?: string;
   type?: string;
+  pyqYear?: string;
 }
 
 interface PracticeState {
@@ -338,7 +339,10 @@ export const usePracticeStore = create<PracticeState>()(
             throw new Error("Invalid response format from AI");
           }
 
-          const generatedQuestions = JSON.parse(jsonMatch[0]);
+          const generatedQuestions = JSON.parse(jsonMatch[0]).map((q: any) => ({
+            ...q,
+            pyqYear: q.pyqYear || (type === 'pyq' ? 'PYQ' : '')
+          }));
           set((state) => ({ 
             questions: [...state.questions, ...generatedQuestions],
             loading: false 
