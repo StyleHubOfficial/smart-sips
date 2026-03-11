@@ -341,14 +341,30 @@ const ContentCard = React.memo(({
           >
             <Eye className="w-4 h-4" /> View
           </a>
-          <a 
-            href={item.secure_url.replace('/upload/', '/upload/fl_attachment/')} 
-            download={title + '.' + (item.format || 'file')}
+          <button 
+            onClick={async (e) => {
+              e.preventDefault();
+              try {
+                const response = await fetch(item.secure_url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = title + '.' + (item.format || 'pdf');
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+              } catch (err) {
+                window.open(item.secure_url, '_blank');
+              }
+            }}
             className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white"
             title="Download Content"
           >
             <Download className="w-4 h-4" /> Download
-          </a>
+          </button>
         </div>
       </div>
     </motion.div>

@@ -14,6 +14,11 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase' | 'laser'>('pen');
+  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'lasso' | 'all'>('pixel');
+  const [showEraserMenu, setShowEraserMenu] = useState(false);
+  const [lassoPath, setLassoPath] = useState<{x: number, y: number}[]>([]);
+  const [isWiping, setIsWiping] = useState(false);
+  const [wipeProgress, setWipeProgress] = useState(0);
   const [laserPath, setLaserPath] = useState<{x: number, y: number}[]>([]);
   const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
@@ -136,11 +141,24 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     // Take snapshot for shape drawing
     setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'selection-erase' || tool === 'laser') {
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'selection-erase' || tool === 'laser') {
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
       if (tool === 'laser') {
         setLaserPath([{x: pos.x, y: pos.y}]);
+      }
+    } else if (tool === 'eraser') {
+      if (eraserMode === 'all') {
+        setIsWiping(true);
+        setWipeProgress(0);
+        return;
+      } else if (eraserMode === 'lasso') {
+        setLassoPath([pos]);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
       }
     }
     
@@ -185,10 +203,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     ctx.lineJoin = 'round';
     ctx.strokeStyle = color;
     ctx.globalAlpha = tool === 'highlighter' ? 0.3 : 1.0;
-    ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
+    ctx.globalCompositeOperation = 'source-over';
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'laser') {
-      if (tool === 'eraser') ctx.lineWidth = lineWidth * 5;
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'laser') {
       if (tool === 'laser') {
         ctx.strokeStyle = '#ff4444';
         ctx.lineWidth = 2;
@@ -199,6 +216,36 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
       ctx.shadowBlur = 0; // Reset shadow
+    } else if (tool === 'eraser') {
+      if (eraserMode === 'all') {
+        if (isWiping) {
+          const progress = Math.max(0, Math.min(1, (pos.x - startPos.x) / canvas.width));
+          setWipeProgress(progress);
+        }
+        return;
+      } else if (eraserMode === 'lasso') {
+        ctx.putImageData(snapshot, 0, 0);
+        setLassoPath(prev => [...prev, pos]);
+        ctx.beginPath();
+        if (lassoPath.length > 0) {
+          ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
+          for (let i = 1; i < lassoPath.length; i++) {
+            ctx.lineTo(lassoPath[i].x, lassoPath[i].y);
+          }
+        }
+        ctx.lineTo(pos.x, pos.y);
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        return;
+      } else {
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = eraserMode === 'stroke' ? lineWidth * 10 : lineWidth * 5;
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      }
     } else if (tool === 'selection-erase') {
       ctx.putImageData(snapshot, 0, 0);
       ctx.fillStyle = '#1a1b26';
@@ -228,6 +275,54 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false);
+      
+      if (tool === 'eraser') {
+        if (eraserMode === 'all' && isWiping) {
+          if (wipeProgress > 0.4) {
+            const canvas = canvasRef.current;
+            const ctx = canvas?.getContext('2d');
+            if (canvas && ctx) {
+              let p = wipeProgress;
+              const animate = () => {
+                p += 0.05;
+                if (p >= 1) {
+                  ctx.clearRect(0, 0, canvas.width, canvas.height);
+                  saveState();
+                  setIsWiping(false);
+                  setWipeProgress(0);
+                } else {
+                  setWipeProgress(p);
+                  requestAnimationFrame(animate);
+                }
+              };
+              requestAnimationFrame(animate);
+            }
+          } else {
+            setIsWiping(false);
+            setWipeProgress(0);
+          }
+          return;
+        } else if (eraserMode === 'lasso') {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (canvas && ctx && snapshot && lassoPath.length > 0) {
+            ctx.putImageData(snapshot, 0, 0);
+            ctx.beginPath();
+            ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
+            for (let i = 1; i < lassoPath.length; i++) {
+              ctx.lineTo(lassoPath[i].x, lassoPath[i].y);
+            }
+            ctx.closePath();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            saveState();
+            setLassoPath([]);
+          }
+          return;
+        }
+      }
+
       if (tool !== 'laser') {
         saveState();
       } else {
@@ -291,6 +386,18 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           className="absolute inset-0 w-full h-full"
         />
         
+        {isWiping && (
+          <div 
+            className="absolute top-0 bottom-0 left-0 bg-[#1a1b26] border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
+            style={{ width: `${wipeProgress * 100}%` }}
+          />
+        )}
+        {tool === 'eraser' && eraserMode === 'all' && !isWiping && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white/80 pointer-events-none animate-pulse">
+            Slide from left to right to clear entire board
+          </div>
+        )}
+        
         {isFullscreen && (
           <div className="absolute top-4 right-4 pointer-events-none">
             <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
@@ -320,21 +427,18 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
               <Eraser className="w-5 h-5" />
             </button>
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[140px]">
-              <button onClick={() => { setTool('eraser'); setLineWidth(20); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-500"></div> Large Eraser
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]">
+              <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
               </button>
-              <button onClick={() => { setTool('eraser'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Small Eraser
+              <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <Minus className="w-3 h-3" /> Stroke Eraser
               </button>
-              <button onClick={() => setTool('selection-erase')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <Square className="w-3 h-3" /> Selection Erase
+              <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <Circle className="w-3 h-3 border-dashed" /> Lasso Eraser
               </button>
-              <button onClick={() => setTool('laser')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <Sparkles className="w-3 h-3 text-red-400" /> Laser Pointer
-              </button>
-              <button onClick={clear} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
-                <Trash2 className="w-3 h-3" /> Erase All
+              <button onClick={() => { setTool('eraser'); setEraserMode('all'); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
+                <Trash2 className="w-3 h-3" /> Slide to Erase All
               </button>
             </div>
           </div>

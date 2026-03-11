@@ -19,6 +19,7 @@ import Simulator from "./pages/Simulator";
 import FlowChart from "./pages/FlowChart";
 import ConceptVisualizer from "./pages/ConceptVisualizer";
 import Tutorial from "./components/Tutorial";
+import { IntroSequence } from "./components/IntroSequence";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
@@ -38,13 +39,6 @@ export default function App() {
     }
   }, [theme]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowEntryAnimation(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (accessCode === "smart@sunrise" || accessCode === "ss123") {
@@ -56,30 +50,7 @@ export default function App() {
   };
 
   if (showEntryAnimation) {
-    return (
-      <div className="fixed inset-0 bg-[var(--color-background)] flex items-center justify-center z-50">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] blur-[100px] opacity-30 animate-pulse"></div>
-          <h1 className="text-4xl md:text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 animate-fade-in-up">
-            Smart Sunrise <span className="text-sm font-mono text-[#00F0FF] align-top ml-2">v2.5</span>
-          </h1>
-          <p className="text-center text-gray-500 text-xs mt-2 font-mono tracking-widest opacity-0 animate-fade-in" style={{ animationDelay: '1s', animationFillMode: 'forwards' }}>
-            ADVANCED AI EDITION
-          </p>
-          <div className="h-[2px] w-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mt-4 animate-expand-line mx-auto"></div>
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5, duration: 0.8, ease: "easeOut" }}
-            className="mt-6 text-center"
-          >
-            <p className="text-sm font-medium text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] tracking-wide">
-              Powered by Lakshya Bhamu...
-            </p>
-          </motion.div>
-        </div>
-      </div>
-    );
+    return <IntroSequence onComplete={() => setShowEntryAnimation(false)} />;
   }
 
   if (false && !isUnlocked) {

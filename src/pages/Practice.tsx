@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -9,6 +9,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
 import { useLocation } from 'react-router-dom';
+import confetti from 'canvas-confetti';
 
 export default function Practice() {
   const { 
@@ -44,6 +45,46 @@ export default function Practice() {
   const [vlsCases, setVlsCases] = useState(1);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const [version] = useState("Advance 2.5x");
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  useEffect(() => {
+    if (questions.length > 0 && Object.keys(selectedOptions).length === questions.length) {
+      const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
+      const percentage = (score / questions.length) * 100;
+      if (percentage >= 90 && !showCelebration) {
+        setShowCelebration(true);
+        triggerConfetti();
+        setTimeout(() => setShowCelebration(false), 3000);
+      }
+    }
+  }, [selectedOptions, questions]);
+
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#00F0FF', '#B026FF', '#FFD600']
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#00F0FF', '#B026FF', '#FFD600']
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
+  };
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -1718,6 +1759,35 @@ export default function Practice() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.2 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative z-10 flex flex-col items-center">
+              <motion.div 
+                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="w-32 h-32 bg-gradient-to-br from-[#FFD600] to-[#FF8A00] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,214,0,0.6)] mb-6 border-4 border-white/20"
+              >
+                <Award className="w-16 h-16 text-white" />
+              </motion.div>
+              <h2 className="text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] drop-shadow-[0_0_20px_rgba(0,240,255,0.5)] mb-2">
+                Excellent Performance!
+              </h2>
+              <div className="px-6 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white font-bold tracking-widest uppercase shadow-lg">
+                Top Performer
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
