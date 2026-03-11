@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
-import { usePracticeStore } from '../store/usePracticeStore';
+import { usePracticeStore, Question } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
@@ -39,6 +39,11 @@ export default function Practice() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [targetTimerSeconds, setTargetTimerSeconds] = useState(0);
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [generationMode, setGenerationMode] = useState<'live' | 'last'>('live');
+  const [showSimilarModal, setShowSimilarModal] = useState<{questionId: string, type: 'ai' | 'pyq' | 'search'} | null>(null);
+  const [vlsCases, setVlsCases] = useState(1);
+  const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
+  const [version] = useState("Advance 2.5x");
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -193,10 +198,48 @@ export default function Practice() {
     }
 
     try {
-      await generateQuestions(apiKey);
+      if (generationMode === 'live') {
+        // We can't easily stream with the current store structure without more changes
+        // but we can simulate it by fetching and then adding one by one
+        await generateQuestions(apiKey);
+        const allQs = usePracticeStore.getState().questions;
+        usePracticeStore.setState({ questions: [] });
+        for (const q of allQs) {
+          usePracticeStore.setState(state => ({ questions: [...state.questions, q] }));
+          await new Promise(r => setTimeout(r, 500));
+        }
+      } else {
+        await generateQuestions(apiKey);
+      }
     } catch (error) {
       console.error("Generation Error:", error);
       addNotification('error', 'Failed to generate questions. Please check your API key and try again.');
+    }
+  };
+
+  const handleGenerateSimilar = async (question: Question, type: 'ai' | 'pyq' | 'search') => {
+    let apiKey = '';
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      addNotification('error', 'API Key missing');
+      return;
+    }
+
+    setIsGeneratingSimilar(true);
+    try {
+      await generateSimilarQuestions(apiKey, question, type);
+      addNotification('success', 'Similar questions generated');
+    } catch (error) {
+      console.error("Similar generation error:", error);
+      addNotification('error', 'Failed to generate similar questions');
+    } finally {
+      setIsGeneratingSimilar(false);
     }
   };
 
@@ -387,30 +430,66 @@ export default function Practice() {
         </div>
       )}
 
-      <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
-        {q.hint && (
+        <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
+          {q.hint && (
+            <button 
+              onClick={() => setShowHint(q.id, !showHints[q.id])}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showHints[q.id] ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20'}`}
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              {showHints[q.id] ? 'Hide Hint' : 'Show Hint'}
+            </button>
+          )}
           <button 
-            onClick={() => setShowHint(q.id, !showHints[q.id])}
-            className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
+            onClick={() => setShowSolution(q.id, !showSolutions[q.id])}
+            className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showSolutions[q.id] ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/40' : 'bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/20 hover:bg-[#00F0FF]/20'}`}
           >
-            {showHints[q.id] ? 'Hide Hint' : 'Show Hint'}
+            <CheckCircle className="w-3.5 h-3.5" />
+            {showSolutions[q.id] ? 'Hide Solution' : 'Show Solution'}
           </button>
-        )}
-        <button 
-          onClick={() => setShowSolution(q.id, !showSolutions[q.id])}
-          className="text-xs px-3 py-1.5 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/20 hover:bg-[#00F0FF]/20 transition-colors"
-        >
-          {showSolutions[q.id] ? 'Hide Solution' : 'Show Solution'}
-        </button>
-        {!showSolutions[q.id] && (
-          <button 
-            onClick={() => setStepReveal(q.id, (stepReveals[q.id] || 0) + 1)}
-            className="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10 transition-colors"
-          >
-            Step Reveal
-          </button>
-        )}
-      </div>
+          
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 ml-auto">
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(q.question);
+                addNotification('success', 'Question copied to clipboard');
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              title="Copy Question"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            
+            <div className="relative group/similar">
+              <button className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors" title="Similar Questions">
+                <Sparkles className="w-4 h-4" />
+              </button>
+              <div className="absolute right-0 bottom-full mb-2 hidden group-hover/similar:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden">
+                <button onClick={() => handleGenerateSimilar(q, 'ai')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                  <BrainCircuit className="w-3.5 h-3.5" /> AI Similar
+                </button>
+                <button onClick={() => handleGenerateSimilar(q, 'pyq')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                  <History className="w-3.5 h-3.5" /> PYQ Similar
+                </button>
+                <button onClick={() => handleGenerateSimilar(q, 'search')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5" /> Search Similar
+                </button>
+              </div>
+            </div>
+
+            {showSourceLinks && q.sourceLink && (
+              <a 
+                href={q.sourceLink} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
+                title="View Source"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
 
       {showHints[q.id] && q.hint && (
         <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
@@ -530,27 +609,36 @@ export default function Practice() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
-      <div className="mb-10 flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
-          <BrainCircuit className="w-8 h-8 text-[#00F0FF]" />
+      <div className="mb-10 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
+            <BrainCircuit className="w-8 h-8 text-[#00F0FF]" />
+          </div>
+          <div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold">
+              Practice <span className="text-gradient">Arena</span>
+            </h2>
+            <p className="text-gray-400">AI-powered question bank for competitive exams</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-3xl md:text-5xl font-display font-bold">
-            Practice <span className="text-gradient">Arena</span>
-          </h2>
-          <p className="text-gray-400">AI-powered question bank for competitive exams</p>
-        </div>
+        <button 
+          onClick={() => window.history.back()}
+          className="p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all flex items-center gap-2"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          <span className="hidden md:inline">Back to Dashboard</span>
+        </button>
       </div>
 
       {/* Mode Selector */}
-      <div className="flex p-1 bg-black/40 rounded-2xl border border-white/10 mb-8 w-fit mx-auto md:mx-0">
+      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-8 w-fit mx-auto md:mx-0">
         <button 
           onClick={() => {
             setIsPYQ(false);
             setSourceFile(null);
             setIsSourceConverterMode(false);
           }}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${!isPYQ && !sourceFile && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
+          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${!isPYQ && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
         >
           <Sparkles className="w-4 h-4" />
           Question Generator
@@ -583,19 +671,19 @@ export default function Practice() {
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#00F0FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
         
         {/* Mode Specific Header */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+        <div className="flex items-center gap-4 mb-6">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${
             isPYQ ? 'bg-[#B026FF]/20 border-[#B026FF]/30 text-[#B026FF]' : 
             isSourceConverterMode ? 'bg-white/10 border-white/20 text-white' : 
             'bg-[#00F0FF]/20 border-[#00F0FF]/30 text-[#00F0FF]'
-          }`}>
-            {isPYQ ? <History className="w-5 h-5" /> : isSourceConverterMode ? <FileText className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+          } shadow-lg`}>
+            {isPYQ ? <History className="w-6 h-6" /> : isSourceConverterMode ? <FileText className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
           </div>
           <div>
-            <h3 className="font-display font-bold text-white">
+            <h3 className="text-xl font-display font-bold text-white tracking-tight">
               {isPYQ ? 'PYQ Generator Mode' : isSourceConverterMode ? 'Source Converter Mode' : 'AI Question Generator'}
             </h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm text-gray-400">
               {isPYQ ? 'Generate authentic previous year questions with search grounding' : 
                isSourceConverterMode ? (sourceFile ? `Converting ${sourceFile.name} into practice questions` : 'Select a source to convert into questions') : 
                'Create custom practice sets using advanced AI reasoning'}
@@ -607,107 +695,129 @@ export default function Practice() {
         {!isSourceConverterMode ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Class</label>
-              <select 
-                value={classLevel}
-                onChange={(e) => setClassLevel(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-              >
-                <option value="Class 6">Class 6</option>
-                <option value="Class 7">Class 7</option>
-                <option value="Class 8">Class 8</option>
-                <option value="Class 9">Class 9</option>
-                <option value="Class 10">Class 10</option>
-                <option value="Class 11">Class 11</option>
-                <option value="Class 12">Class 12</option>
-                <option value="Undergraduate">Undergraduate</option>
-                <option value="Postgraduate">Postgraduate</option>
-              </select>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Class</label>
+              <div className="relative group">
+                <select 
+                  value={classLevel}
+                  onChange={(e) => setClassLevel(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer group-hover:bg-white/5"
+                >
+                  <option value="Class 6">Class 6</option>
+                  <option value="Class 7">Class 7</option>
+                  <option value="Class 8">Class 8</option>
+                  <option value="Class 9">Class 9</option>
+                  <option value="Class 10">Class 10</option>
+                  <option value="Class 11">Class 11</option>
+                  <option value="Class 12">Class 12</option>
+                  <option value="Undergraduate">Undergraduate</option>
+                  <option value="Postgraduate">Postgraduate</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-[#00F0FF] transition-colors">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Subject</label>
-              <select 
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-              >
-                <option value="General">General</option>
-                <option value="Mathematics">Mathematics</option>
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
-                <option value="Biology">Biology</option>
-                <option value="English">English</option>
-                <option value="History">History</option>
-                <option value="Geography">Geography</option>
-                <option value="Polity">Polity</option>
-                <option value="Economics">Economics</option>
-                <option value="Computer Science">Computer Science</option>
-              </select>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Subject</label>
+              <div className="relative group">
+                <select 
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer group-hover:bg-white/5"
+                >
+                  <option value="General">General</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Physics">Physics</option>
+                  <option value="Chemistry">Chemistry</option>
+                  <option value="Biology">Biology</option>
+                  <option value="English">English</option>
+                  <option value="History">History</option>
+                  <option value="Geography">Geography</option>
+                  <option value="Polity">Polity</option>
+                  <option value="Economics">Economics</option>
+                  <option value="Computer Science">Computer Science</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-[#00F0FF] transition-colors">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
             
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Exam Type</label>
-              <select 
-                value={examType}
-                onChange={(e) => setExamType(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-              >
-                <option value="General">General</option>
-                <option value="JEE Mains">JEE Mains</option>
-                <option value="JEE Advanced">JEE Advanced</option>
-                <option value="NEET">NEET</option>
-                <option value="NDA">NDA</option>
-                <option value="CDS">CDS</option>
-                <option value="UPSC">UPSC</option>
-                <option value="SSC CGL">SSC CGL</option>
-                <option value="Bank PO">Bank PO</option>
-                <option value="GATE">GATE</option>
-                <option value="CAT">CAT</option>
-              </select>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Exam Type</label>
+              <div className="relative group">
+                <select 
+                  value={examType}
+                  onChange={(e) => setExamType(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer group-hover:bg-white/5"
+                >
+                  <option value="General">General</option>
+                  <option value="JEE Mains">JEE Mains</option>
+                  <option value="JEE Advanced">JEE Advanced</option>
+                  <option value="NEET">NEET</option>
+                  <option value="NDA">NDA</option>
+                  <option value="CDS">CDS</option>
+                  <option value="UPSC">UPSC</option>
+                  <option value="SSC CGL">SSC CGL</option>
+                  <option value="Bank PO">Bank PO</option>
+                  <option value="GATE">GATE</option>
+                  <option value="CAT">CAT</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-[#00F0FF] transition-colors">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Difficulty</label>
-              <select 
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-              >
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-                <option value="Board Level">Board Level</option>
-                <option value="Competition Level">Competition Level</option>
-              </select>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Difficulty</label>
+              <div className="relative group">
+                <select 
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer group-hover:bg-white/5"
+                >
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                  <option value="Board Level">Board Level</option>
+                  <option value="Competition Level">Competition Level</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-[#00F0FF] transition-colors">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {!sourceFile ? (
               <>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group"
+                  className="flex flex-col items-center justify-center gap-4 p-10 rounded-3xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group relative overflow-hidden"
                 >
-                  <div className="p-3 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF] group-hover:scale-110 transition-transform">
-                    <Upload className="w-6 h-6" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="p-4 rounded-2xl bg-[#00F0FF]/10 text-[#00F0FF] group-hover:scale-110 transition-transform shadow-lg">
+                    <Upload className="w-8 h-8" />
                   </div>
-                  <div className="text-left">
-                    <div className="font-bold text-white">Upload from Device</div>
-                    <div className="text-xs text-gray-500">PDF, Images, or Text files</div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-white">Upload from Device</div>
+                    <div className="text-sm text-gray-500">PDF, Images, or Text files</div>
                   </div>
                 </button>
                 <button 
                   onClick={handleSelectFromDashboard}
-                  className="flex items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all group"
+                  className="flex flex-col items-center justify-center gap-4 p-10 rounded-3xl border-2 border-dashed border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all group relative overflow-hidden"
                 >
-                  <div className="p-3 rounded-xl bg-[#B026FF]/10 text-[#B026FF] group-hover:scale-110 transition-transform">
-                    <Database className="w-6 h-6" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="p-4 rounded-2xl bg-[#B026FF]/10 text-[#B026FF] group-hover:scale-110 transition-transform shadow-lg">
+                    <Database className="w-8 h-8" />
                   </div>
-                  <div className="text-left">
-                    <div className="font-bold text-white">Select from Dashboard</div>
-                    <div className="text-xs text-gray-500">Use your previously uploaded files</div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-white">Select from Dashboard</div>
+                    <div className="text-sm text-gray-500">Use your previously uploaded files</div>
                   </div>
                 </button>
               </>
@@ -736,20 +846,25 @@ export default function Practice() {
         {/* Row 2: Advanced Options */}
         <div className={`grid grid-cols-1 ${isSourceConverterMode ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-4 items-end`}>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Question Type</label>
-            <select 
-              value={questionType}
-              onChange={(e) => setQuestionType(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="Mixed">Mixed</option>
-              <option value="MCQ">MCQ</option>
-              <option value="Integer Type">Integer Type</option>
-              <option value="Assertion Reason">Assertion Reason</option>
-              <option value="Numerical">Numerical</option>
-              <option value="Short Answer">Short Answer</option>
-              <option value="Long Answer">Long Answer</option>
-            </select>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Question Type</label>
+            <div className="relative group">
+              <select 
+                value={questionType}
+                onChange={(e) => setQuestionType(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer group-hover:bg-white/5"
+              >
+                <option value="Mixed">Mixed</option>
+                <option value="MCQ">MCQ</option>
+                <option value="Integer Type">Integer Type</option>
+                <option value="Assertion Reason">Assertion Reason</option>
+                <option value="Numerical">Numerical</option>
+                <option value="Short Answer">Short Answer</option>
+                <option value="Long Answer">Long Answer</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 group-hover:text-[#00F0FF] transition-colors">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
           </div>
 
           {isSourceConverterMode && (
@@ -826,6 +941,39 @@ export default function Practice() {
 
         {/* Row 3: Smart Panel */}
         <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Mode:</label>
+            <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
+              <button 
+                onClick={() => setGenerationMode('live')}
+                className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${generationMode === 'live' ? 'bg-[#00F0FF] text-black' : 'text-gray-500 hover:text-white'}`}
+              >
+                Live
+              </button>
+              <button 
+                onClick={() => setGenerationMode('last')}
+                className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${generationMode === 'last' ? 'bg-[#B026FF] text-white' : 'text-gray-500 hover:text-white'}`}
+              >
+                At Last
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">VLS Cases:</label>
+            <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
+              {[1, 2, 3, 4].map(num => (
+                <button 
+                  key={num}
+                  onClick={() => setVlsCases(num)}
+                  className={`w-8 py-1 text-[10px] font-bold rounded transition-all ${vlsCases === num ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-500 hover:text-white'}`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {isPYQ && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Year:</label>
@@ -844,16 +992,6 @@ export default function Practice() {
           )}
 
           <label className="flex items-center gap-2 cursor-pointer ml-auto">
-            <input 
-              type="checkbox" 
-              checked={showSourceLinks}
-              onChange={(e) => setShowSourceLinks(e.target.checked)}
-              className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0"
-            />
-            <span className="text-sm font-medium text-white">Show Source Links</span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer ml-4">
             <input 
               type="checkbox" 
               checked={showSourceLinks}
@@ -952,22 +1090,48 @@ export default function Practice() {
               </button>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div 
                 onClick={() => setShowTimerModal(true)}
-                className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300 cursor-pointer hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-lg text-gray-300 cursor-pointer hover:bg-white/5 transition-colors group"
               >
-                <Timer className={`w-4 h-4 ${isTimerRunning ? 'text-emerald-400 animate-pulse' : 'text-[#00F0FF]'}`} />
+                <Timer className={`w-4 h-4 transition-colors ${isTimerRunning ? 'text-emerald-400 animate-pulse' : 'text-[#00F0FF] group-hover:text-white'}`} />
                 <span className="font-mono text-sm">{formatTime(timerSeconds)}</span>
               </div>
               
-              <button
-                onClick={() => setIsTimerRunning(!isTimerRunning)}
-                className={`p-2 rounded-lg border transition-all ${isTimerRunning ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'}`}
-              >
-                {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </button>
+              <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                  className={`p-1.5 rounded-md transition-all ${isTimerRunning ? 'text-red-400 hover:bg-red-500/10' : 'text-emerald-400 hover:bg-emerald-500/10'}`}
+                  title={isTimerRunning ? 'Pause Timer' : 'Start Timer'}
+                >
+                  {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTimerRunning(false);
+                    setTimerSeconds(0);
+                    addNotification('info', 'Timer reset');
+                  }}
+                  className="p-1.5 rounded-md text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+                  title="Reset Timer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  usePracticeStore.setState({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null });
+                  addNotification('info', 'Practice arena cleared');
+                }}
+                className="p-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+                title="Clear All Questions"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
 
               <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
                 <button 
@@ -990,6 +1154,16 @@ export default function Practice() {
                   title="Triple Grid View"
                 >
                   <Square className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                <button 
+                  onClick={() => setShowSourceLinks(!showSourceLinks)}
+                  className={`p-2 rounded-md transition-all ${showSourceLinks ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:text-white'}`}
+                  title="Toggle Source Links"
+                >
+                  <Link2 className="w-4 h-4" />
                 </button>
               </div>
 
@@ -1021,6 +1195,7 @@ export default function Practice() {
                 </div>
               </div>
             </div>
+          </div>
         )}
 
         <AnimatePresence mode="wait">
@@ -1250,7 +1425,7 @@ export default function Practice() {
             )}
 
             {!analysis && (
-              <div className="mb-12">
+              <div className="mb-24 flex justify-center">
                 <button 
                   onClick={async () => {
                     let apiKey = '';
@@ -1306,6 +1481,122 @@ export default function Practice() {
 
       {/* Dashboard File Selector Modal */}
       <AnimatePresence>
+        {/* Timer Settings Modal */}
+        {showTimerModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTimerModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md glass-panel rounded-3xl border border-white/10 overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF]">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Set Practice Timer</h3>
+                </div>
+                <button 
+                  onClick={() => setShowTimerModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-8">
+                <div>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">Quick Presets</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[15, 30, 45, 60, 90, 120].map((mins) => (
+                      <button
+                        key={mins}
+                        onClick={() => {
+                          setTargetTimerSeconds(mins * 60);
+                          setTimerSeconds(0);
+                          setShowTimerModal(false);
+                          setIsTimerRunning(true);
+                          addNotification('success', `Timer set for ${mins} minutes`);
+                        }}
+                        className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group text-center"
+                      >
+                        <div className="text-xl font-display font-bold text-white group-hover:text-[#00F0FF] transition-colors">{mins}</div>
+                        <div className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Mins</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em]">Custom Duration</h4>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <input 
+                        type="number"
+                        placeholder="Enter minutes..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseInt((e.target as HTMLInputElement).value);
+                            if (val > 0) {
+                              setTargetTimerSeconds(val * 60);
+                              setTimerSeconds(0);
+                              setShowTimerModal(false);
+                              setIsTimerRunning(true);
+                              addNotification('success', `Timer set for ${val} minutes`);
+                            }
+                          }
+                        }}
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all font-mono"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-bold uppercase tracking-wider">Mins</div>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        const input = (e.currentTarget.previousElementSibling?.querySelector('input') || e.currentTarget.previousElementSibling) as HTMLInputElement;
+                        const val = parseInt(input.value);
+                        if (val > 0) {
+                          setTargetTimerSeconds(val * 60);
+                          setTimerSeconds(0);
+                          setShowTimerModal(false);
+                          setIsTimerRunning(true);
+                          addNotification('success', `Timer set for ${val} minutes`);
+                        }
+                      }}
+                      className="px-6 py-4 rounded-2xl bg-[#00F0FF] text-black font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
+                    >
+                      Set
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5 flex justify-center">
+                  <button 
+                    onClick={() => {
+                      setTargetTimerSeconds(0);
+                      setTimerSeconds(0);
+                      setIsTimerRunning(false);
+                      setShowTimerModal(false);
+                      addNotification('info', 'Timer disabled');
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all text-sm font-bold"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Reset & Disable Timer
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showDashboardSelector && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
             <motion.div 
@@ -1321,22 +1612,31 @@ export default function Practice() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
             >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-[#B026FF]/10 text-[#B026FF]">
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5 backdrop-blur-xl">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#B026FF]/20 flex items-center justify-center border border-[#B026FF]/30 text-[#B026FF] shadow-lg">
                     <Database className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
-                    <p className="text-xs text-gray-500">Choose a previously uploaded file</p>
+                    <h3 className="text-xl font-display font-bold text-white tracking-tight">Select from Dashboard</h3>
+                    <p className="text-sm text-gray-400">Choose a previously uploaded file</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowDashboardSelector(false)}
-                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => fetchDashboardFiles()}
+                    className="p-2.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all border border-transparent hover:border-white/10"
+                    title="Refresh Files"
+                  >
+                    <Loader2 className={`w-5 h-5 ${fetchingFiles ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button 
+                    onClick={() => setShowDashboardSelector(false)}
+                    className="p-2.5 hover:bg-red-500/10 rounded-xl text-gray-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
               <div className="p-4 border-b border-white/10 bg-black/20">

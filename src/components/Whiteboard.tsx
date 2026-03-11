@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2 } from 'lucide-react';
+import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles } from 'lucide-react';
 
 interface WhiteboardProps {
   onClose?: () => void;
@@ -13,7 +13,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase'>('pen');
+  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase' | 'laser'>('pen');
+  const [laserPath, setLaserPath] = useState<{x: number, y: number}[]>([]);
+  const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
   const [history, setHistory] = useState<ImageData[]>([]);
@@ -21,6 +23,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [snapshot, setSnapshot] = useState<ImageData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light' | 'grid'>('dark');
+
+  const getBackgroundStyle = () => {
+    switch (theme) {
+      case 'light': return 'bg-white';
+      case 'grid': return 'bg-white bg-[size:20px_20px] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)]';
+      default: return 'bg-[#1a1b26]';
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -125,9 +136,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     // Take snapshot for shape drawing
     setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'selection-erase') {
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'selection-erase' || tool === 'laser') {
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
+      if (tool === 'laser') {
+        setLaserPath([{x: pos.x, y: pos.y}]);
+      }
     }
     
     if (tool === 'text') {
@@ -173,10 +187,18 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     ctx.globalAlpha = tool === 'highlighter' ? 0.3 : 1.0;
     ctx.globalCompositeOperation = tool === 'eraser' ? 'destination-out' : 'source-over';
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') {
+    if (tool === 'pen' || tool === 'highlighter' || tool === 'eraser' || tool === 'laser') {
       if (tool === 'eraser') ctx.lineWidth = lineWidth * 5;
+      if (tool === 'laser') {
+        ctx.strokeStyle = '#ff4444';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ff4444';
+        setLaserPath(prev => [...prev, {x: pos.x, y: pos.y}]);
+      }
       ctx.lineTo(pos.x, pos.y);
       ctx.stroke();
+      ctx.shadowBlur = 0; // Reset shadow
     } else if (tool === 'selection-erase') {
       ctx.putImageData(snapshot, 0, 0);
       ctx.fillStyle = '#1a1b26';
@@ -206,7 +228,22 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const stopDrawing = () => {
     if (isDrawing) {
       setIsDrawing(false);
-      saveState();
+      if (tool !== 'laser') {
+        saveState();
+      } else {
+        // Clear laser after a delay
+        if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
+        laserTimeoutRef.current = setTimeout(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (canvas && ctx && historyStep >= 0) {
+            ctx.putImageData(history[historyStep], 0, 0);
+          } else if (canvas && ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+          setLaserPath([]);
+        }, 1000);
+      }
       setSnapshot(null);
     }
   };
@@ -241,7 +278,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
     >
       {/* Canvas Area */}
-      <div className="flex-1 relative cursor-crosshair touch-none bg-[radial-gradient(#ffffff10_1px,transparent_1px)] bg-[size:20px_20px]">
+      <div className={`flex-1 relative cursor-crosshair touch-none ${getBackgroundStyle()}`}>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -264,10 +301,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       </div>
 
       {/* Toolbar (Shifted to Bottom) */}
-      <div className="flex items-center justify-between p-3 bg-black/40 border-t border-white/10 backdrop-blur-md z-10">
+      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4">
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
+          </button>
+          <button onClick={() => {
+            setTheme(prev => prev === 'dark' ? 'light' : prev === 'light' ? 'grid' : 'dark');
+          }} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors" title="Toggle Theme">
+            <Sparkles className="w-5 h-5" />
           </button>
           <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
             <Highlighter className="w-5 h-5" />
@@ -278,18 +320,21 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
               <Eraser className="w-5 h-5" />
             </button>
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50">
-              <button onClick={() => { setTool('eraser'); setLineWidth(20); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
-                Large Eraser
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[140px]">
+              <button onClick={() => { setTool('eraser'); setLineWidth(20); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-500"></div> Large Eraser
               </button>
-              <button onClick={() => { setTool('eraser'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
-                Small Eraser
+              <button onClick={() => { setTool('eraser'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Small Eraser
               </button>
-              <button onClick={() => setTool('selection-erase')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap">
-                Selection Erase
+              <button onClick={() => setTool('selection-erase')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <Square className="w-3 h-3" /> Selection Erase
               </button>
-              <button onClick={clear} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5">
-                Erase All
+              <button onClick={() => setTool('laser')} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-red-400" /> Laser Pointer
+              </button>
+              <button onClick={clear} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
+                <Trash2 className="w-3 h-3" /> Erase All
               </button>
             </div>
           </div>

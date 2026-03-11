@@ -4,39 +4,39 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Smart Sunrise v2.5",
-    content: "Welcome to the Advanced Edition! We've upgraded our AI engines and added powerful new laboratory tools.",
+    title: "Smart Sunrise v2.5 Advance",
+    content: "Welcome to the Advance 2.5x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
     icon: Sparkles,
     color: "#00F0FF",
     target: "header"
   },
   {
-    title: "AI Classroom Co-Pilot",
-    content: "Our intelligent assistant analyzes your uploaded content and suggests the best educational tools to generate automatically.",
-    icon: Rocket,
+    title: "Advanced Practice Arena",
+    content: "Now featuring live question generation, source links, and a powerful similar question generator (AI, PYQ, or Search).",
+    icon: BrainCircuit,
     color: "#B026FF",
-    target: "copilot"
+    target: "practice"
   },
   {
-    title: "AI Virtual Laboratory",
-    content: "Generate interactive 2D & 3D physics and chemistry simulations from any topic or document. Perfect for visual learning.",
+    title: "Interactive Whiteboards",
+    content: "New bottom-aligned toolbar with advanced eraser tools (laser pointer, selection erase) and fullscreen support for immersive teaching.",
     icon: MonitorPlay,
     color: "#00F0FF",
-    target: "simulator"
+    target: "whiteboard"
   },
   {
-    title: "AI Concept Visualizer",
-    content: "Convert complex scientific concepts into interactive visual explanations with diagrams, formulas, and real-life examples.",
-    icon: LayoutGrid,
+    title: "Smart Timer System",
+    content: "Set custom practice durations and track your progress with our new integrated timer controls.",
+    icon: Zap,
     color: "#10B981",
-    target: "visualizer"
+    target: "timer"
   },
   {
-    title: "AI Concept Map",
-    content: "Extract key information from your notes to create structured, interactive concept maps and flowcharts automatically.",
-    icon: GitGraph,
+    title: "Enhanced Dashboard",
+    content: "Redesigned content cards with neon borders and detailed hover information for better resource management.",
+    icon: LayoutGrid,
     color: "#FACC15",
-    target: "flowchart"
+    target: "dashboard"
   }
 ];
 

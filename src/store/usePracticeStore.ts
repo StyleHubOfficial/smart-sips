@@ -261,13 +261,13 @@ export const usePracticeStore = create<PracticeState>()(
       generateSimilarQuestions: async (apiKey, question, type) => {
         const { subject, examType, classLevel, model, difficulty, questionType, examFormat } = get();
         
-        set({ loading: true });
+        // Don't set global loading to true to avoid clearing current questions
+        // set({ loading: true }); 
 
         let selectedModel = model;
         const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
         if (!validModels.includes(selectedModel)) {
           selectedModel = 'gemini-2.5-flash';
-          set({ model: selectedModel });
         }
 
         try {
@@ -319,6 +319,7 @@ export const usePracticeStore = create<PracticeState>()(
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
+            responseMimeType: "application/json"
           };
 
           if (type === 'pyq' || type === 'search') {
@@ -341,15 +342,19 @@ export const usePracticeStore = create<PracticeState>()(
 
           const generatedQuestions = JSON.parse(jsonMatch[0]).map((q: any) => ({
             ...q,
+            id: `similar-${q.id}-${Date.now()}`,
             pyqYear: q.pyqYear || (type === 'pyq' ? 'PYQ' : '')
           }));
-          set((state) => ({ 
-            questions: [...state.questions, ...generatedQuestions],
-            loading: false 
-          }));
+
+          // Insert similar questions after the original one
+          const currentQuestions = get().questions;
+          const index = currentQuestions.findIndex(q => q.id === question.id);
+          const newQuestions = [...currentQuestions];
+          newQuestions.splice(index + 1, 0, ...generatedQuestions);
+          
+          set({ questions: newQuestions });
         } catch (error) {
           console.error('Error generating similar questions:', error);
-          set({ loading: false });
           throw error;
         }
       },
