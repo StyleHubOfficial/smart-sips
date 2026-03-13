@@ -20,10 +20,12 @@ import FlowChart from "./pages/FlowChart";
 import ConceptVisualizer from "./pages/ConceptVisualizer";
 import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
+import DeveloperCredit from "./components/DeveloperCredit";
 
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(true);
+  const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [accessCode, setAccessCode] = useState("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -51,7 +53,11 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={isSimpleMode ? "always" : "never"}>
-      {showEntryAnimation && <IntroSequence onComplete={() => setShowEntryAnimation(false)} />}
+      {showEntryAnimation && <IntroSequence onComplete={() => {
+        setShowEntryAnimation(false);
+        setShowDeveloperCredit(true);
+      }} />}
+      {showDeveloperCredit && <DeveloperCredit onComplete={() => setShowDeveloperCredit(false)} />}
       <BrowserRouter>
         <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative overflow-hidden ${isSmartPanelMode ? 'text-lg' : ''}`}>
           {/* Animated background grid lines */}

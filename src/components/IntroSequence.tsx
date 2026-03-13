@@ -3,19 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [phase, setPhase] = useState<'logo' | 'particles' | 'outro'>('logo');
+  const [phase, setPhase] = useState<'logo' | 'particles'>('logo');
   const [revealProgress, setRevealProgress] = useState(-20); // -20 to 120 for diagonal wipe
 
   useEffect(() => {
     // Sequence timing
     const t1 = setTimeout(() => setPhase('particles'), 1000); // Logo stays for 1s
-    const t2 = setTimeout(() => setPhase('outro'), 3500); // Outro text appears
-    const t3 = setTimeout(() => onComplete(), 5000); // End sequence
+    const t2 = setTimeout(() => onComplete(), 4500); // End sequence
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      clearTimeout(t3);
     };
   }, [onComplete]);
 
@@ -187,22 +185,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
             <div className="text-4xl md:text-6xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#00F0FF] to-[#B026FF] drop-shadow-[0_0_20px_rgba(0,240,255,0.5)] text-center px-4">
               Smart Sunrise
             </div>
-            <div className="text-white/60 tracking-[0.3em] uppercase text-xs md:text-sm mt-4 text-center">
-              Classroom Platform
-            </div>
-          </motion.div>
-        )}
-
-        {phase === 'outro' && (
-          <motion.div
-            key="outro"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
-            className="absolute bottom-8 md:bottom-12 text-center w-full z-20"
-          >
-            <div className="text-white/80 font-medium tracking-widest uppercase text-xs md:text-sm drop-shadow-md">
+            <div className="text-white/80 font-medium tracking-widest uppercase text-xs md:text-sm mt-4 text-center drop-shadow-md">
               Powered by Lakshya Bhamu
             </div>
           </motion.div>

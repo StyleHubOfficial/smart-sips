@@ -197,8 +197,13 @@ const ContentCard = React.memo(({
               // Direct opening for most files, special handling for HTML if needed
               const url = item.secure_url;
               const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
               
-              if (isHtml) {
+              if (isPdf) {
+                e.preventDefault();
+                const pdfUrl = url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+                window.open(pdfUrl, '_blank');
+              } else if (isHtml) {
                 e.preventDefault();
                 fetch(url)
                   .then(res => res.text())
@@ -218,21 +223,10 @@ const ContentCard = React.memo(({
           <button 
             onClick={async (e) => {
               e.preventDefault();
-              try {
-                const response = await fetch(item.secure_url);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = title + '.' + (item.format || 'pdf');
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-              } catch (err) {
-                window.open(item.secure_url, '_blank');
-              }
+              const url = item.secure_url;
+              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
+              const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+              window.open(downloadUrl, '_blank');
             }}
             className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-colors text-white"
             title="Download"
@@ -332,8 +326,12 @@ const ContentCard = React.memo(({
               e.preventDefault();
               const url = item.secure_url;
               const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
               
-              if (isHtml) {
+              if (isPdf) {
+                const pdfUrl = url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+                window.open(pdfUrl, '_blank');
+              } else if (isHtml) {
                 try {
                   const response = await fetch(url);
                   if (!response.ok) throw new Error('Fetch failed');
@@ -358,21 +356,10 @@ const ContentCard = React.memo(({
           <button 
             onClick={async (e) => {
               e.preventDefault();
-              try {
-                const response = await fetch(item.secure_url);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = title + '.' + (item.format || 'pdf');
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-              } catch (err) {
-                window.open(item.secure_url, '_blank');
-              }
+              const url = item.secure_url;
+              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
+              const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+              window.open(downloadUrl, '_blank');
             }}
             className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white"
             title="Download Content"
