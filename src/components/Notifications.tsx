@@ -15,7 +15,7 @@ export default function Notifications({ isOpen }: { isOpen: boolean }) {
         {/* Toast Notifications */}
         {notifications.map((notification, index) => (
           <motion.div
-            key={`${notification.id}-${index}`}
+            key={`toast-${notification.id}-${index}`}
             initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.9 }}
@@ -52,7 +52,7 @@ export default function Notifications({ isOpen }: { isOpen: boolean }) {
         {/* Site Notifications / Announcements */}
         {isOpen && siteNotifications.map((notification, index) => (
           <motion.div
-            key={`${notification.id}-${index}`}
+            key={`site-${notification.id}-${index}`}
             initial={{ opacity: 0, x: 50, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.9 }}

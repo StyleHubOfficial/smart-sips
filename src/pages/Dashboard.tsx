@@ -119,12 +119,15 @@ const ContentCard = React.memo(({
     }
     
     if (isVideo) {
-      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg');
+      // Use Cloudinary's automatic thumbnail generation for videos
+      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1/');
       return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
     
     if (isPdf) {
-      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg');
+      // Use Cloudinary's automatic thumbnail generation for PDFs
+      // Adding pg_1 ensures we get the first page
+      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
       return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
@@ -201,7 +204,8 @@ const ContentCard = React.memo(({
               
               if (isPdf) {
                 e.preventDefault();
-                const pdfUrl = url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+                // Remove fl_attachment to allow viewing in browser
+                const pdfUrl = url.replace('/fl_attachment/', '/');
                 window.open(pdfUrl, '_blank');
               } else if (isHtml) {
                 e.preventDefault();
@@ -329,7 +333,8 @@ const ContentCard = React.memo(({
               const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
               
               if (isPdf) {
-                const pdfUrl = url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+                // Remove fl_attachment to allow viewing in browser
+                const pdfUrl = url.replace('/fl_attachment/', '/');
                 window.open(pdfUrl, '_blank');
               } else if (isHtml) {
                 try {
@@ -590,7 +595,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {siteNotifications.slice(0, 3).map((notif, index) => (
-              <div key={`${notif.id}-${index}`} className="glass-panel rounded-xl p-5 border border-[#00F0FF]/30 bg-gradient-to-br from-[#00F0FF]/5 to-transparent relative overflow-hidden">
+              <div key={`announcement-${notif.id}-${index}`} className="glass-panel rounded-xl p-5 border border-[#00F0FF]/30 bg-gradient-to-br from-[#00F0FF]/5 to-transparent relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#00F0FF]"></div>
                 <h4 className="font-bold text-white mb-1">{notif.title}</h4>
                 <p className="text-sm text-gray-300 mb-3">{notif.message}</p>

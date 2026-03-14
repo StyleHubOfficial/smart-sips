@@ -35,14 +35,12 @@ export default function Practice() {
   const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
-  const [isLiveGeneration, setIsLiveGeneration] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [targetTimerSeconds, setTargetTimerSeconds] = useState(0);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [generationMode, setGenerationMode] = useState<'live' | 'last'>('live');
   const [showSimilarModal, setShowSimilarModal] = useState<{questionId: string, type: 'ai' | 'pyq' | 'search'} | null>(null);
-  const [vlsCases, setVlsCases] = useState(1);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const [version] = useState("Advance 2.5x");
   const [showCelebration, setShowCelebration] = useState(false);
@@ -240,15 +238,10 @@ export default function Practice() {
 
     try {
       if (generationMode === 'live') {
-        // We can't easily stream with the current store structure without more changes
-        // but we can simulate it by fetching and then adding one by one
-        await generateQuestions(apiKey);
-        const allQs = usePracticeStore.getState().questions;
-        usePracticeStore.setState({ questions: [] });
-        for (const q of allQs) {
-          usePracticeStore.setState(state => ({ questions: [...state.questions, q] }));
-          await new Promise(r => setTimeout(r, 500));
-        }
+        await generateQuestions(apiKey, (qs) => {
+          // Optional: handle each chunk if needed, but the store already updates questions
+          console.log(`Streamed ${qs.length} questions`);
+        });
       } else {
         await generateQuestions(apiKey);
       }
@@ -983,35 +976,22 @@ export default function Practice() {
         {/* Row 3: Smart Panel */}
         <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
           <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Mode:</label>
+            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Generation Mode:</label>
             <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
               <button 
                 onClick={() => setGenerationMode('live')}
-                className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${generationMode === 'live' ? 'bg-[#00F0FF] text-black' : 'text-gray-500 hover:text-white'}`}
+                className={`px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1.5 ${generationMode === 'live' ? 'bg-[#00F0FF] text-black' : 'text-gray-400 hover:text-white'}`}
               >
-                Live
+                <Sparkles className="w-3 h-3" />
+                Live Stream
               </button>
               <button 
                 onClick={() => setGenerationMode('last')}
-                className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${generationMode === 'last' ? 'bg-[#B026FF] text-white' : 'text-gray-500 hover:text-white'}`}
+                className={`px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1.5 ${generationMode === 'last' ? 'bg-[#B026FF] text-white' : 'text-gray-400 hover:text-white'}`}
               >
+                <Timer className="w-3 h-3" />
                 At Last
               </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">VLS Cases:</label>
-            <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
-              {[1, 2, 3, 4].map(num => (
-                <button 
-                  key={num}
-                  onClick={() => setVlsCases(num)}
-                  className={`w-8 py-1 text-[10px] font-bold rounded transition-all ${vlsCases === num ? 'bg-white/10 text-[#00F0FF]' : 'text-gray-500 hover:text-white'}`}
-                >
-                  {num}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1040,16 +1020,6 @@ export default function Practice() {
               className="w-5 h-5 rounded border-white/10 bg-black/40 text-[#00F0FF] focus:ring-[#00F0FF] focus:ring-offset-0"
             />
             <span className="text-sm font-medium text-white">Source Links</span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer ml-4">
-            <input 
-              type="checkbox" 
-              checked={isLiveGeneration}
-              onChange={(e) => setIsLiveGeneration(e.target.checked)}
-              className="w-5 h-5 rounded border-white/10 bg-black/40 text-emerald-400 focus:ring-emerald-400 focus:ring-offset-0"
-            />
-            <span className="text-sm font-medium text-white">Live Generation</span>
           </label>
 
           <label className="flex items-center gap-2 cursor-pointer ml-4">
@@ -1708,9 +1678,9 @@ export default function Practice() {
                   <div className="grid grid-cols-1 gap-3">
                     {dashboardFiles
                       .filter(file => (file.title || "").toLowerCase().includes(dashboardSearch.toLowerCase()))
-                      .map((file) => (
+                      .map((file, index) => (
                       <button
-                        key={file.id}
+                        key={file.public_id || `file-${index}`}
                         onClick={async () => {
                           try {
                             // Fetch the file content and convert to base64

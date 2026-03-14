@@ -171,6 +171,16 @@ export const useFlowChartStore = create<FlowChartState>()(
           if (responseMimeType === 'application/json') {
             try {
               const data = JSON.parse(code);
+              
+              // Ensure unique IDs recursively
+              const ensureUniqueIds = (node: any) => {
+                node.id = `node-${Math.random().toString(36).substring(7)}-${Date.now()}`;
+                if (node.children && Array.isArray(node.children)) {
+                  node.children.forEach(ensureUniqueIds);
+                }
+              };
+              ensureUniqueIds(data);
+              
               set({ interactiveData: data, generatedCode: '', loading: false });
             } catch (e) {
               console.error('Failed to parse interactive data', e);

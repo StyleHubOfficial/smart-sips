@@ -5,6 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import aiEvolveRouter from "./aiEvolve.js";
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+
+  // AI Evolve Route
+  app.use("/api/ai", aiEvolveRouter);
 
   // API Routes
   app.get("/api/health", (req, res) => {

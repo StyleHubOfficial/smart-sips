@@ -18,6 +18,7 @@ import Practice from "./pages/Practice";
 import Simulator from "./pages/Simulator";
 import FlowChart from "./pages/FlowChart";
 import ConceptVisualizer from "./pages/ConceptVisualizer";
+import AIDeveloperPanel from "./pages/AIDeveloperPanel";
 import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
 import DeveloperCredit from "./components/DeveloperCredit";
@@ -91,6 +92,7 @@ export default function App() {
                   <Route path="/simulator" element={<Simulator />} />
                   <Route path="/flowchart" element={<FlowChart />} />
                   <Route path="/visualizer" element={<ConceptVisualizer />} />
+                  <Route path="/ai-developer" element={<AIDeveloperPanel />} />
                 </Routes>
               </AnimatePresence>
             </main>

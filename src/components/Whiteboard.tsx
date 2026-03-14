@@ -28,12 +28,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [snapshot, setSnapshot] = useState<ImageData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light' | 'grid'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>('dark');
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
   const getBackgroundStyle = () => {
     switch (theme) {
       case 'light': return 'bg-white';
       case 'grid': return 'bg-white bg-[size:20px_20px] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)]';
+      case 'transparent': return 'bg-transparent';
       default: return 'bg-[#1a1b26]';
     }
   };
@@ -136,6 +138,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     const pos = getPos(e);
     setStartPos(pos);
+    setCursorPos(pos);
     setIsDrawing(true);
     
     // Take snapshot for shape drawing
@@ -197,6 +200,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     if (!canvas || !ctx || !snapshot) return;
 
     const pos = getPos(e);
+    setCursorPos(pos);
 
     ctx.lineWidth = lineWidth;
     ctx.lineCap = 'round';
@@ -242,9 +246,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         return;
       } else {
         ctx.globalCompositeOperation = 'destination-out';
-        ctx.lineWidth = eraserMode === 'stroke' ? lineWidth * 10 : lineWidth * 5;
+        ctx.lineWidth = eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8;
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over'; // Reset immediately
       }
     } else if (tool === 'selection-erase') {
       ctx.putImageData(snapshot, 0, 0);
@@ -373,18 +378,33 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
     >
       {/* Canvas Area */}
-      <div className={`flex-1 relative cursor-crosshair touch-none ${getBackgroundStyle()}`}>
+      <div className={`flex-1 relative cursor-none touch-none ${getBackgroundStyle()}`}>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
-          onMouseOut={stopDrawing}
+          onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
           className="absolute inset-0 w-full h-full"
         />
+
+        {/* Custom Cursor for Eraser/Pen feedback */}
+        {!isWiping && (
+          <div 
+            className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
+            style={{
+              left: cursorPos.x,
+              top: cursorPos.y,
+              width: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
+              height: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
+              transform: 'translate(-50%, -50%)',
+              display: cursorPos.x < 0 ? 'none' : 'block'
+            }}
+          />
+        )}
         
         {isWiping && (
           <div 
@@ -407,15 +427,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         )}
       </div>
 
-      {/* Toolbar (Shifted to Bottom) */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10">
+      {/* Toolbar (Shifted to Bottom, higher to avoid nav bar) */}
+      <div className="absolute bottom-20 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10">
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4">
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
           </button>
           <button onClick={() => {
-            setTheme(prev => prev === 'dark' ? 'light' : prev === 'light' ? 'grid' : 'dark');
-          }} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors" title="Toggle Theme">
+            setTheme(prev => prev === 'dark' ? 'light' : prev === 'light' ? 'grid' : prev === 'grid' ? 'transparent' : 'dark');
+          }} className={`p-2 rounded-lg transition-colors ${theme === 'transparent' ? 'text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Toggle Theme">
             <Sparkles className="w-5 h-5" />
           </button>
           <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">

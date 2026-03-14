@@ -68,7 +68,7 @@ interface PracticeState {
   setShowSolution: (questionId: string, show: boolean) => void;
   setShowSourceLinks: (show: boolean) => void;
   setStepReveal: (questionId: string, step: number) => void;
-  generateQuestions: (apiKey: string) => Promise<void>;
+  generateQuestions: (apiKey: string, onChunk?: (questions: Question[]) => void) => Promise<void>;
   generateSimilarQuestions: (apiKey: string, question: Question, type: 'ai' | 'pyq' | 'search') => Promise<void>;
   analyzeScore: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
@@ -148,7 +148,7 @@ export const usePracticeStore = create<PracticeState>()(
 
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null }),
 
-      generateQuestions: async (apiKey) => {
+      generateQuestions: async (apiKey, onChunk) => {
         const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise } = get();
         if (!query.trim() && !sourceFile) return;
 
@@ -231,26 +231,92 @@ export const usePracticeStore = create<PracticeState>()(
           
           contents.push({ text: prompt });
 
-          const result = await ai.models.generateContent({
-            model: selectedModel,
-            contents: { parts: contents },
-            config: {
-              responseMimeType: "application/json"
+          if (onChunk) {
+            const stream = await ai.models.generateContentStream({
+              model: selectedModel,
+              contents: { parts: contents },
+              config: {
+                responseMimeType: "application/json"
+              }
+            });
+
+            let fullText = "";
+            let lastParsedCount = 0;
+
+            for await (const chunk of stream) {
+              fullText += chunk.text || "";
+              
+              // Try to parse partial JSON array
+              try {
+                const match = fullText.match(/\[[\s\S]*\]/);
+                const jsonText = match ? match[0] : (fullText.startsWith('[') ? fullText : '');
+                
+                // Very basic partial JSON array parsing
+                // We look for complete objects in the array
+                const objects = [];
+                let braceCount = 0;
+                let startIdx = -1;
+                
+                for (let i = 0; i < jsonText.length; i++) {
+                  if (jsonText[i] === '{') {
+                    if (braceCount === 0) startIdx = i;
+                    braceCount++;
+                  } else if (jsonText[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0 && startIdx !== -1) {
+                      try {
+                        const obj = JSON.parse(jsonText.substring(startIdx, i + 1));
+                        objects.push({
+                          ...obj,
+                          id: obj.id ? `${obj.id}-${Date.now()}-${objects.length}` : `q-${Date.now()}-${objects.length}`
+                        });
+                      } catch (e) {
+                        // Not a complete object yet
+                      }
+                    }
+                  }
+                }
+
+                if (objects.length > lastParsedCount) {
+                  lastParsedCount = objects.length;
+                  set({ questions: objects });
+                  onChunk(objects);
+                }
+              } catch (e) {
+                // Ignore parse errors during streaming
+              }
             }
-          });
-          
-          let parsedQuestions = [];
-          try {
-            const text = result.text || '';
-            const match = text.match(/\[[\s\S]*\]/);
-            const cleanText = match ? match[0] : text.replace(/```json/g, '').replace(/```/g, '').trim();
-            parsedQuestions = JSON.parse(cleanText);
-          } catch (parseError) {
-             console.error("JSON Parse Error:", parseError, result.text);
-             throw new Error("Failed to parse questions from AI response.");
+            set({ loading: false });
+          } else {
+            const result = await ai.models.generateContent({
+              model: selectedModel,
+              contents: { parts: contents },
+              config: {
+                responseMimeType: "application/json"
+              }
+            });
+            
+            let parsedQuestions = [];
+            try {
+              const text = result.text || '';
+              const match = text.match(/\[[\s\S]*\]/);
+              const cleanText = match ? match[0] : text.replace(/```json/g, '').replace(/```/g, '').trim();
+              parsedQuestions = JSON.parse(cleanText);
+              
+              // Ensure unique IDs
+              if (Array.isArray(parsedQuestions)) {
+                parsedQuestions = parsedQuestions.map((q: any, i: number) => ({
+                  ...q,
+                  id: q.id ? `${q.id}-${Date.now()}-${i}` : `q-${Date.now()}-${i}`
+                }));
+              }
+            } catch (parseError) {
+               console.error("JSON Parse Error:", parseError, result.text);
+               throw new Error("Failed to parse questions from AI response.");
+            }
+            
+            set({ questions: parsedQuestions, loading: false });
           }
-          
-          set({ questions: parsedQuestions, loading: false });
         } catch (error) {
           console.error('Error fetching questions:', error);
           set({ loading: false });
@@ -340,9 +406,9 @@ export const usePracticeStore = create<PracticeState>()(
             throw new Error("Invalid response format from AI");
           }
 
-          const generatedQuestions = JSON.parse(jsonMatch[0]).map((q: any) => ({
+          const generatedQuestions = JSON.parse(jsonMatch[0]).map((q: any, i: number) => ({
             ...q,
-            id: `similar-${q.id}-${Date.now()}`,
+            id: `similar-${q.id || 'q'}-${Date.now()}-${i}`,
             pyqYear: q.pyqYear || (type === 'pyq' ? 'PYQ' : '')
           }));
 

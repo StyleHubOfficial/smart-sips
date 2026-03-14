@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit, MonitorPlay, GitGraph, Sparkles } from "lucide-react";
+import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Terminal } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -49,6 +49,17 @@ export default function Navigation() {
             >
               <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
               <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Stats</span>
+            </NavLink>
+            <div className="w-[1px] h-6 sm:h-8 bg-white/10"></div>
+            <NavLink 
+              to="/ai-developer" 
+              className={({ isActive }) => 
+                `flex flex-col items-center gap-1 transition-all duration-300 ${isActive ? 'text-orange-400 scale-110 drop-shadow-[0_0_8px_rgba(251,146,60,0.8)]' : 'text-gray-400 hover:text-white'}`
+              }
+              title="AI Developer"
+            >
+              <Terminal className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">AI Dev</span>
             </NavLink>
           </>
         ) : (
