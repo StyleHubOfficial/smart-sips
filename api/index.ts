@@ -107,13 +107,13 @@ async function startServer() {
   // Edit content metadata
   app.put("/api/content", async (req, res) => {
     try {
-      const { public_id, title, teacher, subject, className, description, fileType, resource_type } = req.body;
+      const { public_id, title, teacher, subject, className, description, fileType, tags, resource_type } = req.body;
 
       if (!public_id) {
         return res.status(400).json({ error: "Missing public_id" });
       }
 
-      const contextStr = `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}`;
+      const contextStr = `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}|tags=${tags || ''}`;
 
       console.log(`Updating metadata for: ${public_id}`);
       await cloudinary.api.update(public_id, {
@@ -166,7 +166,7 @@ async function startServer() {
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const { title, teacher, subject, className, description, fileType } = req.body;
+      const { title, teacher, subject, className, description, fileType, tags } = req.body;
 
       console.log(`Uploading file: ${req.file.originalname} (${req.file.size} bytes)`);
 
@@ -177,7 +177,7 @@ async function startServer() {
       const result = await cloudinary.uploader.upload(dataURI, {
         folder: "sunrise_classroom",
         resource_type: "auto",
-        context: `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}`,
+        context: `title=${title}|teacher=${teacher}|subject=${subject}|class=${className}|description=${description}|fileType=${fileType}|tags=${tags || ''}`,
       });
 
       console.log("Upload successful:", result.public_id);

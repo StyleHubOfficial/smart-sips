@@ -28,6 +28,7 @@ interface ContentItem {
       class?: string;
       description?: string;
       fileType?: string;
+      tags?: string;
     }
   }
 }
@@ -307,7 +308,17 @@ const ContentCard = React.memo(({
           </div>
           <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
         </div>
-        <p className="text-sm text-gray-400 mb-4 truncate">{meta.subject || "General"} • {meta.class || "All Classes"}</p>
+        <p className="text-sm text-gray-400 mb-2 truncate">{meta.subject || "General"} • {meta.class || "All Classes"}</p>
+        
+        {meta.tags && (
+          <div className="flex flex-wrap gap-1 mb-4 overflow-hidden h-6">
+            {meta.tags.split(',').map((tag, idx) => (
+              <span key={idx} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-[#00F0FF] uppercase tracking-wider whitespace-nowrap">
+                #{tag.trim()}
+              </span>
+            ))}
+          </div>
+        )}
         
         <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
           <span>By {meta.teacher || "Teacher"}</span>
@@ -393,7 +404,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
     className: "",
     subject: "",
     description: "",
-    fileType: ""
+    fileType: "",
+    tags: ""
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -468,7 +480,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
       className: meta.class || "Class 10",
       subject: meta.subject || "Mathematics",
       description: meta.description || "",
-      fileType: meta.fileType || "PDF"
+      fileType: meta.fileType || "PDF",
+      tags: meta.tags || ""
     });
     setEditingItem(item);
   };
@@ -499,7 +512,8 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                 class: editFormData.className,
                 subject: editFormData.subject,
                 description: editFormData.description,
-                fileType: editFormData.fileType
+                fileType: editFormData.fileType,
+                tags: editFormData.tags
               }
             };
           }
@@ -1027,6 +1041,17 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                       type="text" 
                       value={editFormData.subject}
                       onChange={e => setEditFormData({...editFormData, subject: e.target.value})}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Tags (comma separated)</label>
+                    <input 
+                      type="text" 
+                      value={editFormData.tags}
+                      onChange={e => setEditFormData({...editFormData, tags: e.target.value})}
+                      placeholder="e.g. physics, quantum, 2024"
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
                     />
                   </div>
