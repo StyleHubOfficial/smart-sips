@@ -5,18 +5,17 @@ dotenv.config();
 
 const router = express.Router();
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
 // Helper function to call OpenRouter
 async function callOpenRouter(model: string, systemPrompt: string, userPrompt: string) {
-  if (!OPENROUTER_API_KEY) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY is not set");
   }
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "https://smart-sunrise.vercel.app", // Optional, for OpenRouter rankings
       "X-Title": "Smart Sunrise", // Optional, for OpenRouter rankings
