@@ -7,11 +7,11 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
   const [showText, setShowText] = useState(false);
 
   useEffect(() => {
-    // Sequence timing
-    const t1 = setTimeout(() => setPhase('forming'), 1000); 
-    const t2 = setTimeout(() => setShowText(true), 1200);
-    const t3 = setTimeout(() => setPhase('glass'), 4000);
-    const t4 = setTimeout(() => onComplete(), 6500);
+    // Sequence timing - Faster sequence
+    const t1 = setTimeout(() => setPhase('forming'), 600); 
+    const t2 = setTimeout(() => setShowText(true), 800);
+    const t3 = setTimeout(() => setPhase('glass'), 3000);
+    const t4 = setTimeout(() => onComplete(), 5500);
 
     return () => {
       clearTimeout(t1);
@@ -35,7 +35,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
     window.addEventListener('resize', resizeCanvas);
 
     const particles: any[] = [];
-    const particleCount = 200;
+    const particleCount = 400; // More particles for better formation
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
@@ -46,10 +46,11 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
         y: Math.random() * canvas.height,
         targetX: Math.random() * canvas.width,
         targetY: Math.random() * canvas.height,
-        size: Math.random() * 2 + 1,
-        speed: Math.random() * 0.05 + 0.02,
+        size: Math.random() * 1.5 + 0.5,
+        speed: Math.random() * 0.1 + 0.05,
         color: Math.random() > 0.5 ? '#00F0FF' : '#B026FF',
         opacity: Math.random() * 0.5 + 0.5,
+        letterIndex: i % 12, // Distribute among letters of "Smart Sunrise" (12 non-space chars)
       });
     }
 
@@ -59,9 +60,9 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       // Draw Grid
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
       ctx.lineWidth = 1;
-      const gridSize = 50;
+      const gridSize = 60;
       for (let x = 0; x < canvas.width; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
@@ -78,17 +79,23 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
       particles.forEach((p) => {
         if (phase === 'particles') {
           // Random movement
-          p.x += (p.targetX - p.x) * 0.01;
-          p.y += (p.targetY - p.y) * 0.01;
+          p.x += (p.targetX - p.x) * 0.02;
+          p.y += (p.targetY - p.y) * 0.02;
           if (Math.abs(p.x - p.targetX) < 1) p.targetX = Math.random() * canvas.width;
           if (Math.abs(p.y - p.targetY) < 1) p.targetY = Math.random() * canvas.height;
         } else if (phase === 'forming') {
-          // Move toward center area where text will be
-          p.x += (centerX + (Math.random() - 0.5) * 400 - p.x) * 0.1;
-          p.y += (centerY + (Math.random() - 0.5) * 100 - p.y) * 0.1;
-          p.opacity *= 0.98;
+          // Move toward specific letter positions
+          const letterSpacing = 60;
+          const totalWidth = 12 * letterSpacing;
+          const startX = centerX - totalWidth / 2;
+          const tx = startX + p.letterIndex * letterSpacing + (Math.random() - 0.5) * 20;
+          const ty = centerY + (Math.random() - 0.5) * 40;
+          
+          p.x += (tx - p.x) * 0.15;
+          p.y += (ty - p.y) * 0.15;
+          p.opacity *= 0.99;
         } else {
-          p.opacity *= 0.9;
+          p.opacity *= 0.92;
         }
 
         ctx.fillStyle = p.color;
@@ -124,86 +131,100 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
               animate="visible"
               exit="hidden"
             >
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-4 relative">
                 {words.map((char, i) => (
-                  <motion.span
-                    key={i}
-                    variants={{
-                      hidden: { opacity: 0, scale: 0, y: 20, filter: 'blur(10px)' },
-                      visible: { 
-                        opacity: 1, 
-                        scale: 1, 
-                        y: 0, 
-                        filter: 'blur(0px)',
-                        transition: { 
-                          type: "spring",
-                          stiffness: 200,
-                          damping: 20,
-                          delay: i * 0.05 
-                        }
+                   <motion.span
+                     key={i}
+                     variants={{
+                       hidden: { opacity: 0, scale: 0, y: 20, filter: 'blur(10px)' },
+                       visible: { 
+                         opacity: 1, 
+                         scale: 1, 
+                         y: 0, 
+                         filter: 'blur(0px)',
+                         transition: { 
+                           type: "spring",
+                           stiffness: 300,
+                           damping: 25,
+                           delay: i * 0.03 
+                         }
+                       }
+                     }}
+                     className={`text-5xl md:text-8xl font-display font-bold inline-block ${char === " " ? "mx-4" : "text-white"}`}
+                     style={{
+                       textShadow: "0 0 20px rgba(0, 240, 255, 0.3)",
+                       background: "linear-gradient(to right, #00F0FF, #B026FF)",
+                       WebkitBackgroundClip: "text",
+                       WebkitTextFillColor: char === " " ? "transparent" : "transparent"
+                     }}
+                   >
+                     {char}
+                   </motion.span>
+                 ))}
+
+                {/* Glassmorphic Bar Outro - Blast Expansion */}
+                {phase === 'glass' && (
+                  <motion.div
+                    initial={{ width: 0, opacity: 0, scaleX: 0 }}
+                    animate={{ 
+                      width: "140%", 
+                      opacity: 1,
+                      scaleX: 1,
+                      transition: { 
+                        duration: 0.8, 
+                        ease: [0.16, 1, 0.3, 1] 
                       }
                     }}
-                    className={`text-5xl md:text-8xl font-display font-bold inline-block ${char === " " ? "mx-4" : "text-white"}`}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden"
                     style={{
-                      textShadow: "0 0 20px rgba(0, 240, 255, 0.5)",
-                      background: "linear-gradient(to right, #00F0FF, #B026FF)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: char === " " ? "transparent" : "transparent"
+                      background: "rgba(255, 255, 255, 0.05)",
+                      backdropFilter: "blur(60px) saturate(200%)",
+                      WebkitBackdropFilter: "blur(60px) saturate(200%)",
+                      borderRadius: "100px", // More rounded for iOS look
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)",
                     }}
                   >
-                    {char}
-                  </motion.span>
-                ))}
-              </div>
-              
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.5, duration: 0.8 }}
-                className="text-xl md:text-2xl text-white/60 tracking-[0.3em] uppercase font-light"
-              >
-                AI Powered Classroom
-              </motion.p>
+                    {/* Highlight sweep */}
+                    <motion.div
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "100%" }}
+                      transition={{ duration: 1, delay: 0.2, ease: "easeInOut" }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
+                    />
+                    
+                    {/* Soft glow pulse at start */}
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: [0, 0.8, 0], scale: [0.8, 1.5, 2] }}
+                      transition={{ duration: 0.6 }}
+                      className="absolute inset-0 bg-white/40 blur-3xl rounded-full"
+                    />
 
-              {/* Glassmorphic Bar Outro */}
-              {phase === 'glass' && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ 
-                    width: "120%", 
-                    opacity: 1,
-                    transition: { 
-                      duration: 1.2, 
-                      ease: [0.16, 1, 0.3, 1] // Apple-like ease
-                    }
-                  }}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.1)",
-                    backdropFilter: "blur(40px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(40px) saturate(180%)",
-                    borderRadius: "24px",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
-                  }}
-                >
-                  {/* Highlight sweep */}
-                  <motion.div
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "100%" }}
-                    transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
-                  />
-                  
-                  {/* Soft glow pulse at start */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: [0, 0.5, 0], scale: [0.8, 1.2, 1.5] }}
-                    transition={{ duration: 0.8 }}
-                    className="absolute inset-0 bg-white/30 blur-2xl rounded-full"
-                  />
-                </motion.div>
-              )}
+                    {/* Text reveal inside the bar */}
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="flex justify-center whitespace-nowrap"
+                    >
+                      {words.map((char, i) => (
+                        <span
+                          key={`reveal-${i}`}
+                          className={`text-5xl md:text-8xl font-display font-bold inline-block ${char === " " ? "mx-4" : "text-white"}`}
+                          style={{
+                            background: "linear-gradient(to right, #fff, #fff)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent"
+                          }}
+                        >
+                          {char}
+                        </span>
+                      ))}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

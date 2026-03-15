@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2 } from 'lucide-react';
 
 interface WhiteboardProps {
@@ -453,24 +453,44 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           </button>
           
           {/* Advanced Eraser */}
-          <div className="relative group flex items-center">
-            <button onClick={() => setTool('eraser')} className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Eraser">
+          <div className="relative flex items-center">
+            <button 
+              onClick={() => {
+                if (tool === 'eraser') {
+                  setShowEraserMenu(!showEraserMenu);
+                } else {
+                  setTool('eraser');
+                  setShowEraserMenu(false);
+                }
+              }} 
+              className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
+              title="Eraser (Click again for options)"
+            >
               <Eraser className="w-5 h-5" />
             </button>
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]">
-              <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setLineWidth(5); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
-              </button>
-              <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <Minus className="w-3 h-3" /> Stroke Eraser
-              </button>
-              <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                <Circle className="w-3 h-3 border-dashed" /> Lasso Eraser
-              </button>
-              <button onClick={() => { setTool('eraser'); setEraserMode('all'); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
-                <Trash2 className="w-3 h-3" /> Slide to Erase All
-              </button>
-            </div>
+            <AnimatePresence>
+              {showEraserMenu && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]"
+                >
+                  <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setLineWidth(5); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
+                  </button>
+                  <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                    <Minus className="w-3 h-3" /> Stroke Eraser
+                  </button>
+                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                    <Circle className="w-3 h-3 border-dashed" /> Lasso Eraser
+                  </button>
+                  <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
+                    <Trash2 className="w-3 h-3" /> Slide to Erase All
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">

@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import aiEvolveRouter from "./aiEvolve.js";
+import pyqEngineRouter from "./pyqEngine.js";
 
 dotenv.config();
 
@@ -35,6 +36,9 @@ async function startServer() {
 
   // AI Evolve Route
   app.use("/api/ai", aiEvolveRouter);
+
+  // PYQ Engine Route
+  app.use("/api/pyq", pyqEngineRouter);
 
   // API Routes
   app.get("/api/health", (req, res) => {

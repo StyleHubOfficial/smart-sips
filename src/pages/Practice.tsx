@@ -595,7 +595,7 @@ export default function Practice() {
         transition={{ delay: index * 0.05 }}
         className={`
           ${isSheetMode 
-            ? 'bg-white text-black p-8 border-b border-gray-200 shadow-none' 
+            ? 'bg-white text-black p-8 shadow-none print:break-inside-avoid' 
             : `glass-panel rounded-2xl p-6 border border-white/10 ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'scale-[1.02] shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`
           }
           flex flex-col relative
@@ -726,22 +726,47 @@ export default function Practice() {
                 <Copy className="w-4 h-4" />
               </button>
               
-              <div className="relative group/similar">
-                <button className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors" title="Similar Questions">
-                  <Sparkles className="w-4 h-4" />
+              <div className="relative">
+                <button 
+                  onClick={() => setShowSimilarModal(showSimilarModal?.questionId === q.id ? null : {questionId: q.id, type: 'ai'})}
+                  className={`p-2 rounded-lg transition-colors ${isGeneratingSimilar ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/10 text-gray-400 hover:text-[#00F0FF]'}`} 
+                  title="Similar Questions"
+                  disabled={isGeneratingSimilar}
+                >
+                  {isGeneratingSimilar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 </button>
-                <div className="absolute right-0 bottom-full mb-2 hidden group-hover/similar:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden">
-                  <button onClick={() => handleGenerateSimilar(q, 'ai')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                    <BrainCircuit className="w-3.5 h-3.5" /> AI Similar
-                  </button>
-                  <button onClick={() => handleGenerateSimilar(q, 'pyq')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                    <History className="w-3.5 h-3.5" /> PYQ Similar
-                  </button>
-                  <button onClick={() => handleGenerateSimilar(q, 'search')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                    <Search className="w-3.5 h-3.5" /> Search Similar
-                  </button>
-                </div>
+                <AnimatePresence>
+                  {showSimilarModal?.questionId === q.id && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 bottom-full mb-2 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden"
+                    >
+                      <button onClick={() => { handleGenerateSimilar(q, 'ai'); setShowSimilarModal(null); }} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                        <BrainCircuit className="w-3.5 h-3.5" /> AI Similar
+                      </button>
+                      <button onClick={() => { handleGenerateSimilar(q, 'pyq'); setShowSimilarModal(null); }} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                        <History className="w-3.5 h-3.5" /> PYQ Similar
+                      </button>
+                      <button onClick={() => { handleGenerateSimilar(q, 'search'); setShowSimilarModal(null); }} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5" /> Search Similar
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+
+              <button 
+                onClick={() => {
+                  setSelectedOption(q.id, 'skipped');
+                  addNotification('info', 'Question skipped');
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-yellow-400 transition-colors"
+                title="Skip Question"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
 
               {showSourceLinks && q.sourceLink && (
                 <a 
@@ -813,60 +838,27 @@ export default function Practice() {
           <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/10">
             <span className="text-xs text-gray-400 mr-2">Generate Similar:</span>
             <button 
-              onClick={async () => {
-                let apiKey = '';
-                if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-                  apiKey = process.env.GEMINI_API_KEY;
-                }
-                if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-                  apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                }
-                if (!apiKey) {
-                  addNotification('error', 'Gemini API key is missing');
-                  return;
-                }
-                await generateSimilarQuestions(apiKey, q, 'ai');
-              }}
-              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+              disabled={isGeneratingSimilar}
+              onClick={() => handleGenerateSimilar(q, 'ai')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors flex items-center gap-2"
             >
+              {isGeneratingSimilar ? <Loader2 className="w-3 h-3 animate-spin" /> : <BrainCircuit className="w-3 h-3" />}
               AI Crafted
             </button>
             <button 
-              onClick={async () => {
-                let apiKey = '';
-                if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-                  apiKey = process.env.GEMINI_API_KEY;
-                }
-                if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-                  apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                }
-                if (!apiKey) {
-                  addNotification('error', 'Gemini API key is missing');
-                  return;
-                }
-                await generateSimilarQuestions(apiKey, q, 'pyq');
-              }}
-              className="text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors"
+              disabled={isGeneratingSimilar}
+              onClick={() => handleGenerateSimilar(q, 'pyq')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 hover:bg-orange-500/20 transition-colors flex items-center gap-2"
             >
+              {isGeneratingSimilar ? <Loader2 className="w-3 h-3 animate-spin" /> : <History className="w-3 h-3" />}
               PYQs
             </button>
             <button 
-              onClick={async () => {
-                let apiKey = '';
-                if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-                  apiKey = process.env.GEMINI_API_KEY;
-                }
-                if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-                  apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                }
-                if (!apiKey) {
-                  addNotification('error', 'Gemini API key is missing');
-                  return;
-                }
-                await generateSimilarQuestions(apiKey, q, 'search');
-              }}
-              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+              disabled={isGeneratingSimilar}
+              onClick={() => handleGenerateSimilar(q, 'search')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors flex items-center gap-2"
             >
+              {isGeneratingSimilar ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
               Real World
             </button>
           </div>
@@ -1432,19 +1424,20 @@ export default function Practice() {
 
               <div className="relative group">
                 <button 
-                  onClick={handleSaveToDashboard}
+                  onClick={() => setShowDashboardSelector(!showDashboardSelector)}
                   disabled={isSaving}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all border border-[#00F0FF]/30"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {isSaving ? 'Saving...' : 'Export'}
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showDashboardSelector ? 'rotate-180' : ''}`} />
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showDashboardSelector ? 'opacity-100 visible' : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'} transition-all z-50 overflow-hidden`}>
                   <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <Database className="w-4 h-4" /> Save to Dashboard
                   </button>
-                  <button onClick={() => addNotification('info', 'PDF Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Export as PDF
+                  <button onClick={() => window.print()} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Print / Export PDF
                   </button>
                   <button onClick={() => addNotification('info', 'Worksheet Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Export as Worksheet
