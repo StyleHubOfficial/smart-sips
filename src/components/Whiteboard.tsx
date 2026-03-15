@@ -1,19 +1,20 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2 } from 'lucide-react';
 
 interface WhiteboardProps {
   onClose?: () => void;
   className?: string;
   initialData?: ImageData;
   onSave?: (data: ImageData) => void;
+  theme?: 'dark' | 'light' | 'grid' | 'transparent';
 }
 
-export default function Whiteboard({ onClose, className = '', initialData, onSave }: WhiteboardProps) {
+export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark' }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase' | 'laser'>('pen');
+  const [tool, setTool] = useState<'pointer' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase' | 'laser'>('pen');
   const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'lasso' | 'all'>('pixel');
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [lassoPath, setLassoPath] = useState<{x: number, y: number}[]>([]);
@@ -28,7 +29,11 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [snapshot, setSnapshot] = useState<ImageData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
+
+  useEffect(() => {
+    setTheme(initialTheme);
+  }, [initialTheme]);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
   const getBackgroundStyle = () => {
@@ -132,6 +137,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (tool === 'pointer') return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
@@ -193,7 +199,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
+    if (!isDrawing || tool === 'pointer') return;
     
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
@@ -375,10 +381,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   return (
     <div 
       ref={containerRef}
-      className={`flex flex-col h-full bg-[#1a1b26] rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
+      className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'pointer' ? 'pointer-events-none' : ''} ${className}`}
     >
       {/* Canvas Area */}
-      <div className={`flex-1 relative cursor-none touch-none ${getBackgroundStyle()}`}>
+      <div className={`flex-1 relative ${tool === 'pointer' ? '' : 'cursor-none touch-none'} ${getBackgroundStyle()}`}>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -392,7 +398,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         />
 
         {/* Custom Cursor for Eraser/Pen feedback */}
-        {!isWiping && (
+        {!isWiping && tool !== 'pointer' && (
           <div 
             className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
             style={{
@@ -428,8 +434,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       </div>
 
       {/* Toolbar (Shifted to Bottom, higher to avoid nav bar) */}
-      <div className="absolute bottom-20 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10">
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pr-4">
+      <div className="absolute bottom-28 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10 pointer-events-auto">
+        <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
+          <button onClick={() => setTool('pointer')} className={`p-2 rounded-lg transition-colors ${tool === 'pointer' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pointer (Interact with background)">
+            <MousePointer2 className="w-5 h-5" />
+          </button>
+          <div className="w-px h-6 bg-white/10 mx-1"></div>
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
           </button>

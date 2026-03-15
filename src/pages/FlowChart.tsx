@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit, Wand2, Database } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useFlowChartStore } from '../store/useFlowChartStore';
 import { useUploadStore } from '../store/useUploadStore';
@@ -30,6 +31,10 @@ export default function FlowChart() {
   const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const chartRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +91,90 @@ export default function FlowChart() {
       addNotification('success', 'Source file attached successfully');
     };
     reader.readAsDataURL(file);
+  };
+
+  const fetchDashboardFiles = async () => {
+    try {
+      setFetchingFiles(true);
+      const res = await fetch("/api/content");
+      if (res.ok) {
+        const data = await res.json();
+        setDashboardFiles(data.resources || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard files", error);
+    } finally {
+      setFetchingFiles(false);
+    }
+  };
+
+  const handleDashboardFileSelect = async (file: any) => {
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('error', 'File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      let base64String = '';
+      let mimeType = file.type || 'application/pdf';
+
+      if (file.url.startsWith('data:')) {
+        base64String = file.url.split(',')[1];
+        mimeType = file.url.split(';')[0].split(':')[1];
+      } else {
+        base64String = btoa("Simulated file content for " + file.name);
+      }
+
+      setSourceFile({
+        name: file.name,
+        data: base64String,
+        mimeType: mimeType,
+      });
+      addNotification('success', 'File selected from dashboard');
+      setShowDashboardSelector(false);
+    } catch (error) {
+      console.error('Error processing dashboard file:', error);
+      addNotification('error', 'Failed to process selected file');
+    }
+  };
+
+  const handlePromptBuild = async () => {
+    if (!query.trim()) {
+      addNotification('info', 'Please enter a simple topic first (e.g., Electrolysis)');
+      return;
+    }
+
+    setIsPromptBuilding(true);
+    try {
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
+
+      if (!apiKey) throw new Error('API Key missing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating a high-quality ${chartType} (diagram, flowchart, or mind map). 
+        Topic: "${query}"
+        The output should be a single detailed prompt that includes key concepts, logical flow, relationships, and classroom-friendly formatting. 
+        Return ONLY the prompt text.`,
+      });
+
+      if (response.text) {
+        setQuery(response.text.trim());
+        addNotification('success', 'Detailed prompt generated!');
+      }
+    } catch (error) {
+      console.error('Prompt Builder Error:', error);
+      addNotification('error', 'Failed to build detailed prompt.');
+    } finally {
+      setIsPromptBuilding(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -257,12 +346,23 @@ export default function FlowChart() {
                  )}
               </div>
               <div className="relative">
-                <textarea 
+                <textarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
                 />
+                <button 
+                  onClick={handlePromptBuild}
+                  disabled={isPromptBuilding || !query.trim()}
+                  className="absolute right-3 top-3 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+                  title="AI Prompt Builder"
+                >
+                  {isPromptBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="flex gap-2">
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -270,12 +370,22 @@ export default function FlowChart() {
                   className="hidden" 
                   accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
                 />
-                <button 
+                <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
-                  title="Upload Source File"
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all flex items-center justify-center gap-2 border border-white/10"
                 >
                   <Plus className="w-4 h-4" />
+                  <span className="text-sm">Device</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDashboardSelector(true);
+                    fetchDashboardFiles();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all flex items-center justify-center gap-2 border border-white/10"
+                >
+                  <Database className="w-4 h-4" />
+                  <span className="text-sm">Dashboard</span>
                 </button>
               </div>
               
@@ -425,6 +535,75 @@ export default function FlowChart() {
           </div>
         </div>
       </div>
+
+      {/* Dashboard File Selector Modal */}
+      <AnimatePresence>
+        {showDashboardSelector && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[#00F0FF]/20 text-[#00F0FF]">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
+                    <p className="text-sm text-gray-500">Choose a file to generate diagram from</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowDashboardSelector(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto custom-scrollbar">
+                {fetchingFiles ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="w-10 h-10 text-[#00F0FF] animate-spin" />
+                    <p className="text-gray-400">Fetching your files...</p>
+                  </div>
+                ) : dashboardFiles.length === 0 ? (
+                  <div className="text-center py-20">
+                    <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-500">No files found in your dashboard.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {dashboardFiles.map((file) => (
+                      <button
+                        key={file.id}
+                        onClick={() => handleDashboardFileSelect(file)}
+                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all text-left group"
+                      >
+                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#00F0FF] transition-colors">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{file.name}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            <span>{file.type || 'Document'}</span>
+                            <span>•</span>
+                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#00F0FF] transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

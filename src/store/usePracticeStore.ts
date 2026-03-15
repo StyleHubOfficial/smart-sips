@@ -32,6 +32,7 @@ interface PracticeState {
   isSmartPanelMode: boolean;
   whiteboardMode: 'none' | 'side' | 'slide';
   isSourceConverterMode: boolean;
+  dppMode: 'sheet' | 'practice';
   mixUp: boolean;
   sequenceWise: boolean;
   sourceFile: { name: string, data: string, mimeType: string } | null;
@@ -42,7 +43,7 @@ interface PracticeState {
   showHints: Record<string, boolean>;
   showSourceLinks: boolean;
   stepReveals: Record<string, number>;
-  analysis: string | null;
+  analysis: any | null;
   analyzing: boolean;
   
   setQuery: (query: string) => void;
@@ -60,6 +61,7 @@ interface PracticeState {
   setIsSmartPanelMode: (isSmartPanelMode: boolean) => void;
   setWhiteboardMode: (mode: 'none' | 'side' | 'slide') => void;
   setIsSourceConverterMode: (isMode: boolean) => void;
+  setDppMode: (mode: 'sheet' | 'practice') => void;
   setMixUp: (mix: boolean) => void;
   setSequenceWise: (seq: boolean) => void;
   setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
@@ -92,6 +94,7 @@ export const usePracticeStore = create<PracticeState>()(
       isSmartPanelMode: false,
       whiteboardMode: 'none',
       isSourceConverterMode: false,
+      dppMode: 'practice',
       mixUp: false,
       sequenceWise: true,
       sourceFile: null,
@@ -120,6 +123,7 @@ export const usePracticeStore = create<PracticeState>()(
       setIsSmartPanelMode: (isSmartPanelMode) => set({ isSmartPanelMode }),
       setWhiteboardMode: (whiteboardMode) => set({ whiteboardMode }),
       setIsSourceConverterMode: (isSourceConverterMode) => set({ isSourceConverterMode }),
+      setDppMode: (dppMode) => set({ dppMode }),
       setMixUp: (mixUp) => set({ mixUp }),
       setSequenceWise: (sequenceWise) => set({ sequenceWise }),
       setSourceFile: (sourceFile) => set({ sourceFile }),
@@ -149,7 +153,7 @@ export const usePracticeStore = create<PracticeState>()(
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null }),
 
       generateQuestions: async (apiKey, onChunk) => {
-        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise } = get();
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise, dppMode } = get();
         if (!query.trim() && !sourceFile) return;
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null });
@@ -190,6 +194,7 @@ export const usePracticeStore = create<PracticeState>()(
             Question Type: ${questionType}
             Exam Format: ${examFormat}
             ${isPYQ ? `THIS IS A PYQ REQUEST. Generate authentic Previous Year Questions from the year ${pyqYear}.` : ''}
+            ${!isPYQ && !isSourceConverterMode && dppMode === 'sheet' ? 'THIS IS FOR A PRINTABLE PRACTICE SHEET. Ensure questions are formatted well for reading on paper.' : ''}
             
             The questions must be authentic and well-balanced (including conceptual, numerical, diagram-based, and application questions where applicable).
             Ensure the questions are searched well and are from correct, authentic sources.
@@ -431,46 +436,50 @@ export const usePracticeStore = create<PracticeState>()(
 
         set({ analyzing: true });
 
-        // Fallback for deprecated/invalid models
-        let selectedModel = model;
-        const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
-        if (!validModels.includes(selectedModel)) {
-          selectedModel = 'gemini-2.5-flash';
-        }
+        // Use a fast model for analysis
+        let selectedModel = 'gemini-3.1-flash-lite-preview';
 
         try {
           const ai = new GoogleGenAI({ apiKey });
           
           const performanceData = questions.map(q => ({
             question: q.question,
-            correctAnswer: q.correctAnswer,
-            userAnswer: selectedOptions[q.id] || 'Not answered',
+            topic: q.topicTag,
+            difficulty: q.difficultyBadge,
             isCorrect: selectedOptions[q.id] === q.correctAnswer
           }));
 
-          const prompt = `Analyze the following student performance data on a recent quiz:
+          const prompt = `Analyze the following student performance data and provide a structured analysis.
           
+          Performance Data:
           ${JSON.stringify(performanceData, null, 2)}
           
-          Please provide an advanced score analysis formatted in Markdown. Include:
-          1. **Overall Performance Summary**: A brief, encouraging overview of how they did.
-          2. **Difficulty Breakdown**: Analyze their performance across different difficulty levels.
-          3. **Strong Concepts**: Identify the topics or types of questions they excelled at.
-          4. **Weaker Concepts**: Identify the specific areas where they struggled or made mistakes.
-          5. **Actionable Advice & Tips**: Provide concrete study tips and strategies to improve on the weaker concepts.
-          6. **Suggested Next Steps**: Recommend specific types of questions or topics they should practice next to strengthen their understanding.
-          
-          Keep the tone constructive, educational, and motivating.`;
+          Return ONLY a valid JSON object with the following structure:
+          {
+            "strengths": ["string", "string"],
+            "weaknesses": ["string", "string"],
+            "suggestion": "A brief, encouraging overall advice string",
+            "recommendedQuestions": ["topic/question type 1", "topic/question type 2", "topic/question type 3", "topic/question type 4", "topic/question type 5"]
+          }`;
 
           const result = await ai.models.generateContent({
             model: selectedModel,
-            contents: prompt
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json"
+            }
           });
           
-          set({ analysis: result.text || 'No analysis generated.', analyzing: false });
+          try {
+            const parsedAnalysis = JSON.parse(result.text || '{}');
+            set({ analysis: parsedAnalysis, analyzing: false });
+          } catch (e) {
+            console.error("Failed to parse analysis JSON", e);
+            set({ analyzing: false, analysis: null });
+          }
         } catch (error) {
           console.error('Error analyzing score:', error);
-          set({ analyzing: false, analysis: 'Failed to generate analysis. Please try again.' });
+          set({ analyzing: false, analysis: null });
         }
       }
     }),

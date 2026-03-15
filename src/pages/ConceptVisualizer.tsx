@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { pcmToWav } from '../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Loader2, Play, Pause, Maximize2, Minimize2, FileText, X, Plus, Volume2, Share2 } from 'lucide-react';
+import { Sparkles, Loader2, Maximize2, Minimize2, FileText, X, Plus, Share2, Wand2, Image as ImageIcon, Upload, Database, ChevronRight } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useConceptVisualizerStore } from '../store/useConceptVisualizerStore';
 import { useUploadStore } from '../store/useUploadStore';
@@ -9,6 +8,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
 import Markdown from 'react-markdown';
+import { GoogleGenAI } from '@google/genai';
 
 export default function ConceptVisualizer() {
   const {
@@ -17,9 +17,11 @@ export default function ConceptVisualizer() {
     loading,
     visualizerData,
     model,
+    diagramCount,
     setQuery,
     setSourceFile,
     setModel,
+    setDiagramCount,
     generateVisualization,
   } = useConceptVisualizerStore();
 
@@ -30,13 +32,94 @@ export default function ConceptVisualizer() {
   const location = useLocation();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [isExplaining, setIsExplaining] = useState(false);
-  const [currentHighlight, setCurrentHighlight] = useState<string | null>(null);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const animationRef = useRef<HTMLIFrameElement | null>(null);
+  const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
+  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+
+  const fetchDashboardFiles = async () => {
+    try {
+      setFetchingFiles(true);
+      const res = await fetch("/api/content");
+      if (res.ok) {
+        const data = await res.json();
+        setDashboardFiles(data.resources || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard files", error);
+    } finally {
+      setFetchingFiles(false);
+    }
+  };
+
+  const handleDashboardFileSelect = async (file: any) => {
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('error', 'File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      let base64String = '';
+      let mimeType = file.type || 'application/pdf';
+
+      if (file.url.startsWith('data:')) {
+        base64String = file.url.split(',')[1];
+        mimeType = file.url.split(';')[0].split(':')[1];
+      } else {
+        base64String = btoa("Simulated file content for " + file.name);
+      }
+
+      setSourceFile({
+        name: file.name,
+        data: base64String,
+        mimeType: mimeType,
+      });
+      addNotification('success', 'File selected from dashboard');
+      setIsFileSelectorOpen(false);
+    } catch (error) {
+      console.error('Error processing dashboard file:', error);
+      addNotification('error', 'Failed to process selected file');
+    }
+  };
+
+  const handlePromptBuild = async () => {
+    if (!query.trim()) {
+      addNotification('info', 'Please enter a simple topic first');
+      return;
+    }
+
+    setIsPromptBuilding(true);
+    try {
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
+
+      if (!apiKey) throw new Error('API Key missing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating high-quality educational diagrams and concept maps. 
+        Topic: "${query}"
+        The output should be a single detailed prompt that includes key concepts, visual structure, diagram types, and educational goals. 
+        Return ONLY the prompt text.`,
+      });
+
+      if (response.text) {
+        setQuery(response.text.trim());
+        addNotification('success', 'Detailed visualization prompt generated!');
+      }
+    } catch (error) {
+      console.error('Prompt Builder Error:', error);
+      addNotification('error', 'Failed to build detailed prompt.');
+    } finally {
+      setIsPromptBuilding(false);
+    }
+  };
 
   useEffect(() => {
     if (location.state?.sourceContent) {
@@ -125,62 +208,10 @@ export default function ConceptVisualizer() {
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
-      if (!document.fullscreenElement) setIsExplaining(false);
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  useEffect(() => {
-    if (visualizerData?.audioData) {
-      const pcmData = Uint8Array.from(atob(visualizerData.audioData), c => c.charCodeAt(0));
-      const wavData = pcmToWav(pcmData);
-      const audioBlob = new Blob([wavData], { type: 'audio/wav' });
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
-      setAudioProgress(100);
-      return () => URL.revokeObjectURL(url);
-    } else if (loading) {
-      setAudioUrl(null);
-      setAudioProgress(0);
-      const interval = setInterval(() => {
-        setAudioProgress(prev => Math.min(prev + 2, 95));
-      }, 500);
-      return () => clearInterval(interval);
-    }
-  }, [visualizerData, loading]);
-
-  const handleTimeUpdate = () => {
-    if (!audioRef.current || !visualizerData?.highlightingSteps) return;
-    const currentTime = audioRef.current.currentTime;
-    const activeStep = visualizerData.highlightingSteps.find(
-      step => currentTime >= step.startTime && currentTime <= step.endTime
-    );
-    setCurrentHighlight(activeStep ? activeStep.text : null);
-  };
-
-  const startExplaining = () => {
-    if (!visualizerData?.audioData) return;
-    setIsExplaining(true);
-    setIsFullscreen(true);
-    document.documentElement.requestFullscreen();
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play();
-      setIsPlayingAudio(true);
-    }
-  };
-
-  const toggleAudio = () => {
-    if (audioRef.current) {
-      if (isPlayingAudio) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlayingAudio(!isPlayingAudio);
-    }
-  };
 
   const handleShare = async () => {
     if (!visualizerData) return;
@@ -224,11 +255,14 @@ export default function ConceptVisualizer() {
             <h2>Explanation</h2>
             <p>${visualizerData.explanation}</p>
         </div>
-        ${visualizerData.formulas.length > 0 ? `
+        ${visualizerData.diagrams.map((d, i) => `
         <div class="section">
-            <h2>Formulas</h2>
-            ${visualizerData.formulas.map(f => `<div class="formula"><strong>${f.formula}</strong>: ${f.explanation}</div>`).join('')}
-        </div>` : ''}
+            <h2>Diagram ${i + 1}: ${d.title}</h2>
+            <p>${d.description}</p>
+            <div style="background: #0f172a; padding: 20px; border-radius: 8px;">
+              ${d.svgCode}
+            </div>
+        </div>`).join('')}
     </div>
 </body>
 </html>`;
@@ -251,28 +285,16 @@ export default function ConceptVisualizer() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
-      {audioUrl && (
-        <audio 
-          ref={audioRef} 
-          src={audioUrl}
-          onEnded={() => {
-            setIsPlayingAudio(false);
-            setIsExplaining(false);
-          }} 
-          onTimeUpdate={handleTimeUpdate}
-          className="hidden" 
-        />
-      )}
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-            <Sparkles className="w-8 h-8 text-black" />
+            <ImageIcon className="w-8 h-8 text-black" />
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
               Concept <span className="text-gradient">Visualizer</span>
             </h2>
-            <p className="text-gray-400">Transform scientific concepts into interactive visual explanations</p>
+            <p className="text-gray-400">Generate educational diagrams and visual structures</p>
           </div>
         </div>
       </div>
@@ -294,6 +316,20 @@ export default function ConceptVisualizer() {
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Diagram Count</label>
+              <select
+                value={diagramCount}
+                onChange={(e) => setDiagramCount(Number(e.target.value))}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
+              >
+                <option value={1}>1 Diagram</option>
+                <option value={2}>2 Diagrams</option>
+                <option value={3}>3 Diagrams</option>
+                <option value={4}>4 Diagrams</option>
+              </select>
+            </div>
+
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Concept / Topic</label>
@@ -312,8 +348,19 @@ export default function ConceptVisualizer() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Quantum Entanglement, Mitosis, Black Holes..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
                 />
+                <button 
+                  onClick={handlePromptBuild}
+                  disabled={isPromptBuilding || !query.trim()}
+                  className="absolute right-3 top-3 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+                  title="AI Prompt Builder"
+                >
+                  {isPromptBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="flex gap-2">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -323,20 +370,30 @@ export default function ConceptVisualizer() {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-3 right-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
-                  title="Upload Source File"
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all flex items-center justify-center gap-2 border border-white/10"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">Device</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsFileSelectorOpen(true);
+                    fetchDashboardFiles();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-all flex items-center justify-center gap-2 border border-white/10"
+                >
+                  <Database className="w-4 h-4" />
+                  <span className="text-sm">Dashboard</span>
                 </button>
               </div>
 
               <button
                 onClick={handleGenerate}
                 disabled={loading || (!query.trim() && !sourceFile)}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                {loading ? 'Generating...' : 'Visualize Concept'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                {loading ? 'Generating...' : 'Generate Diagrams'}
               </button>
             </div>
           </div>
@@ -372,25 +429,6 @@ export default function ConceptVisualizer() {
                       Save to Dashboard
                     </button>
                     <button
-                      onClick={startExplaining}
-                      disabled={!visualizerData.audioData}
-                      className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-50"
-                      title="Start Fullscreen Explanation"
-                    >
-                      <Play className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Explain</span>
-                    </button>
-                    {visualizerData.audioData && (
-                      <button
-                        onClick={toggleAudio}
-                        className="p-2 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
-                        title={isPlayingAudio ? "Pause Explanation" : "Play Hinglish Explanation"}
-                      >
-                        {isPlayingAudio ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Audio</span>
-                      </button>
-                    )}
-                    <button
                       onClick={toggleFullscreen}
                       className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
                       title="Toggle Fullscreen"
@@ -407,18 +445,8 @@ export default function ConceptVisualizer() {
               {loading ? (
                 <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
-                  <div className="w-full max-w-md space-y-2">
-                    <div className="flex justify-between text-xs font-mono text-[#00F0FF]">
-                      <span>Generating Visuals & Audio...</span>
-                      <span>{audioProgress}%</span>
-                    </div>
-                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${audioProgress}%` }}
-                        className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
-                      />
-                    </div>
+                  <div className="w-full max-w-md space-y-2 text-center">
+                    <span className="text-xs font-mono text-[#00F0FF]">Generating Educational Diagrams...</span>
                   </div>
                 </div>
               ) : visualizerData ? (
@@ -428,86 +456,31 @@ export default function ConceptVisualizer() {
                     <div className="h-1 w-24 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mx-auto rounded-full"></div>
                   </div>
 
-                  <div className={`glass-panel p-6 rounded-2xl border transition-all duration-500 ${currentHighlight && visualizerData.explanation.includes(currentHighlight) ? 'border-[#00F0FF] bg-[#00F0FF]/5 shadow-[0_0_30px_rgba(0,240,255,0.1)]' : 'border-white/10 bg-white/5'}`}>
+                  <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
                     <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Concept Explanation</h3>
                     <div className="prose prose-invert max-w-none text-lg leading-relaxed">
                       <Markdown>{visualizerData.explanation}</Markdown>
                     </div>
                   </div>
 
-                  {visualizerData.animationCode && (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
-                      <h3 className="text-xl font-bold text-[#00F0FF] mb-6">Animated Visualization</h3>
-                      <div className="w-full aspect-video bg-black rounded-xl border border-white/10 overflow-hidden relative">
-                        <iframe
-                          srcDoc={`
-                            <html>
-                              <head>
-                                <style>
-                                  body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
-                                  canvas { max-width: 100%; max-height: 100%; }
-                                </style>
-                              </head>
-                              <body>
-                                ${visualizerData.animationCode}
-                              </body>
-                            </html>
-                          `}
-                          className="w-full h-full border-none"
-                          title="Concept Animation"
-                        />
+                  {visualizerData.diagrams && visualizerData.diagrams.map((diagram, index) => (
+                    <div key={index} className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center">
+                      <div className="w-full text-left mb-6">
+                        <h3 className="text-xl font-bold text-[#00F0FF]">{diagram.title}</h3>
+                        <p className="text-gray-400 mt-2">{diagram.description}</p>
                       </div>
+                      <div className="w-full max-w-3xl bg-[#0f172a] rounded-xl p-4 border border-white/10 flex justify-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: diagram.svgCode }} />
                     </div>
-                  )}
-
-                  {visualizerData.diagramSvg && (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center">
-                      <h3 className="text-xl font-bold text-[#00F0FF] mb-6 w-full text-left">Visual Diagram</h3>
-                      <div className="w-full max-w-2xl bg-[#0f172a] rounded-xl p-4 border border-white/10 flex justify-center" dangerouslySetInnerHTML={{ __html: visualizerData.diagramSvg }} />
-                    </div>
-                  )}
-
-                  {visualizerData.formulas && visualizerData.formulas.length > 0 && (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
-                      <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Key Formulas</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {visualizerData.formulas.map((f, i) => (
-                          <div key={i} className={`p-4 rounded-xl border transition-all duration-500 ${currentHighlight && f.formula.includes(currentHighlight) ? 'border-[#00F0FF] bg-[#00F0FF]/10' : 'bg-black/40 border-white/10'}`}>
-                            <div className="font-mono text-lg text-white mb-2">{f.formula}</div>
-                            <div className="text-sm text-gray-400">{f.explanation}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {visualizerData.realLifeExamples && visualizerData.realLifeExamples.length > 0 && (
-                    <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
-                      <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Real-Life Applications</h3>
-                      <div className="space-y-4">
-                        {visualizerData.realLifeExamples.map((ex, i) => (
-                          <div key={i} className={`flex gap-4 items-start p-4 rounded-xl transition-all duration-500 ${currentHighlight && ex.title.includes(currentHighlight) ? 'bg-[#00F0FF]/10 border border-[#00F0FF]/30' : ''}`}>
-                            <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 flex items-center justify-center shrink-0 text-[#00F0FF] font-bold">
-                              {i + 1}
-                            </div>
-                            <div>
-                              <h4 className="text-lg font-bold text-white">{ex.title}</h4>
-                              <p className="text-gray-400">{ex.description}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               ) : (
                 <div className="text-center space-y-4 h-full flex flex-col items-center justify-center">
                   <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mx-auto border border-white/10">
-                    <Sparkles className="w-10 h-10 text-gray-600" />
+                    <ImageIcon className="w-10 h-10 text-gray-600" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-xl font-display font-bold text-gray-500">No Concept Visualized</h3>
-                    <p className="text-gray-600 max-w-xs mx-auto">Enter a topic or upload a document to generate an interactive visual explanation.</p>
+                    <h3 className="text-xl font-display font-bold text-gray-500">No Diagrams Generated</h3>
+                    <p className="text-gray-600 max-w-xs mx-auto">Enter a topic or upload a document to generate educational diagrams.</p>
                   </div>
                 </div>
               )}
@@ -515,6 +488,79 @@ export default function ConceptVisualizer() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isFileSelectorOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-2xl bg-[#0f172a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF]">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
+                </div>
+                <button 
+                  onClick={() => setIsFileSelectorOpen(false)}
+                  className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {fetchingFiles ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin" />
+                    <p className="text-gray-400">Fetching your files...</p>
+                  </div>
+                ) : dashboardFiles.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">No files found in your dashboard.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {dashboardFiles.map((file) => (
+                      <button
+                        key={file.id}
+                        onClick={() => {
+                          handleDashboardFileSelect(file);
+                          setIsFileSelectorOpen(false);
+                        }}
+                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group text-left"
+                      >
+                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#00F0FF] transition-colors">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white font-bold truncate">{file.name}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                            <span>{file.type || 'Document'}</span>
+                            <span>•</span>
+                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#00F0FF] transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

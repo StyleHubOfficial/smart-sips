@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -9,6 +9,7 @@ import SimLoader from '../components/SimLoader';
 import { useLocation } from 'react-router-dom';
 import { generateHinglishExplanation } from '../services/aiExplainerService';
 import { pcmToWav } from '../utils/audio';
+import { GoogleGenAI } from '@google/genai';
 
 export default function Simulator() {
   const { 
@@ -22,6 +23,26 @@ export default function Simulator() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+  const [dashboardSearch, setDashboardSearch] = useState("");
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
+
+  const fetchDashboardFiles = async () => {
+    try {
+      setFetchingFiles(true);
+      const res = await fetch("/api/content");
+      if (res.ok) {
+        const data = await res.json();
+        setDashboardFiles(data.resources || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard files", error);
+    } finally {
+      setFetchingFiles(false);
+    }
+  };
   const [explainerLoading, setExplainerLoading] = useState(false);
   const [explainerData, setExplainerData] = useState<{ text: string; audioData: string | null } | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
@@ -129,6 +150,75 @@ export default function Simulator() {
       addNotification('success', 'Source file attached successfully');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDashboardFileSelect = async (file: any) => {
+    if (file.size > 5 * 1024 * 1024) {
+      addNotification('error', 'File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      let base64String = '';
+      let mimeType = file.type || 'application/pdf';
+
+      if (file.url.startsWith('data:')) {
+        base64String = file.url.split(',')[1];
+        mimeType = file.url.split(';')[0].split(':')[1];
+      } else {
+        base64String = btoa("Simulated file content for " + file.name);
+      }
+
+      setSourceFile({
+        name: file.name,
+        data: base64String,
+        mimeType: mimeType
+      });
+      addNotification('success', `Selected ${file.name} from dashboard`);
+      setShowDashboardSelector(false);
+    } catch (error) {
+      console.error("Dashboard selection error:", error);
+      addNotification('error', 'Failed to select file from dashboard');
+    }
+  };
+
+  const handlePromptBuild = async () => {
+    if (!query.trim()) {
+      addNotification('info', 'Please enter a simple topic first');
+      return;
+    }
+
+    setIsPromptBuilding(true);
+    try {
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
+
+      if (!apiKey) throw new Error('API Key missing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating a high-quality interactive simulation. 
+        Topic: "${query}"
+        The output should be a single detailed prompt that includes key concepts, interactive elements, visual requirements, and educational goals. 
+        Return ONLY the prompt text.`,
+      });
+
+      if (response.text) {
+        setQuery(response.text.trim());
+        addNotification('success', 'Detailed simulation prompt generated!');
+      }
+    } catch (error) {
+      console.error('Prompt Builder Error:', error);
+      addNotification('error', 'Failed to build detailed prompt.');
+    } finally {
+      setIsPromptBuilding(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -424,21 +514,45 @@ export default function Simulator() {
             className="hidden" 
             accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
           />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute left-3 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors z-10"
-            title="Upload Source File"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-          <input 
-            type="text" 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
-            placeholder={`Describe the ${subject} simulation...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-14 pr-4 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
-          />
+          <div className="relative flex-1">
+            <input 
+              type="text" 
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+              placeholder={sourceFile ? `Describe simulation based on ${sourceFile.name}...` : "e.g. Interactive Solar System with orbital speeds..."}
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-24 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
+            />
+            <button 
+              onClick={handlePromptBuild}
+              disabled={isPromptBuilding || !query.trim()}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+              title="AI Prompt Builder"
+            >
+              {isPromptBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-4 rounded-xl border transition-all flex items-center gap-2 ${sourceFile ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 text-[#00F0FF]' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
+              title="Upload Source File"
+            >
+              <Upload className="w-5 h-5" />
+              <span className="hidden md:inline text-sm font-bold">{sourceFile ? 'Source Attached' : 'Upload Source'}</span>
+            </button>
+            <button 
+              onClick={() => {
+                setShowDashboardSelector(true);
+                fetchDashboardFiles();
+              }}
+              className="p-4 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all flex items-center gap-2"
+              title="Select from Dashboard"
+            >
+              <Database className="w-5 h-5" />
+              <span className="hidden md:inline text-sm font-bold">Dashboard</span>
+            </button>
+          </div>
         </div>
         
         <div className="flex justify-between items-center mt-4">
@@ -614,6 +728,75 @@ export default function Simulator() {
           className="hidden"
         />
       )}
+
+      {/* Dashboard File Selector Modal */}
+      <AnimatePresence>
+        {showDashboardSelector && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+            >
+              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[#B026FF]/20 text-[#B026FF]">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
+                    <p className="text-sm text-gray-500">Choose a file to generate simulation from</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowDashboardSelector(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto custom-scrollbar">
+                {fetchingFiles ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <Loader2 className="w-10 h-10 text-[#B026FF] animate-spin" />
+                    <p className="text-gray-400">Fetching your files...</p>
+                  </div>
+                ) : dashboardFiles.length === 0 ? (
+                  <div className="text-center py-20">
+                    <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-500">No files found in your dashboard.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {dashboardFiles.map((file) => (
+                      <button
+                        key={file.id}
+                        onClick={() => handleDashboardFileSelect(file)}
+                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all text-left group"
+                      >
+                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#B026FF] transition-colors">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{file.name}</div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                            <span>{file.type || 'Document'}</span>
+                            <span>•</span>
+                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#B026FF] transition-colors" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

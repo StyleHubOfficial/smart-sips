@@ -182,11 +182,14 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center z-20"
           >
+            <div className="text-white/60 font-medium tracking-widest uppercase text-[10px] md:text-xs mb-2 drop-shadow-md">
+              Welcome to Smart Classroom
+            </div>
             <div className="text-4xl md:text-6xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#00F0FF] to-[#B026FF] drop-shadow-[0_0_20px_rgba(0,240,255,0.5)] text-center px-4">
               Smart Sunrise
             </div>
             <div className="text-white/80 font-medium tracking-widest uppercase text-xs md:text-sm mt-4 text-center drop-shadow-md">
-              Powered by Lakshya Bhamu
+              Developed by Lakshya Bhamu
             </div>
           </motion.div>
         )}

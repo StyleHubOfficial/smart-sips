@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award, Wand2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -10,13 +10,14 @@ import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
 import { useLocation } from 'react-router-dom';
 import confetti from 'canvas-confetti';
+import { GoogleGenAI } from '@google/genai';
 
 export default function Practice() {
   const { 
     query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFile, questions, loading, selectedOptions, showSolutions, showHints, showSourceLinks, stepReveals, analysis, analyzing, whiteboardMode,
-    isSourceConverterMode, mixUp, sequenceWise,
+    isSourceConverterMode, dppMode, mixUp, sequenceWise,
     setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFile, setSelectedOption, setShowHint, setShowSolution, setShowSourceLinks, setStepReveal, generateQuestions, generateSimilarQuestions, analyzeScore, setWhiteboardMode,
-    setIsSourceConverterMode, setMixUp, setSequenceWise
+    setIsSourceConverterMode, setDppMode, setMixUp, setSequenceWise
   } = usePracticeStore();
   
   const { role } = useAuthStore();
@@ -35,6 +36,7 @@ export default function Practice() {
   const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [targetTimerSeconds, setTargetTimerSeconds] = useState(0);
@@ -43,7 +45,174 @@ export default function Practice() {
   const [showSimilarModal, setShowSimilarModal] = useState<{questionId: string, type: 'ai' | 'pyq' | 'search'} | null>(null);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const [version] = useState("Advance 2.5x");
+  const [practiceFinished, setPracticeFinished] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+
+  const Scorecard = ({ score, total, accuracy, timeTaken }: { score: number, total: number, accuracy: number, timeTaken: number }) => {
+    const avgSpeed = score > 0 ? Math.round(timeTaken / total) : 0;
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+      >
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Accuracy</div>
+          <div className="relative w-20 h-20 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+              <motion.circle 
+                cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" 
+                strokeDasharray={226}
+                initial={{ strokeDashoffset: 226 }}
+                animate={{ strokeDashoffset: 226 - (226 * accuracy) / 100 }}
+                className="text-[#00F0FF]"
+              />
+            </svg>
+            <span className="absolute text-xl font-bold text-white">{Math.round(accuracy)}%</span>
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Score</div>
+          <div className="text-3xl font-display font-bold text-[#B026FF]">{score} / {total}</div>
+          <div className="text-[10px] text-gray-500 mt-1">Questions Correct</div>
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Time Taken</div>
+          <div className="text-3xl font-display font-bold text-[#FFD600]">{formatTime(timeTaken)}</div>
+          <div className="text-[10px] text-gray-500 mt-1">Total Duration</div>
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Avg. Speed</div>
+          <div className="text-3xl font-display font-bold text-emerald-400">{avgSpeed}s</div>
+          <div className="text-[10px] text-gray-500 mt-1">Per Question</div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const DetailedAnalysis = ({ data }: { data: any }) => {
+    if (!data) return null;
+    
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-4xl mx-auto space-y-6"
+      >
+        <div className="glass-panel p-8 rounded-3xl border border-[#00F0FF]/20 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00F0FF] to-[#B026FF]" />
+          
+          <div className="flex items-center gap-4 mb-8">
+            <div className="p-3 rounded-2xl bg-[#00F0FF]/10 text-[#00F0FF]">
+              <BrainCircuit className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white">AI Performance Analysis</h3>
+              <p className="text-gray-400 text-sm">Personalized feedback based on your responses</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-sm font-bold text-[#00F0FF] uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4" /> Key Strengths
+                </h4>
+                <ul className="space-y-2">
+                  {data.strengths?.map((s: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00F0FF] mt-1.5 shrink-0" />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-red-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <XCircle className="w-4 h-4" /> Areas for Improvement
+                </h4>
+                <ul className="space-y-2">
+                  {data.weaknesses?.map((w: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
+                      {w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                <h4 className="text-sm font-bold text-[#FFD600] uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" /> AI Suggestion
+                </h4>
+                <p className="text-gray-300 text-sm leading-relaxed italic">
+                  "{data.suggestion}"
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-[#B026FF] uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <History className="w-4 h-4" /> Recommended Practice
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {data.recommendedQuestions?.map((q: string, i: number) => (
+                    <button 
+                      key={i}
+                      onClick={() => {
+                        setQuery(`Generate practice questions for: ${q}`);
+                        setPracticeFinished(false);
+                        handleSearch();
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/20 text-[#B026FF] text-xs font-bold hover:bg-[#B026FF]/20 transition-all"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const handleFinishPractice = async () => {
+    setIsTimerRunning(false);
+    
+    let apiKey = '';
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      addNotification('error', 'API Key missing for analysis');
+      return;
+    }
+
+    const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
+    const percentage = (score / questions.length) * 100;
+
+    if (percentage >= 80) {
+      setShowCelebration(true);
+      triggerConfetti();
+      setTimeout(() => setShowCelebration(false), 5000);
+    }
+
+    setPracticeFinished(true);
+    await analyzeScore(apiKey);
+  };
 
   useEffect(() => {
     if (questions.length > 0 && Object.keys(selectedOptions).length === questions.length) {
@@ -189,6 +358,45 @@ export default function Practice() {
     await fetchDashboardFiles();
   };
 
+  const handlePromptBuild = async () => {
+    if (!query.trim()) {
+      addNotification('info', 'Please enter a simple topic first (e.g., Electrolysis)');
+      return;
+    }
+
+    setIsPromptBuilding(true);
+    try {
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
+
+      if (!apiKey) throw new Error('API Key missing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating high-quality practice questions or teaching material. 
+        Topic: "${query}"
+        The output should be a single detailed prompt that includes key concepts, diagrams (if applicable), step-by-step explanation, examples, and classroom-friendly formatting. 
+        Return ONLY the prompt text.`,
+      });
+
+      if (response.text) {
+        setQuery(response.text.trim());
+        addNotification('success', 'Detailed prompt generated!');
+      }
+    } catch (error) {
+      console.error('Prompt Builder Error:', error);
+      addNotification('error', 'Failed to build detailed prompt.');
+    } finally {
+      setIsPromptBuilding(false);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -237,14 +445,10 @@ export default function Practice() {
     }
 
     try {
-      if (generationMode === 'live') {
-        await generateQuestions(apiKey, (qs) => {
-          // Optional: handle each chunk if needed, but the store already updates questions
-          console.log(`Streamed ${qs.length} questions`);
-        });
-      } else {
-        await generateQuestions(apiKey);
-      }
+      await generateQuestions(apiKey, (qs) => {
+        // Optional: handle each chunk if needed, but the store already updates questions
+        console.log(`Streamed ${qs.length} questions`);
+      });
     } catch (error) {
       console.error("Generation Error:", error);
       addNotification('error', 'Failed to generate questions. Please check your API key and try again.');
@@ -427,6 +631,17 @@ export default function Practice() {
             const isCorrect = q.correctAnswer === option;
             const showResult = !!selectedOptions[q.id];
             
+            if (dppMode === 'sheet') {
+              return (
+                <div key={optIndex} className="flex items-start gap-3 p-3 text-gray-300 text-sm">
+                  <span className="font-bold text-white/50">{String.fromCharCode(65 + optIndex)}.</span>
+                  <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
+                    <Markdown>{option}</Markdown>
+                  </div>
+                </div>
+              );
+            }
+            
             let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
             if (showResult) {
               if (isCorrect) optionClass = "bg-green-500/20 border-green-500/50 text-green-200";
@@ -452,7 +667,7 @@ export default function Practice() {
         </div>
       )}
 
-      {(!q.options || q.options.length === 0) && (
+      {(!q.options || q.options.length === 0) && dppMode !== 'sheet' && (
         <div className="mb-4">
           <button 
             onClick={() => handleOptionClick(q.id, q.correctAnswer)}
@@ -464,6 +679,7 @@ export default function Practice() {
         </div>
       )}
 
+      {dppMode !== 'sheet' && (
         <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
           {q.hint && (
             <button 
@@ -524,14 +740,15 @@ export default function Practice() {
             )}
           </div>
         </div>
+      )}
 
-      {showHints[q.id] && q.hint && (
+      {dppMode !== 'sheet' && showHints[q.id] && q.hint && (
         <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
           <Markdown>{q.hint}</Markdown>
         </div>
       )}
 
-      {(showSolutions[q.id] || (stepReveals[q.id] || 0) > 0) && (
+      {dppMode !== 'sheet' && (showSolutions[q.id] || (stepReveals[q.id] || 0) > 0) && (
         <motion.div 
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -675,7 +892,7 @@ export default function Practice() {
           className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${!isPYQ && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
         >
           <Sparkles className="w-4 h-4" />
-          Question Generator
+          DPP Generator
         </button>
         <button 
           onClick={() => {
@@ -705,24 +922,45 @@ export default function Practice() {
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#00F0FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
         
         {/* Mode Specific Header */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${
-            isPYQ ? 'bg-[#B026FF]/20 border-[#B026FF]/30 text-[#B026FF]' : 
-            isSourceConverterMode ? 'bg-white/10 border-white/20 text-white' : 
-            'bg-[#00F0FF]/20 border-[#00F0FF]/30 text-[#00F0FF]'
-          } shadow-lg`}>
-            {isPYQ ? <History className="w-6 h-6" /> : isSourceConverterMode ? <FileText className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 ${
+              isPYQ ? 'bg-[#B026FF]/20 border-[#B026FF]/30 text-[#B026FF]' : 
+              isSourceConverterMode ? 'bg-white/10 border-white/20 text-white' : 
+              'bg-[#00F0FF]/20 border-[#00F0FF]/30 text-[#00F0FF]'
+            } shadow-lg`}>
+              {isPYQ ? <History className="w-6 h-6" /> : isSourceConverterMode ? <FileText className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
+            </div>
+            <div>
+              <h3 className="text-xl font-display font-bold text-white tracking-tight">
+                {isPYQ ? 'PYQ Generator Mode' : isSourceConverterMode ? 'Source Converter Mode' : 'DPP Generator'}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {isPYQ ? 'Generate authentic previous year questions with search grounding' : 
+                 isSourceConverterMode ? (sourceFile ? `Converting ${sourceFile.name} into practice questions` : 'Select a source to convert into questions') : 
+                 'Create custom Daily Practice Problems (DPP) using advanced AI'}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-xl font-display font-bold text-white tracking-tight">
-              {isPYQ ? 'PYQ Generator Mode' : isSourceConverterMode ? 'Source Converter Mode' : 'AI Question Generator'}
-            </h3>
-            <p className="text-sm text-gray-400">
-              {isPYQ ? 'Generate authentic previous year questions with search grounding' : 
-               isSourceConverterMode ? (sourceFile ? `Converting ${sourceFile.name} into practice questions` : 'Select a source to convert into questions') : 
-               'Create custom practice sets using advanced AI reasoning'}
-            </p>
-          </div>
+          
+          {!isPYQ && !isSourceConverterMode && (
+            <div className="flex bg-black/40 border border-white/10 rounded-xl p-1">
+              <button 
+                onClick={() => setDppMode('practice')}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${dppMode === 'practice' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-500 hover:text-white'}`}
+              >
+                <Activity className="w-4 h-4" />
+                Practice Mode
+              </button>
+              <button 
+                onClick={() => setDppMode('sheet')}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${dppMode === 'sheet' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-500 hover:text-white'}`}
+              >
+                <FileText className="w-4 h-4" />
+                Sheet Mode
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Row 1: Filters */}
@@ -827,7 +1065,7 @@ export default function Practice() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {!sourceFile ? (
-              <>
+              <div>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center justify-center gap-4 p-10 rounded-3xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group relative overflow-hidden"
@@ -854,7 +1092,7 @@ export default function Practice() {
                     <div className="text-sm text-gray-500">Use your previously uploaded files</div>
                   </div>
                 </button>
-              </>
+              </div>
             ) : (
               <div className="col-span-2 flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex items-center gap-3">
@@ -975,26 +1213,6 @@ export default function Practice() {
 
         {/* Row 3: Smart Panel */}
         <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/5">
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Generation Mode:</label>
-            <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
-              <button 
-                onClick={() => setGenerationMode('live')}
-                className={`px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1.5 ${generationMode === 'live' ? 'bg-[#00F0FF] text-black' : 'text-gray-400 hover:text-white'}`}
-              >
-                <Sparkles className="w-3 h-3" />
-                Live Stream
-              </button>
-              <button 
-                onClick={() => setGenerationMode('last')}
-                className={`px-3 py-1 text-[10px] font-bold rounded transition-all flex items-center gap-1.5 ${generationMode === 'last' ? 'bg-[#B026FF] text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                <Timer className="w-3 h-3" />
-                At Last
-              </button>
-            </div>
-          </div>
-
           {isPYQ && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Year:</label>
@@ -1042,14 +1260,24 @@ export default function Practice() {
             className="hidden" 
             accept=".pdf,.txt,.csv,.json,.md"
           />
-          <input 
-            type="text" 
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : isPYQ ? `Which year's PYQs for ${examType} ${subject}?` : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-            className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
-          />
+      <div className="relative w-full">
+        <input 
+          type="text" 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : isPYQ ? `Which year's PYQs for ${examType} ${subject}?` : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
+          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+        />
+        <button 
+          onClick={handlePromptBuild}
+          disabled={isPromptBuilding || !query.trim()}
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+          title="AI Prompt Builder"
+        >
+          {isPromptBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+        </button>
+      </div>
         </div>
         <div className="mt-4 flex justify-end">
           <button 
@@ -1065,24 +1293,19 @@ export default function Practice() {
 
       {/* Questions List */}
       <div className="space-y-6">
-        {loading && (
+        {loading && questions.length === 0 && (
           <div className="py-8">
             <CinematicLoader />
           </div>
         )}
 
-        {!loading && questions.length > 0 && (
+        {questions.length > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               Generated Questions <span className="text-gray-500 text-sm font-normal">({questions.length})</span>
             </h3>
             
-            {Object.keys(selectedOptions).length === questions.length && (
-              <div className="bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 px-4 py-2 rounded-xl text-white font-bold flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#00F0FF]" />
-                Score: {questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length} / {questions.length}
-              </div>
-            )}
+            {/* Redundant analysis block removed in favor of the new Finish & Analyze flow */}
             
             <div className="flex items-center gap-3">
               <button
@@ -1399,6 +1622,7 @@ export default function Practice() {
                   <Whiteboard 
                     key={`slide-${currentSlide}-${slideModeConfig.overlay}`}
                     className={`h-full rounded-none border-0 ${slideModeConfig.overlay ? 'bg-transparent' : 'bg-[#1a1b26]'}`} 
+                    theme={slideModeConfig.overlay ? 'transparent' : 'dark'}
                     initialData={slideWhiteboardData[currentSlide]}
                     onSave={(data) => setSlideWhiteboardData(prev => ({ ...prev, [currentSlide]: data }))}
                   />
@@ -1411,74 +1635,108 @@ export default function Practice() {
               </div>
             </motion.div>
           ) : (
-            <div className={
-              viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 
-              viewMode === 'triple' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
-              'space-y-6'
-            }>
-              {!loading && questions.map((q, index) => renderQuestionCard(q, index))}
+            <div>
+              <div className={
+                viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : 
+                viewMode === 'triple' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
+                'space-y-6'
+              }>
+                {questions.map((q, index) => renderQuestionCard(q, index))}
+              </div>
+              
+              {dppMode === 'sheet' && questions.length > 0 && !loading && (
+                <div className="mt-12 glass-panel rounded-2xl p-8 border border-white/10">
+                  <h3 className="text-2xl font-display font-bold text-white mb-6 flex items-center gap-3">
+                    <CheckCircle className="w-6 h-6 text-[#00F0FF]" />
+                    Answer Key
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {questions.map((q, index) => {
+                      const optionIndex = q.options?.indexOf(q.correctAnswer);
+                      const answerLetter = optionIndex !== undefined && optionIndex >= 0 ? String.fromCharCode(65 + optionIndex) : q.correctAnswer;
+                      return (
+                        <div key={`ans-${q.id}`} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                          <span className="w-8 h-8 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF] flex items-center justify-center font-bold text-sm">
+                            {index + 1}
+                          </span>
+                          <span className="font-bold text-white">
+                            {answerLetter}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </AnimatePresence>
         
-        {questions.length > 0 && !loading && (
+        {questions.length > 0 && !loading && dppMode !== 'sheet' && !practiceFinished && (
           <div className="mt-8 mb-32 flex flex-col items-center">
-            {Object.keys(selectedOptions).length === questions.length && (
-              <div className="bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 px-6 py-4 rounded-2xl text-white font-bold flex flex-col items-center gap-2 mb-8 w-full max-w-md text-center">
-                <div className="text-sm text-gray-300 uppercase tracking-wider">Final Score</div>
-                <div className="text-4xl font-display text-[#00F0FF]">
-                  {questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length} / {questions.length}
-                </div>
-                <div className="text-sm text-gray-400 mt-2">
-                  {Math.round((questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length / questions.length) * 100)}% Accuracy
-                </div>
-              </div>
-            )}
-
-            {!analysis && (
-              <div className="mb-24 flex justify-center">
-                <button 
-                  onClick={async () => {
-                    let apiKey = '';
-                    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-                      apiKey = process.env.GEMINI_API_KEY;
-                    }
-                    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-                      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                    }
-                    if (!apiKey) {
-                      addNotification('error', 'Gemini API key is missing');
-                      return;
-                    }
-                    await analyzeScore(apiKey);
-                  }}
-                  disabled={analyzing || Object.keys(selectedOptions).length === 0}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50"
-                >
-                  {analyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
-                  {analyzing ? 'Analyzing Performance...' : 'Analyze Score & Get Tips'}
-                </button>
-              </div>
-            )}
-
-            {analysis && (
+            <div className="w-full max-w-2xl bg-white/5 rounded-full h-2 mb-8 overflow-hidden border border-white/10">
               <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full mt-6 glass-panel rounded-2xl p-8 border border-[#00F0FF]/30 relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00F0FF] to-[#B026FF]" />
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF]">
-                    <BrainCircuit className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">Advanced Score Analysis</h3>
-                </div>
-                <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-white prose-a:text-[#00F0FF] prose-strong:text-[#00F0FF]">
-                  <Markdown>{analysis}</Markdown>
-                </div>
-              </motion.div>
+                initial={{ width: 0 }}
+                animate={{ width: `${(Object.keys(selectedOptions).length / questions.length) * 100}%` }}
+                className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
+              />
+            </div>
+
+            <button 
+              onClick={handleFinishPractice}
+              disabled={Object.keys(selectedOptions).length === 0}
+              className="px-12 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all disabled:opacity-50 flex items-center gap-3"
+            >
+              <CheckCircle className="w-6 h-6" />
+              Finish & Analyze Performance
+            </button>
+          </div>
+        )}
+
+        {practiceFinished && (
+          <div className="mt-8 mb-32 space-y-12">
+            <Scorecard 
+              score={questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length}
+              total={questions.length}
+              accuracy={(questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length / questions.length) * 100}
+              timeTaken={timerSeconds}
+            />
+
+            {analyzing ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-4">
+                <Loader2 className="w-12 h-12 text-[#00F0FF] animate-spin" />
+                <p className="text-gray-400 font-medium animate-pulse">AI is analyzing your performance...</p>
+              </div>
+            ) : (
+              <DetailedAnalysis data={analysis} />
             )}
+
+            <div className="flex justify-center gap-4">
+              <button 
+                onClick={() => {
+                  setPracticeFinished(false);
+                  usePracticeStore.setState({ selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null });
+                  setTimerSeconds(0);
+                  setIsTimerRunning(true);
+                }}
+                className="px-8 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 transition-all flex items-center gap-2"
+              >
+                <RotateCcw className="w-5 h-5" />
+                Retake Practice
+              </button>
+              <button 
+                onClick={() => {
+                  setPracticeFinished(false);
+                  usePracticeStore.setState({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null });
+                  setTimerSeconds(0);
+                  setQuery("");
+                }}
+                className="px-8 py-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] font-bold hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                New Session
+              </button>
+            </div>
           </div>
         )}
 
