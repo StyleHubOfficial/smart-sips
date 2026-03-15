@@ -425,7 +425,7 @@ export default function ConceptVisualizer() {
                       onClick={handleSaveToDashboard}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Database className="w-4 h-4" />
                       Save to Dashboard
                     </button>
                     <button
@@ -464,7 +464,7 @@ export default function ConceptVisualizer() {
                   </div>
 
                   {visualizerData.diagrams && visualizerData.diagrams.map((diagram, index) => (
-                    <div key={index} className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center">
+                    <div key={`${diagram.title}-${index}`} className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5 flex flex-col items-center">
                       <div className="w-full text-left mb-6">
                         <h3 className="text-xl font-bold text-[#00F0FF]">{diagram.title}</h3>
                         <p className="text-gray-400 mt-2">{diagram.description}</p>
@@ -531,9 +531,9 @@ export default function ConceptVisualizer() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file) => (
+                    {dashboardFiles.map((file, index) => (
                       <button
-                        key={file.id}
+                        key={file.id || `dashboard-file-${index}`}
                         onClick={() => {
                           handleDashboardFileSelect(file);
                           setIsFileSelectorOpen(false);

@@ -125,7 +125,7 @@ export default function Practice() {
                 </h4>
                 <ul className="space-y-2">
                   {data.strengths?.map((s: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                    <li key={`strength-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#00F0FF] mt-1.5 shrink-0" />
                       {s}
                     </li>
@@ -139,7 +139,7 @@ export default function Practice() {
                 </h4>
                 <ul className="space-y-2">
                   {data.weaknesses?.map((w: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2 text-gray-300 text-sm">
+                    <li key={`weakness-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
                       {w}
                     </li>
@@ -165,7 +165,7 @@ export default function Practice() {
                 <div className="flex flex-wrap gap-2">
                   {data.recommendedQuestions?.map((q: string, i: number) => (
                     <button 
-                      key={i}
+                      key={`rec-${i}`}
                       onClick={() => {
                         setQuery(`Generate practice questions for: ${q}`);
                         setPracticeFinished(false);
@@ -584,63 +584,79 @@ export default function Practice() {
     }
   };
 
-  const renderQuestionCard = (q: any, index: number, compact = false) => (
-    <motion.div
-      key={`${q.id}-${index}`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className={`glass-panel rounded-2xl p-6 border border-white/10 flex flex-col ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'scale-[1.02] shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`}
-    >
-      <div className="flex flex-wrap gap-2 mb-4">
-        {q.difficultyBadge && (
-          <span className="px-2 py-1 rounded-md bg-white/10 text-xs font-medium text-gray-300 border border-white/10">
-            {q.difficultyBadge}
-          </span>
+  const renderQuestionCard = (q: any, index: number, compact = false) => {
+    const isSheetMode = dppMode === 'sheet';
+    
+    return (
+      <motion.div
+        key={`${q.id}-${index}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05 }}
+        className={`
+          ${isSheetMode 
+            ? 'bg-white text-black p-8 border-b border-gray-200 shadow-none' 
+            : `glass-panel rounded-2xl p-6 border border-white/10 ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'scale-[1.02] shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`
+          }
+          flex flex-col relative
+        `}
+      >
+        {isSheetMode && (
+          <div className="absolute top-8 right-8 text-[10px] text-gray-400 font-mono uppercase tracking-widest">
+            Q-{index + 1}
+          </div>
         )}
-        {q.topicTag && (
-          <span className="px-2 py-1 rounded-md bg-[#00F0FF]/10 text-xs font-medium text-[#00F0FF] border border-[#00F0FF]/20">
-            {q.topicTag}
-          </span>
+        {!isSheetMode && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {q.difficultyBadge && (
+              <span className="px-2 py-1 rounded-md bg-white/10 text-xs font-medium text-gray-300 border border-white/10">
+                {q.difficultyBadge}
+              </span>
+            )}
+            {q.topicTag && (
+              <span className="px-2 py-1 rounded-md bg-[#00F0FF]/10 text-xs font-medium text-[#00F0FF] border border-[#00F0FF]/20">
+                {q.topicTag}
+              </span>
+            )}
+            {q.type && (
+              <span className="px-2 py-1 rounded-md bg-[#B026FF]/10 text-xs font-medium text-[#B026FF] border border-[#B026FF]/20">
+                {q.type}
+              </span>
+            )}
+            {q.pyqYear && (
+              <span className="px-2 py-1 rounded-md bg-yellow-500/10 text-xs font-medium text-yellow-400 border border-yellow-500/20">
+                {q.pyqYear}
+              </span>
+            )}
+          </div>
         )}
-        {q.type && (
-          <span className="px-2 py-1 rounded-md bg-[#B026FF]/10 text-xs font-medium text-[#B026FF] border border-[#B026FF]/20">
-            {q.type}
-          </span>
-        )}
-        {q.pyqYear && (
-          <span className="px-2 py-1 rounded-md bg-yellow-500/10 text-xs font-medium text-yellow-400 border border-yellow-500/20">
-            {q.pyqYear}
-          </span>
-        )}
-      </div>
 
-      <div className="flex gap-4 mb-4">
-        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center shrink-0 font-bold text-[#00F0FF]">
-          {index + 1}
+        <div className="flex gap-4 mb-4">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold ${isSheetMode ? 'bg-black/5 text-black' : 'bg-white/5 text-[#00F0FF]'}`}>
+            {index + 1}
+          </div>
+          <div className={`font-medium prose max-w-none prose-p:my-0 prose-pre:my-2 ${isSheetMode ? 'text-black prose-black' : 'text-white prose-invert prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'} ${isSmartPanelMode ? 'text-2xl' : 'text-lg'}`}>
+            <Markdown>{q.question}</Markdown>
+          </div>
         </div>
-        <div className={`font-medium text-white prose prose-invert max-w-none prose-p:my-0 prose-pre:my-2 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 ${isSmartPanelMode ? 'text-2xl' : 'text-lg'}`}>
-          <Markdown>{q.question}</Markdown>
-        </div>
-      </div>
       
       {q.options && q.options.length > 0 && (
         <div className={`grid gap-3 mb-4 ${viewMode === 'triple' && !compact ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-          {q.options.map((option: string, optIndex: number) => {
-            const isSelected = selectedOptions[q.id] === option;
-            const isCorrect = q.correctAnswer === option;
-            const showResult = !!selectedOptions[q.id];
-            
-            if (dppMode === 'sheet') {
-              return (
-                <div key={optIndex} className="flex items-start gap-3 p-3 text-gray-300 text-sm">
-                  <span className="font-bold text-white/50">{String.fromCharCode(65 + optIndex)}.</span>
-                  <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
-                    <Markdown>{option}</Markdown>
+            {q.options.map((option: string, optIndex: number) => {
+              const isSelected = selectedOptions[q.id] === option;
+              const isCorrect = q.correctAnswer === option;
+              const showResult = !!selectedOptions[q.id];
+              
+              if (isSheetMode) {
+                return (
+                  <div key={`${q.id}-opt-${optIndex}`} className="flex items-start gap-3 p-3 text-gray-700 text-sm border border-gray-100 rounded-lg">
+                    <span className="font-bold text-black/30">{String.fromCharCode(65 + optIndex)}.</span>
+                    <div className="prose prose-black max-w-none prose-p:my-0 prose-pre:my-0">
+                      <Markdown>{option}</Markdown>
+                    </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
             
             let optionClass = "bg-white/5 border-white/10 hover:bg-white/10";
             if (showResult) {
@@ -651,7 +667,7 @@ export default function Practice() {
 
             return (
               <button
-                key={optIndex}
+                key={`${q.id}-opt-${optIndex}`}
                 onClick={() => handleOptionClick(q.id, option)}
                 disabled={showResult}
                 className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass} ${isSmartPanelMode ? 'text-lg p-4' : ''}`}
@@ -667,93 +683,105 @@ export default function Practice() {
         </div>
       )}
 
-      {(!q.options || q.options.length === 0) && dppMode !== 'sheet' && (
-        <div className="mb-4">
-          <button 
-            onClick={() => handleOptionClick(q.id, q.correctAnswer)}
-            disabled={!!selectedOptions[q.id]}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all text-sm border border-white/10"
-          >
-            {selectedOptions[q.id] ? 'Answer Submitted' : 'Mark as Attempted'}
-          </button>
-        </div>
-      )}
-
-      {dppMode !== 'sheet' && (
-        <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
-          {q.hint && (
+        {(!q.options || q.options.length === 0) && !isSheetMode && (
+          <div className="mb-4">
             <button 
-              onClick={() => setShowHint(q.id, !showHints[q.id])}
-              className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showHints[q.id] ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20'}`}
+              onClick={() => handleOptionClick(q.id, q.correctAnswer)}
+              disabled={!!selectedOptions[q.id]}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all text-sm border border-white/10"
             >
-              <HelpCircle className="w-3.5 h-3.5" />
-              {showHints[q.id] ? 'Hide Hint' : 'Show Hint'}
+              {selectedOptions[q.id] ? 'Answer Submitted' : 'Mark as Attempted'}
             </button>
-          )}
-          <button 
-            onClick={() => setShowSolution(q.id, !showSolutions[q.id])}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showSolutions[q.id] ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/40' : 'bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/20 hover:bg-[#00F0FF]/20'}`}
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-            {showSolutions[q.id] ? 'Hide Solution' : 'Show Solution'}
-          </button>
-          
-          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 ml-auto">
+          </div>
+        )}
+
+        {!isSheetMode && (
+          <div className="flex items-center gap-2 mt-auto pt-4 border-t border-white/5">
+            {q.hint && (
+              <button 
+                onClick={() => setShowHint(q.id, !showHints[q.id])}
+                className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showHints[q.id] ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20'}`}
+              >
+                <HelpCircle className="w-3.5 h-3.5" />
+                {showHints[q.id] ? 'Hide Hint' : 'Show Hint'}
+              </button>
+            )}
             <button 
-              onClick={() => {
-                navigator.clipboard.writeText(q.question);
-                addNotification('success', 'Question copied to clipboard');
-              }}
-              className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              title="Copy Question"
+              onClick={() => setShowSolution(q.id, !showSolutions[q.id])}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${showSolutions[q.id] ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/40' : 'bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/20 hover:bg-[#00F0FF]/20'}`}
             >
-              <Copy className="w-4 h-4" />
+              <CheckCircle className="w-3.5 h-3.5" />
+              {showSolutions[q.id] ? 'Hide Solution' : 'Show Solution'}
             </button>
             
-            <div className="relative group/similar">
-              <button className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors" title="Similar Questions">
-                <Sparkles className="w-4 h-4" />
-              </button>
-              <div className="absolute right-0 bottom-full mb-2 hidden group-hover/similar:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden">
-                <button onClick={() => handleGenerateSimilar(q, 'ai')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                  <BrainCircuit className="w-3.5 h-3.5" /> AI Similar
-                </button>
-                <button onClick={() => handleGenerateSimilar(q, 'pyq')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                  <History className="w-3.5 h-3.5" /> PYQ Similar
-                </button>
-                <button onClick={() => handleGenerateSimilar(q, 'search')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
-                  <Search className="w-3.5 h-3.5" /> Search Similar
-                </button>
-              </div>
-            </div>
-
-            {showSourceLinks && q.sourceLink && (
-              <a 
-                href={q.sourceLink} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
-                title="View Source"
+            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 ml-auto">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(q.question);
+                  addNotification('success', 'Question copied to clipboard');
+                }}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                title="Copy Question"
               >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
+                <Copy className="w-4 h-4" />
+              </button>
+              
+              <div className="relative group/similar">
+                <button className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors" title="Similar Questions">
+                  <Sparkles className="w-4 h-4" />
+                </button>
+                <div className="absolute right-0 bottom-full mb-2 hidden group-hover/similar:flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden">
+                  <button onClick={() => handleGenerateSimilar(q, 'ai')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                    <BrainCircuit className="w-3.5 h-3.5" /> AI Similar
+                  </button>
+                  <button onClick={() => handleGenerateSimilar(q, 'pyq')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                    <History className="w-3.5 h-3.5" /> PYQ Similar
+                  </button>
+                  <button onClick={() => handleGenerateSimilar(q, 'search')} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5" /> Search Similar
+                  </button>
+                </div>
+              </div>
+
+              {showSourceLinks && q.sourceLink && (
+                <a 
+                  href={q.sourceLink} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
+                  title="View Source"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {dppMode !== 'sheet' && showHints[q.id] && q.hint && (
-        <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
-          <Markdown>{q.hint}</Markdown>
-        </div>
-      )}
+        {isSheetMode && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+            <div className="text-[10px] text-gray-400 font-medium">
+              Smart Sunrise AI Generated Worksheet
+            </div>
+            <div className="flex gap-2">
+              {q.topicTag && <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{q.topicTag}</span>}
+              {q.difficultyBadge && <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded text-gray-600">{q.difficultyBadge}</span>}
+            </div>
+          </div>
+        )}
 
-      {dppMode !== 'sheet' && (showSolutions[q.id] || (stepReveals[q.id] || 0) > 0) && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
-        >
+        {!isSheetMode && showHints[q.id] && q.hint && (
+          <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
+            <Markdown>{q.hint}</Markdown>
+          </div>
+        )}
+
+        {!isSheetMode && (showSolutions[q.id] || (stepReveals[q.id] || 0) > 0) && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
+          >
           <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
             <HelpCircle className="w-4 h-4" />
             <span className="font-bold text-sm uppercase tracking-wider">Solution</span>
@@ -852,6 +880,7 @@ export default function Practice() {
       )}
     </motion.div>
   );
+};
 
   return (
     <motion.div 
@@ -1412,7 +1441,7 @@ export default function Practice() {
                 </button>
                 <div className="absolute right-0 mt-2 w-48 bg-[#0f172a] border border-white/10 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                   <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4" /> Save to Dashboard
+                    <Database className="w-4 h-4" /> Save to Dashboard
                   </button>
                   <button onClick={() => addNotification('info', 'PDF Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Export as PDF

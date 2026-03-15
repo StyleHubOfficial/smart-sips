@@ -46,14 +46,25 @@ export default function DeveloperCredit({ onComplete }: { onComplete: () => void
               </defs>
             </svg>
 
-            <motion.h2 
-              initial={{ opacity: 0, filter: "blur(10px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-3xl md:text-5xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-center leading-tight"
-            >
-              Designed and Developed<br/>by Lakshya Bhamu
-            </motion.h2>
+            <div className="flex flex-col items-center gap-4">
+              <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.8 }}
+                className="text-4xl md:text-6xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-center"
+              >
+                Welcome to Smart Sunrise
+              </motion.h2>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+                className="text-xs md:text-sm font-medium tracking-[0.2em] uppercase text-white/40 text-center"
+              >
+                Designed and Developed by Lakshya Bhamu
+              </motion.p>
+            </div>
           </div>
         </motion.div>
       )}

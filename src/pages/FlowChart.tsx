@@ -480,7 +480,7 @@ export default function FlowChart() {
                       onClick={handleSaveToDashboard}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
-                      <Share2 className="w-4 h-4" />
+                      <Database className="w-4 h-4" />
                       Save to Dashboard
                     </button>
                   </>
@@ -577,9 +577,9 @@ export default function FlowChart() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file) => (
+                    {dashboardFiles.map((file, index) => (
                       <button
-                        key={file.id}
+                        key={file.id || `dashboard-file-${index}`}
                         onClick={() => handleDashboardFileSelect(file)}
                         className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all text-left group"
                       >

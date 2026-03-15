@@ -497,7 +497,7 @@ export default function Simulator() {
                     onClick={handleSaveToDashboard}
                     className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
                   >
-                    <Share2 className="w-3 h-3 md:w-4 md:h-4" />
+                    <Database className="w-3 h-3 md:w-4 md:h-4" />
                     Save to Dashboard
                   </button>
                </div>
@@ -692,12 +692,12 @@ export default function Simulator() {
                         const isHighlighted = progress >= sentenceStartRatio && progress <= sentenceEndRatio;
 
                         return (
-                          <span 
-                            key={idx} 
-                            className={`transition-all duration-300 ${isHighlighted ? 'text-[#00F0FF] font-bold scale-105 inline-block' : 'opacity-60'}`}
-                          >
-                            {fullSentence}{' '}
-                          </span>
+                      <div 
+                        key={`sentence-${idx}`} 
+                        className={`transition-all duration-300 ${isHighlighted ? 'text-[#00F0FF] font-bold scale-105 inline-block' : 'opacity-60'}`}
+                      >
+                        {fullSentence}{' '}
+                      </div>
                         );
                       })}
                     </div>
@@ -770,9 +770,9 @@ export default function Simulator() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file) => (
+                    {dashboardFiles.map((file, index) => (
                       <button
-                        key={file.id}
+                        key={file.id || `dashboard-file-${index}`}
                         onClick={() => handleDashboardFileSelect(file)}
                         className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all text-left group"
                       >

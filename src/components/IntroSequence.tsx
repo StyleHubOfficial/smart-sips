@@ -3,197 +3,176 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [phase, setPhase] = useState<'logo' | 'particles'>('logo');
-  const [revealProgress, setRevealProgress] = useState(-20); // -20 to 120 for diagonal wipe
+  const [phase, setPhase] = useState<'particles' | 'core' | 'logo' | 'complete'>('particles');
+  const [showText, setShowText] = useState(false);
 
   useEffect(() => {
     // Sequence timing
-    const t1 = setTimeout(() => setPhase('particles'), 1000); // Logo stays for 1s
-    const t2 = setTimeout(() => onComplete(), 4500); // End sequence
+    const t1 = setTimeout(() => setPhase('core'), 2000); // Particles merge into core
+    const t2 = setTimeout(() => setPhase('logo'), 3500); // Core morphs into logo
+    const t3 = setTimeout(() => setShowText(true), 4000); // Text appears
+    const t4 = setTimeout(() => onComplete(), 7000); // End sequence
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [onComplete]);
 
   useEffect(() => {
-    // Start animation exactly once after 1 second (when phase changes to particles)
-    const t = setTimeout(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      const resizeCanvas = () => {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-      };
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-      const particles: any[] = [];
-      const particleCount = window.innerWidth < 768 ? 30 : 60; // Responsive count
+    const particles: any[] = [];
+    const particleCount = 150;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
-      for (let i = 0; i < particleCount; i++) {
-        particles.push({
-          x: Math.random() * canvas.width * 0.5 - canvas.width * 0.2, // Start bottom-left
-          y: canvas.height + Math.random() * canvas.height * 0.5,
-          size: Math.random() * 8 + 4,
-          speedX: Math.random() * 4 + 2,
-          speedY: -(Math.random() * 4 + 2),
-          rotation: Math.random() * Math.PI * 2,
-          flapSpeed: Math.random() * 0.15 + 0.05,
-          opacity: Math.random() * 0.5 + 0.5,
-          type: Math.random() > 0.4 ? 'butterfly' : 'crystal',
-          offset: Math.random() * 1000
+    for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * Math.max(canvas.width, canvas.height);
+      particles.push({
+        x: centerX + Math.cos(angle) * distance,
+        y: centerY + Math.sin(angle) * distance,
+        targetX: centerX,
+        targetY: centerY,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 0.02 + 0.01,
+        color: Math.random() > 0.5 ? '#00F0FF' : '#B026FF',
+        opacity: Math.random() * 0.5 + 0.5,
+        angle: angle,
+        distance: distance
+      });
+    }
+
+    let animationFrameId: number;
+    let corePulse = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw Grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      if (phase === 'particles' || phase === 'core') {
+        particles.forEach((p) => {
+          if (phase === 'particles') {
+            p.distance -= p.speed * p.distance;
+            p.x = centerX + Math.cos(p.angle) * p.distance;
+            p.y = centerY + Math.sin(p.angle) * p.distance;
+          } else {
+            // Move toward center
+            p.x += (centerX - p.x) * 0.1;
+            p.y += (centerY - p.y) * 0.1;
+            p.opacity *= 0.95;
+          }
+
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.opacity;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
         });
       }
 
-      let animationFrameId: number;
-      let startTime = Date.now();
+      if (phase === 'core' || phase === 'logo') {
+        corePulse += 0.05;
+        const pulseSize = Math.sin(corePulse) * 10;
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 100 + pulseSize);
+        gradient.addColorStop(0, 'rgba(0, 240, 255, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(176, 38, 255, 0.4)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-      const drawButterfly = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, rotation: number, opacity: number, time: number, flapSpeed: number, offset: number) => {
-        ctx.save();
-        ctx.translate(x, y);
-        
-        // Calculate flight direction angle based on movement (diagonally up-right) + slight wobble
-        const flightAngle = -Math.PI / 4 + Math.sin(time * 0.002 + offset) * 0.2; 
-        ctx.rotate(flightAngle);
-        
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.8)';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00F0FF';
-        
-        // Flapping wings animation
-        const flap = Math.sin((time + offset) * flapSpeed);
-        const wingWidth = size * (0.3 + 0.7 * Math.abs(flap)); // 3D flap effect
-        
-        // Left wing
+        ctx.globalAlpha = phase === 'logo' ? 0.5 : 1;
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.ellipse(-wingWidth, 0, wingWidth, size * 1.5, Math.PI / 6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Right wing
-        ctx.beginPath();
-        ctx.ellipse(wingWidth, 0, wingWidth, size * 1.5, -Math.PI / 6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Body
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.shadowBlur = 5;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, size * 0.2, size * 1.2, 0, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 100 + pulseSize, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.restore();
-      };
-
-      const drawCrystal = (ctx: CanvasRenderingContext2D, x: number, y: number, size: number, rotation: number, opacity: number) => {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(rotation);
-        ctx.globalAlpha = opacity;
-        ctx.fillStyle = 'rgba(176, 38, 255, 0.8)';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#B026FF';
-        
+        // Core details
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(0, -size * 2);
-        ctx.lineTo(size, 0);
-        ctx.lineTo(0, size * 2);
-        ctx.lineTo(-size, 0);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.restore();
-      };
+        ctx.arc(centerX, centerY, 50 + pulseSize / 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-      const render = () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const time = Date.now();
-        const elapsed = time - startTime;
-        
-        // Calculate reveal progress based on time (0 to 120 over 3.5 seconds)
-        const progress = Math.min(120, -20 + (elapsed / 3500) * 140);
-        setRevealProgress(progress);
+      animationFrameId = requestAnimationFrame(render);
+    };
 
-        particles.forEach((p) => {
-          p.x += p.speedX;
-          p.y += p.speedY;
-          p.rotation += 0.02;
-          
-          // Fade out near top right
-          if (p.x > canvas.width * 0.8 || p.y < canvas.height * 0.2) {
-            p.opacity = Math.max(0, p.opacity - 0.02);
-          }
+    render();
 
-          if (p.opacity > 0) {
-            if (p.type === 'butterfly') {
-              drawButterfly(ctx, p.x, p.y, p.size, p.rotation, p.opacity, time, p.flapSpeed, p.offset);
-            } else {
-              drawCrystal(ctx, p.x, p.y, p.size, p.rotation, p.opacity);
-            }
-          }
-        });
-
-        animationFrameId = requestAnimationFrame(render);
-      };
-
-      render();
-
-      // Cleanup function for the timeout
-      return () => {
-        cancelAnimationFrame(animationFrameId);
-        window.removeEventListener('resize', resizeCanvas);
-      };
-    }, 1000);
-
-    return () => clearTimeout(t);
-  }, []);
-
-  // The mask creates a diagonal wipe effect from bottom-left to top-right
-  const maskStyle = {
-    maskImage: `linear-gradient(to top right, transparent ${Math.max(0, revealProgress - 20)}%, black ${Math.min(100, revealProgress + 20)}%)`,
-    WebkitMaskImage: `linear-gradient(to top right, transparent ${Math.max(0, revealProgress - 20)}%, black ${Math.min(100, revealProgress + 20)}%)`
-  };
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [phase]);
 
   return (
-    <div 
-      className={`fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden ${phase !== 'logo' ? 'pointer-events-none' : ''}`}
-      style={{ backgroundColor: phase === 'logo' ? '#0a0a0a' : 'transparent' }}
-    >
-      {/* Background overlay that wipes away */}
-      <div 
-        className="absolute inset-0 bg-[#0a0a0a]"
-        style={phase !== 'logo' ? maskStyle : {}}
-      />
-
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
+    <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
       
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {phase === 'logo' && (
           <motion.div
-            key="logo"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex flex-col items-center z-20"
+            initial={{ opacity: 0, scale: 0.5, filter: 'blur(20px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 1.5, filter: 'blur(20px)' }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
+            className="relative z-20 flex flex-col items-center"
           >
-            <div className="text-white/60 font-medium tracking-widest uppercase text-[10px] md:text-xs mb-2 drop-shadow-md">
-              Welcome to Smart Classroom
+            {/* Logo placeholder - can be replaced with actual logo SVG */}
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_50px_rgba(0,240,255,0.5)] mb-8">
+              <span className="text-4xl font-bold text-white">SS</span>
             </div>
-            <div className="text-4xl md:text-6xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#00F0FF] to-[#B026FF] drop-shadow-[0_0_20px_rgba(0,240,255,0.5)] text-center px-4">
-              Smart Sunrise
-            </div>
-            <div className="text-white/80 font-medium tracking-widest uppercase text-xs md:text-sm mt-4 text-center drop-shadow-md">
-              Developed by Lakshya Bhamu
-            </div>
+
+            {showText && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="text-center"
+              >
+                <h1 className="text-4xl md:text-7xl font-display font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mb-4">
+                  Welcome to Smart Sunrise
+                </h1>
+                <p className="text-xl md:text-2xl text-white/60 tracking-[0.3em] uppercase font-light">
+                  AI Powered Classroom
+                </p>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Glass reflection effect */}
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-white/5 to-transparent opacity-30" />
     </div>
   );
 };
+
