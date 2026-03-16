@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronDown, Sparkles } from 'lucide-react';
+import { ChevronRight, ChevronDown, Sparkles, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
 interface TreeNode {
   id: string;
@@ -13,9 +13,17 @@ interface InteractiveTreeProps {
   data: TreeNode;
 }
 
-const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number }> = ({ node, depth }) => {
+const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number; onExpand: () => void }> = ({ node, depth, onExpand }) => {
   const [isExpanded, setIsExpanded] = useState(depth === 0);
   const hasChildren = node.children && node.children.length > 0;
+
+  const handleToggle = () => {
+    const nextState = !isExpanded;
+    setIsExpanded(nextState);
+    if (nextState) {
+      onExpand();
+    }
+  };
 
   return (
     <div className="ml-4 sm:ml-8 mt-4">
@@ -25,7 +33,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number }> = ({ node, 
         className={`group relative p-4 rounded-xl border transition-all cursor-pointer ${
           isExpanded ? 'bg-[#00F0FF]/10 border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]' : 'bg-white/5 border-white/10 hover:border-white/20'
         }`}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
       >
         <div className="flex items-center gap-3">
           {hasChildren && (
@@ -41,7 +49,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number }> = ({ node, 
           </div>
           {!isExpanded && hasChildren && (
             <div className="px-2 py-1 rounded-md bg-[#00F0FF]/20 text-[#00F0FF] text-[10px] font-bold uppercase tracking-wider animate-pulse">
-              Click to Expand
+              Expand
             </div>
           )}
         </div>
@@ -61,7 +69,7 @@ const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number }> = ({ node, 
             className="overflow-hidden border-l border-white/10 ml-2"
           >
             {node.children!.map((child) => (
-              <TreeNodeComponent key={child.id} node={child} depth={depth + 1} />
+              <TreeNodeComponent key={child.id} node={child} depth={depth + 1} onExpand={onExpand} />
             ))}
           </motion.div>
         )}
@@ -71,13 +79,57 @@ const TreeNodeComponent: React.FC<{ node: TreeNode; depth: number }> = ({ node, 
 };
 
 export const InteractiveTree: React.FC<InteractiveTreeProps> = ({ data }) => {
+  const [zoom, setZoom] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleAutoZoom = () => {
+    // Automatically zoom out slightly when expanding to keep context
+    setZoom(prev => Math.max(0.5, prev - 0.05));
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-2 mb-8 text-[#00F0FF]">
-        <Sparkles className="w-5 h-5" />
-        <span className="text-xs font-bold uppercase tracking-widest">Interactive Concept Map</span>
+    <div className="relative w-full h-full min-h-[500px] overflow-hidden bg-[#050505] rounded-2xl border border-white/10">
+      {/* Controls */}
+      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+        <button 
+          onClick={() => setZoom(prev => Math.min(2, prev + 0.1))}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-all"
+          title="Zoom In"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={() => setZoom(prev => Math.max(0.2, prev - 0.1))}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-all"
+          title="Zoom Out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={() => setZoom(1)}
+          className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-all"
+          title="Reset Zoom"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
       </div>
-      <TreeNodeComponent node={data} depth={0} />
+
+      {/* Tree Container */}
+      <div className="absolute inset-0 overflow-auto p-8 custom-scrollbar">
+        <motion.div 
+          ref={containerRef}
+          animate={{ scale: zoom }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="origin-top-left"
+          style={{ width: 'max-content', minWidth: '100%' }}
+        >
+          <div className="flex items-center gap-2 mb-8 text-[#00F0FF]">
+            <Sparkles className="w-5 h-5" />
+            <span className="text-xs font-bold uppercase tracking-widest">Interactive Concept Map</span>
+          </div>
+          <TreeNodeComponent node={data} depth={0} onExpand={handleAutoZoom} />
+        </motion.div>
+      </div>
     </div>
   );
 };

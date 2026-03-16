@@ -8,6 +8,9 @@ import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
 import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from '@google/genai';
 
 export default function ConceptVisualizer() {
@@ -459,7 +462,7 @@ export default function ConceptVisualizer() {
                   <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-white/5">
                     <h3 className="text-xl font-bold text-[#00F0FF] mb-4">Concept Explanation</h3>
                     <div className="prose prose-invert max-w-none text-lg leading-relaxed">
-                      <Markdown>{visualizerData.explanation}</Markdown>
+                      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{visualizerData.explanation}</Markdown>
                     </div>
                   </div>
 

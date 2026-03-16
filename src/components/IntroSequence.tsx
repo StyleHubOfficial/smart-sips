@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ButterflyAnimation } from './ButterflyAnimation';
 
 export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -121,6 +122,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
   return (
     <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+      <ButterflyAnimation />
       
       <div className="relative z-20 flex flex-col items-center">
         <AnimatePresence>

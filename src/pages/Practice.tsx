@@ -2,6 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award, Wand2 } from 'lucide-react';
 import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore, Question } from '../store/usePracticeStore';
@@ -636,7 +639,7 @@ export default function Practice() {
             {index + 1}
           </div>
           <div className={`font-medium prose max-w-none prose-p:my-0 prose-pre:my-2 ${isSheetMode ? 'text-black prose-black' : 'text-white prose-invert prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10'} ${isSmartPanelMode ? 'text-2xl' : 'text-lg'}`}>
-            <Markdown>{q.question}</Markdown>
+            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{q.question}</Markdown>
           </div>
         </div>
       
@@ -652,7 +655,7 @@ export default function Practice() {
                   <div key={`${q.id}-opt-${optIndex}`} className="flex items-start gap-3 p-3 text-gray-700 text-sm border border-gray-100 rounded-lg">
                     <span className="font-bold text-black/30">{String.fromCharCode(65 + optIndex)}.</span>
                     <div className="prose prose-black max-w-none prose-p:my-0 prose-pre:my-0">
-                      <Markdown>{option}</Markdown>
+                      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</Markdown>
                     </div>
                   </div>
                 );
@@ -673,7 +676,7 @@ export default function Practice() {
                 className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass} ${isSmartPanelMode ? 'text-lg p-4' : ''}`}
               >
                 <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
-                  <Markdown>{option}</Markdown>
+                  <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</Markdown>
                 </div>
                 {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-green-400 shrink-0 ml-2" />}
                 {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />}
@@ -797,7 +800,7 @@ export default function Practice() {
 
         {!isSheetMode && showHints[q.id] && q.hint && (
           <div className="mt-3 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-sm text-yellow-200/80">
-            <Markdown>{q.hint}</Markdown>
+            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{q.hint}</Markdown>
           </div>
         )}
 
@@ -813,9 +816,9 @@ export default function Practice() {
           </div>
           <div className="text-gray-300 text-sm leading-relaxed mb-3 prose prose-invert max-w-none prose-p:my-1 prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10">
             {showSolutions[q.id] ? (
-              <Markdown>{q.solution}</Markdown>
+              <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{q.solution}</Markdown>
             ) : (
-              <Markdown>
+              <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                 {(() => {
                   // More robust splitting that handles various step formats
                   const steps = q.solution.split(/\n(?=\s*(?:\d+[\.\)]|Step|Phase|Part|•|\*))/i).filter(s => s.trim());

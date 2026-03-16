@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock } from 'lucide-react';
+import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle } from 'lucide-react';
 import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from "@google/genai";
 import Whiteboard from '../components/Whiteboard';
 
@@ -24,10 +27,14 @@ export default function PYQEngine() {
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
   const [year, setYear] = useState('');
+  const [selectedClass, setSelectedClass] = useState('Class 12');
+  const [userPrompt, setUserPrompt] = useState('');
   
   const [difficultyFilter, setDifficultyFilter] = useState('Any');
   const [questionType, setQuestionType] = useState('Any');
   const [examFormat, setExamFormat] = useState('Any');
+  const [deepResearch, setDeepResearch] = useState(false);
+  const [showAIInfo, setShowAIInfo] = useState(false);
 
   const [searchHistory, setSearchHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('pyq_search_history');
@@ -63,11 +70,13 @@ export default function PYQEngine() {
     const currentSubject = historyItem?.subject || subject;
     const currentTopic = historyItem?.topic || topic;
     const currentYear = historyItem?.year || year;
+    const currentClass = historyItem?.selectedClass || selectedClass;
     const currentDifficulty = historyItem?.difficultyFilter || difficultyFilter;
     const currentType = historyItem?.questionType || questionType;
     const currentFormat = historyItem?.examFormat || examFormat;
+    const currentPrompt = historyItem?.userPrompt || userPrompt;
 
-    if (!currentExam || !currentSubject || !currentTopic) return;
+    if (!currentExam && !currentPrompt) return;
 
     setIsSearching(true);
     setResults([]);
@@ -81,14 +90,16 @@ export default function PYQEngine() {
         subject: currentSubject, 
         topic: currentTopic, 
         year: currentYear, 
+        selectedClass: currentClass,
         difficultyFilter: currentDifficulty, 
         questionType: currentType, 
         examFormat: currentFormat, 
+        userPrompt: currentPrompt,
         date: new Date().toISOString() 
       };
       // Prevent duplicates
       const filteredHistory = searchHistory.filter(h => 
-        !(h.exam === currentExam && h.subject === currentSubject && h.topic === currentTopic)
+        !(h.exam === currentExam && h.subject === currentSubject && h.topic === currentTopic && h.userPrompt === currentPrompt)
       );
       const newHistory = [newHistoryItem, ...filteredHistory].slice(0, 10);
       setSearchHistory(newHistory);
@@ -96,7 +107,13 @@ export default function PYQEngine() {
     }
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
       
       if (!apiKey) {
         throw new Error("Gemini API key is missing. Please configure it in Settings.");
@@ -106,14 +123,18 @@ export default function PYQEngine() {
 
       setIsExtracting(true);
 
-      const prompt = `Find 3 real previous year questions (PYQs) for the following parameters:
+      const prompt = `${deepResearch ? 'Perform a DEEP RESEARCH and find 10 AUTHENTICATED' : 'Find 10 real'} previous year questions (PYQs) for the following parameters:
       Exam: ${currentExam}
+      Class: ${currentClass}
       Subject: ${currentSubject}
       Topic: ${currentTopic}
       Year: ${currentYear || 'Any'}
       Difficulty: ${currentDifficulty !== 'Any' ? currentDifficulty : 'Any'}
       Question Type: ${currentType !== 'Any' ? currentType : 'Any'}
       Exam Format: ${currentFormat !== 'Any' ? currentFormat : 'Any'}
+      Additional Instructions: ${currentPrompt || 'None'}
+
+      ${deepResearch ? 'Use Google Search to verify the authenticity of each question and provide the most accurate source URL.' : ''}
 
       Return the result strictly as a JSON array of objects with the following structure:
       [
@@ -125,14 +146,14 @@ export default function PYQEngine() {
           "topic": "Topic",
           "subtopic": "Subtopic",
           "difficulty": "Easy|Medium|Hard|Advanced",
-          "question_text": "The full question text",
+          "question_text": "The full question text (use LaTeX for math equations, e.g., $E=mc^2$)",
           "source_url": "URL where this question was found (if available)"
         }
       ]
       Do not include any markdown formatting like \`\`\`json, just the raw JSON array.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: deepResearch ? "gemini-3.1-pro-preview" : "gemini-3-flash-preview",
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -287,7 +308,17 @@ export default function PYQEngine() {
           className="glass-panel p-6 rounded-3xl border border-white/10 max-w-4xl mx-auto relative"
         >
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-white">Search Parameters</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-white">Search Parameters</h3>
+              <button 
+                type="button"
+                onClick={() => setShowAIInfo(true)}
+                className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-[#00F0FF] transition-colors"
+                title="AI Usage Info"
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+            </div>
             <button 
               type="button"
               onClick={() => setShowHistory(!showHistory)}
@@ -421,6 +452,21 @@ export default function PYQEngine() {
                 <option value="Advanced">Advanced / Mains</option>
                 <option value="Board">Board Exam</option>
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-[#00F0FF]" /> Deep Research
+              </label>
+              <button
+                type="button"
+                onClick={() => setDeepResearch(!deepResearch)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${deepResearch ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 text-[#00F0FF]' : 'bg-black/50 border-white/10 text-gray-400 hover:border-white/20'}`}
+              >
+                <span className="text-sm font-medium">{deepResearch ? 'Enabled (Pro)' : 'Disabled'}</span>
+                <div className={`w-10 h-5 rounded-full relative transition-colors ${deepResearch ? 'bg-[#00F0FF]' : 'bg-gray-700'}`}>
+                  <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${deepResearch ? 'left-6' : 'left-1'}`} />
+                </div>
+              </button>
             </div>
           </div>
           <div className="mt-6 flex justify-end">
@@ -641,6 +687,76 @@ export default function PYQEngine() {
             </div>
           </div>
         )}
+
+        {/* AI Info Modal */}
+        <AnimatePresence>
+          {showAIInfo && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+              >
+                <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-[#00F0FF]/20 text-[#00F0FF]">
+                      <BrainCircuit className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">AI Engine Architecture</h3>
+                      <p className="text-sm text-gray-500">How PYQ Engine works</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowAIInfo(false)}
+                    className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                  <section className="space-y-4">
+                    <h4 className="text-[#00F0FF] font-bold flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" /> Search & Grounding
+                    </h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      We use <span className="text-white font-semibold">Gemini 3.1 Pro & Flash</span> models integrated with <span className="text-white font-semibold">Google Search Grounding</span>. This allows the AI to browse the live web, find authentic question papers, and extract real questions instead of generating mock ones.
+                    </p>
+                  </section>
+
+                  <section className="space-y-4">
+                    <h4 className="text-[#B026FF] font-bold flex items-center gap-2">
+                      <Wand2 className="w-4 h-4" /> Deep Research (Qwen 2.5)
+                    </h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      For complex queries, we leverage <span className="text-white font-semibold">Qwen 2.5 72B</span> via our backend to analyze search results, verify question authenticity, and ensure mathematical accuracy. This multi-model approach ensures high-fidelity educational content.
+                    </p>
+                  </section>
+
+                  <section className="space-y-4">
+                    <h4 className="text-emerald-400 font-bold flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Solution Generation (DeepSeek R1)
+                    </h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      When you request a solution, <span className="text-white font-semibold">DeepSeek R1</span> (a specialized reasoning model) is used to provide step-by-step logical explanations, ensuring that the concepts are clear and the steps are easy to follow.
+                    </p>
+                  </section>
+
+                  <section className="space-y-4">
+                    <h4 className="text-amber-400 font-bold flex items-center gap-2">
+                      <PenTool className="w-4 h-4" /> Formatting & Math
+                    </h4>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      All mathematical equations are rendered using <span className="text-white font-semibold">KaTeX</span> and <span className="text-white font-semibold">LaTeX</span>, ensuring that complex symbols and formulas are displayed with textbook-quality precision across the entire platform.
+                    </p>
+                  </section>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Whiteboard Modal */}
         <AnimatePresence>
