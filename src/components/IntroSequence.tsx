@@ -9,16 +9,14 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
 
   useEffect(() => {
     // Sequence timing - Faster sequence
-    const t1 = setTimeout(() => setPhase('forming'), 600); 
-    const t2 = setTimeout(() => setShowText(true), 800);
-    const t3 = setTimeout(() => setPhase('glass'), 3000);
-    const t4 = setTimeout(() => onComplete(), 5500);
+    const t1 = setTimeout(() => setShowText(true), 400); // Show text earlier
+    const t2 = setTimeout(() => setPhase('glass'), 2000); // Show glass bar
+    const t3 = setTimeout(() => onComplete(), 4500); // Complete sequence
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      clearTimeout(t4);
     };
   }, [onComplete]);
 
@@ -78,23 +76,12 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
       }
 
       particles.forEach((p) => {
-        if (phase === 'particles') {
+        if (phase === 'particles' || phase === 'forming') {
           // Random movement
           p.x += (p.targetX - p.x) * 0.02;
           p.y += (p.targetY - p.y) * 0.02;
           if (Math.abs(p.x - p.targetX) < 1) p.targetX = Math.random() * canvas.width;
           if (Math.abs(p.y - p.targetY) < 1) p.targetY = Math.random() * canvas.height;
-        } else if (phase === 'forming') {
-          // Move toward specific letter positions
-          const letterSpacing = 60;
-          const totalWidth = 12 * letterSpacing;
-          const startX = centerX - totalWidth / 2;
-          const tx = startX + p.letterIndex * letterSpacing + (Math.random() - 0.5) * 20;
-          const ty = centerY + (Math.random() - 0.5) * 40;
-          
-          p.x += (tx - p.x) * 0.15;
-          p.y += (ty - p.y) * 0.15;
-          p.opacity *= 0.99;
         } else {
           p.opacity *= 0.92;
         }
@@ -120,7 +107,12 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
   const words = "Smart Sunrise".split("");
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.8 }}
+      className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
+    >
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
       <ButterflyAnimation />
       
@@ -167,14 +159,13 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
                 {/* Glassmorphic Bar Outro - Blast Expansion */}
                 {phase === 'glass' && (
                   <motion.div
-                    initial={{ width: 0, opacity: 0, scaleX: 0 }}
+                    initial={{ width: 0, opacity: 0 }}
                     animate={{ 
                       width: "140%", 
                       opacity: 1,
-                      scaleX: 1,
                       transition: { 
-                        duration: 0.8, 
-                        ease: [0.16, 1, 0.3, 1] 
+                        duration: 1.2, 
+                        ease: "easeInOut"
                       }
                     }}
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden"
@@ -234,6 +225,6 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
 
       {/* Glass reflection effect background */}
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-white/5 to-transparent opacity-30" />
-    </div>
+    </motion.div>
   );
 };

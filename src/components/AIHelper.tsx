@@ -12,6 +12,7 @@ export default function AIHelper() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { role } = useAuthStore();
@@ -41,7 +42,7 @@ export default function AIHelper() {
       User's message: ${userMsg}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: selectedModel,
         contents: prompt,
       });
 
@@ -93,9 +94,15 @@ export default function AIHelper() {
                   <h3 className="font-display font-bold text-white text-sm">
                     Sunrise AI Helper
                   </h3>
-                  <p className="text-[10px] text-[#00F0FF]">
-                    Online
-                  </p>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="mt-1 bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] text-[#00F0FF] focus:outline-none focus:border-[#00F0FF]/50 appearance-none cursor-pointer"
+                  >
+                    <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
+                    <option value="gemini-2.5-flash">Medium Quality</option>
+                    <option value="gemini-3-flash-preview">Fast</option>
+                  </select>
                 </div>
               </div>
               <button 

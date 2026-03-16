@@ -29,10 +29,12 @@ export default function PYQEngine() {
   const [year, setYear] = useState('');
   const [selectedClass, setSelectedClass] = useState('Class 12');
   const [userPrompt, setUserPrompt] = useState('');
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
   
   const [difficultyFilter, setDifficultyFilter] = useState('Any');
   const [questionType, setQuestionType] = useState('Any');
   const [examFormat, setExamFormat] = useState('Any');
+  const [numQuestions, setNumQuestions] = useState('10');
   const [deepResearch, setDeepResearch] = useState(false);
   const [showAIInfo, setShowAIInfo] = useState(false);
 
@@ -63,6 +65,40 @@ export default function PYQEngine() {
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
 
+  const handlePromptBuild = async () => {
+    if (!userPrompt.trim()) return;
+
+    setIsPromptBuilding(true);
+    try {
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
+
+      if (!apiKey) throw new Error('API Key missing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-lite-preview',
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a clear, concise, and on-point AI prompt for finding Previous Year Questions (PYQs). 
+        Topic: "${userPrompt}"
+        The output should be a single, focused prompt that specifies the core concepts, the type of questions needed, and the main educational goal. Do NOT make it overly detailed or wide-ranging. Keep it strictly relevant to the topic.
+        Return ONLY the prompt text.`,
+      });
+
+      if (response.text) {
+        setUserPrompt(response.text.trim());
+      }
+    } catch (error) {
+      console.error('Prompt Builder Error:', error);
+    } finally {
+      setIsPromptBuilding(false);
+    }
+  };
+
   const handleSearch = async (e?: React.FormEvent, historyItem?: any) => {
     if (e) e.preventDefault();
     
@@ -75,6 +111,7 @@ export default function PYQEngine() {
     const currentType = historyItem?.questionType || questionType;
     const currentFormat = historyItem?.examFormat || examFormat;
     const currentPrompt = historyItem?.userPrompt || userPrompt;
+    const currentNumQuestions = historyItem?.numQuestions || numQuestions;
 
     if (!currentExam && !currentPrompt) return;
 
@@ -95,6 +132,7 @@ export default function PYQEngine() {
         questionType: currentType, 
         examFormat: currentFormat, 
         userPrompt: currentPrompt,
+        numQuestions: currentNumQuestions,
         date: new Date().toISOString() 
       };
       // Prevent duplicates
@@ -123,7 +161,7 @@ export default function PYQEngine() {
 
       setIsExtracting(true);
 
-      const prompt = `${deepResearch ? 'Perform a DEEP RESEARCH and find 10 AUTHENTICATED' : 'Find 10 real'} previous year questions (PYQs) for the following parameters:
+      const prompt = `${deepResearch ? `Perform a DEEP RESEARCH and find ${currentNumQuestions} AUTHENTICATED` : `Find ${currentNumQuestions} real`} previous year questions (PYQs) for the following parameters:
       Exam: ${currentExam}
       Class: ${currentClass}
       Subject: ${currentSubject}
@@ -153,7 +191,7 @@ export default function PYQEngine() {
       Do not include any markdown formatting like \`\`\`json, just the raw JSON array.`;
 
       const response = await ai.models.generateContent({
-        model: deepResearch ? "gemini-3.1-pro-preview" : "gemini-3-flash-preview",
+        model: deepResearch ? "gemini-3.1-flash-lite-preview" : "gemini-3.1-flash-lite-preview",
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -319,14 +357,35 @@ export default function PYQEngine() {
                 <HelpCircle className="w-4 h-4" />
               </button>
             </div>
-            <button 
-              type="button"
-              onClick={() => setShowHistory(!showHistory)}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm flex items-center gap-2 transition-colors"
-            >
-              <History className="w-4 h-4" />
-              Recent Searches
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                type="button"
+                onClick={() => {
+                  const newHistoryItem = { 
+                    exam, subject, topic, year, selectedClass, difficultyFilter, questionType, examFormat, userPrompt, numQuestions, date: new Date().toISOString() 
+                  };
+                  const filteredHistory = searchHistory.filter(h => 
+                    !(h.exam === exam && h.subject === subject && h.topic === topic && h.userPrompt === userPrompt)
+                  );
+                  const newHistory = [newHistoryItem, ...filteredHistory].slice(0, 10);
+                  setSearchHistory(newHistory);
+                  localStorage.setItem('pyq_search_history', JSON.stringify(newHistory));
+                  alert("Search parameters saved to history!");
+                }}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2 transition-colors border border-emerald-500/20"
+              >
+                <Bookmark className="w-4 h-4" />
+                Save Search
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm flex items-center gap-2 transition-colors"
+              >
+                <History className="w-4 h-4" />
+                Recent Searches
+              </button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -452,6 +511,41 @@ export default function PYQEngine() {
                 <option value="Advanced">Advanced / Mains</option>
                 <option value="Board">Board Exam</option>
               </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">No. of Questions</label>
+              <select 
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors appearance-none"
+              >
+                <option value="5">5 Questions</option>
+                <option value="10">10 Questions</option>
+                <option value="15">15 Questions</option>
+                <option value="20">20 Questions</option>
+              </select>
+            </div>
+            <div className="space-y-2 lg:col-span-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-3 h-3 text-[#B026FF]" /> Custom Prompt (Optional)
+              </label>
+              <div className="relative">
+                <textarea 
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="e.g. Focus on questions involving calculus and trigonometry..."
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 pr-12 text-white focus:outline-none focus:border-[#B026FF]/50 transition-colors resize-none h-[50px]"
+                />
+                <button
+                  type="button"
+                  onClick={handlePromptBuild}
+                  disabled={isPromptBuilding || !userPrompt.trim()}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-[#B026FF]/20 text-gray-400 hover:text-[#B026FF] transition-all disabled:opacity-30"
+                  title="AI Prompt Builder"
+                >
+                  {isPromptBuilding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -597,12 +691,23 @@ export default function PYQEngine() {
                       )}
                     </div>
                     <div className="prose prose-invert max-w-none">
-                      <Markdown>{q.question_text}</Markdown>
+                      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{q.question_text}</Markdown>
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="p-4 border-t border-white/5 bg-black/20 flex flex-wrap items-center gap-3">
+                    {q.source_url && (
+                      <a 
+                        href={q.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20"
+                      >
+                        <LinkIcon className="w-4 h-4" />
+                        Source Link
+                      </a>
+                    )}
                     <button 
                       onClick={() => handleGenerateSolution(q)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${activeSolution === q.question_id ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-transparent'}`}
@@ -653,7 +758,7 @@ export default function PYQEngine() {
                           </div>
                         ) : (
                           <div className="prose prose-invert max-w-none prose-headings:text-[#00F0FF] prose-a:text-[#00F0FF]">
-                            <Markdown>{solutionContent}</Markdown>
+                            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{solutionContent}</Markdown>
                           </div>
                         )}
                       </motion.div>
@@ -676,7 +781,7 @@ export default function PYQEngine() {
                           </div>
                         ) : (
                           <div className="prose prose-invert max-w-none prose-headings:text-[#B026FF]">
-                            <Markdown>{similarContent}</Markdown>
+                            <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{similarContent}</Markdown>
                           </div>
                         )}
                       </motion.div>

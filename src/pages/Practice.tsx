@@ -382,9 +382,9 @@ export default function Practice() {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3.1-flash-lite-preview',
-        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating high-quality practice questions or teaching material. 
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a clear, concise, and on-point AI prompt for generating high-quality practice questions or teaching material. 
         Topic: "${query}"
-        The output should be a single detailed prompt that includes key concepts, diagrams (if applicable), step-by-step explanation, examples, and classroom-friendly formatting. 
+        The output should be a single, focused prompt that specifies the core concepts, the type of questions needed, and the main educational goal. Do NOT make it overly detailed or wide-ranging. Keep it strictly relevant to the topic.
         Return ONLY the prompt text.`,
       });
 
@@ -1211,9 +1211,9 @@ export default function Practice() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3.1-pro-preview">High Quality</option>
+              <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
               <option value="gemini-2.5-flash">Medium Quality</option>
-              <option value="gemini-3.1-flash-lite-preview">Fast</option>
+              <option value="gemini-3-flash-preview">Fast</option>
             </select>
           </div>
 
@@ -1285,18 +1285,22 @@ export default function Practice() {
             accept=".pdf,.txt,.csv,.json,.md"
           />
       <div className="relative w-full">
-        <input 
-          type="text" 
+        <textarea 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
           placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : isPYQ ? `Which year's PYQs for ${examType} ${subject}?` : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[120px]"
         />
         <button 
           onClick={handlePromptBuild}
           disabled={isPromptBuilding || !query.trim()}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+          className="absolute right-3 top-4 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
           title="AI Prompt Builder"
         >
           {isPromptBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}

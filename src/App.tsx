@@ -55,11 +55,15 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion={isSimpleMode ? "always" : "never"}>
-      {showEntryAnimation && <IntroSequence onComplete={() => {
-        setShowEntryAnimation(false);
-        setShowDeveloperCredit(true);
-      }} />}
-      {showDeveloperCredit && <DeveloperCredit onComplete={() => setShowDeveloperCredit(false)} />}
+      <AnimatePresence>
+        {showEntryAnimation && <IntroSequence key="intro" onComplete={() => {
+          setShowEntryAnimation(false);
+          setShowDeveloperCredit(true);
+        }} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
+      </AnimatePresence>
       <BrowserRouter>
         <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative overflow-hidden ${isSmartPanelMode ? 'text-lg' : ''}`}>
           {/* Animated background grid lines */}

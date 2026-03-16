@@ -80,7 +80,7 @@ export const useSimulatorStore = create<SimulatorState>()(
 
         // Fallback for deprecated/invalid models
         let selectedModel = model;
-        const validModels = ['gemini-3.1-pro-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite-preview'];
+        const validModels = ['gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-3-flash-preview'];
         if (!validModels.includes(selectedModel)) {
           selectedModel = 'gemini-2.5-flash';
           set({ model: selectedModel });

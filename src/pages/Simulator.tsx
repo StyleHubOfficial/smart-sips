@@ -203,9 +203,9 @@ export default function Simulator() {
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3.1-flash-lite-preview',
-        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a detailed, structured, and classroom-friendly AI prompt for generating a high-quality interactive simulation. 
+        contents: `Act as an expert educational prompt engineer. Convert the following simple topic into a clear, concise, and on-point AI prompt for generating a high-quality interactive simulation. 
         Topic: "${query}"
-        The output should be a single detailed prompt that includes key concepts, interactive elements, visual requirements, and educational goals. 
+        The output should be a single, focused prompt that specifies the core concepts, 2-3 key interactive elements, and the main educational goal. Do NOT make it overly detailed or wide-ranging. Keep it strictly relevant to the topic.
         Return ONLY the prompt text.`,
       });
 
@@ -447,61 +447,10 @@ export default function Simulator() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3.1-pro-preview">High Quality</option>
+              <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
               <option value="gemini-2.5-flash">Medium Quality</option>
-              <option value="gemini-3.1-flash-lite-preview">Fast</option>
+              <option value="gemini-3-flash-preview">Fast</option>
             </select>
-          </div>
-
-          <div className="flex flex-wrap justify-end gap-2 pb-1">
-             {generatedCode && (
-               <div className="flex flex-wrap gap-2">
-                 <button 
-                   onClick={handleExplain}
-                   disabled={explainerLoading}
-                   className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
-                   title="Explain in Hinglish"
-                 >
-                   {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
-                   <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
-                 </button>
-                 <button 
-                   onClick={handleSave}
-                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
-                   title="Save to History"
-                 >
-                   <Save className="w-4 h-4 md:w-5 md:h-5" />
-                 </button>
-                 <button 
-                   onClick={() => setShowCode(!showCode)}
-                   className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
-                   title="View Code"
-                 >
-                   <Code className="w-4 h-4 md:w-5 md:h-5" />
-                 </button>
-                 <button 
-                   onClick={handleDownload}
-                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
-                   title="Download HTML"
-                 >
-                   <Download className="w-4 h-4 md:w-5 md:h-5" />
-                 </button>
-                 <button 
-                   onClick={handleShare}
-                   className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
-                   title="Share Simulation"
-                 >
-                   <Share2 className="w-4 h-4 md:w-5 md:h-5" />
-                 </button>
-                 <button 
-                    onClick={handleSaveToDashboard}
-                    className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
-                  >
-                    <Database className="w-3 h-3 md:w-4 md:h-4" />
-                    Save to Dashboard
-                  </button>
-               </div>
-             )}
           </div>
         </div>
 
@@ -515,18 +464,22 @@ export default function Simulator() {
             accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
           />
           <div className="relative flex-1">
-            <input 
-              type="text" 
+            <textarea 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleGenerate();
+                }
+              }}
               placeholder={sourceFile ? `Describe simulation based on ${sourceFile.name}...` : "e.g. Interactive Solar System with orbital speeds..."}
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-24 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner"
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-4 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner resize-none h-[120px]"
             />
             <button 
               onClick={handlePromptBuild}
               disabled={isPromptBuilding || !query.trim()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
+              className="absolute right-3 top-4 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
               title="AI Prompt Builder"
             >
               {isPromptBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
@@ -587,44 +540,98 @@ export default function Simulator() {
         )}
 
         {!loading && generatedCode && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
-          >
-            {/* Toolbar Overlay */}
-            <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <button 
-                onClick={handleGenerate}
-                className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
-                title="Regenerate"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={toggleFullscreen}
-                className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
-                title="Fullscreen"
-              >
-                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {showCode ? (
-              <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
-                <pre>{generatedCode}</pre>
+          <div className="space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
+            >
+              {/* Toolbar Overlay */}
+              <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <button 
+                  onClick={handleGenerate}
+                  className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
+                  title="Regenerate"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={toggleFullscreen}
+                  className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
+                  title="Fullscreen"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                </button>
               </div>
-            ) : (
-              <iframe 
-                ref={iframeRef}
-                srcDoc={generatedCode}
-                title="Simulation Preview"
-                className="w-full h-full border-0 bg-black"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                allowFullScreen
-              />
-            )}
-          </motion.div>
+
+              {showCode ? (
+                <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
+                  <pre>{generatedCode}</pre>
+                </div>
+              ) : (
+                <iframe 
+                  ref={iframeRef}
+                  srcDoc={generatedCode}
+                  title="Simulation Preview"
+                  className="w-full h-full border-0 bg-black"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+              )}
+            </motion.div>
+
+            {/* Controls Section */}
+            <div className="flex flex-wrap justify-between items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/10">
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleExplain}
+                  disabled={explainerLoading}
+                  className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+                  title="Explain in Hinglish"
+                >
+                  {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
+                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
+                </button>
+                <button 
+                  onClick={() => setShowCode(!showCode)}
+                  className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
+                  title="View Code"
+                >
+                  <Code className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleSave}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
+                  title="Save to History"
+                >
+                  <Save className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                  title="Download HTML"
+                >
+                  <Download className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleShare}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
+                  title="Share Simulation"
+                >
+                  <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleSaveToDashboard}
+                  className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
+                >
+                  <Database className="w-3 h-3 md:w-4 md:h-4" />
+                  Save to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         
         {!loading && !generatedCode && (
@@ -639,10 +646,10 @@ export default function Simulator() {
       <AnimatePresence>
         {showExplainer && (
           <motion.div 
-            initial={{ opacity: 0, x: 300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 300 }}
-            className="fixed top-24 right-6 w-full max-w-md z-50"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="w-full mt-6"
           >
             <div className="glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 shadow-[0_0_50px_rgba(240,0,255,0.15)] relative overflow-hidden bg-black/80 backdrop-blur-xl">
               <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
