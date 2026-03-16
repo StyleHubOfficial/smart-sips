@@ -96,8 +96,8 @@ export const useSimulatorStore = create<SimulatorState>()(
 
             Requirements:
             1. Simulation Engine:
-               - If 2D: Use HTML5 Canvas API with high-performance rendering loop.
-               - If 3D: Use Three.js (CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
+               - If 2D: Use HTML5 Canvas API with high-performance rendering loop. Implement advanced physics (collisions, friction, damping, and fluid motion if applicable).
+               - If 3D: Use Three.js (CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js). Include realistic lighting (PointLight, AmbientLight), shadows, and high-quality textures/materials (MeshStandardMaterial).
             2. Interactive Parameters Panel:
                - Create a sleek, glassmorphism-style floating panel with sliders and toggles.
                - Variables for Physics: gravity, mass, velocity, voltage, resistance, etc.
@@ -106,6 +106,7 @@ export const useSimulatorStore = create<SimulatorState>()(
                - Implement a dynamic graph using Canvas or a lightweight library (like Chart.js via CDN: https://cdn.jsdelivr.net/npm/chart.js) showing real-time data (e.g., velocity vs time, concentration vs time).
             4. Visuals:
                - Premium dark-themed interface with glowing effects, particle systems for reactions, and smooth transitions.
+               - Use high-resolution assets and smooth animations (60fps).
                - Large, smart-panel optimized controls (easy to touch/click).
             5. Features:
                - "Theory" section explaining the scientific principles.

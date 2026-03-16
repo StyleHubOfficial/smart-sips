@@ -14,7 +14,7 @@ export const ButterflyAnimation: React.FC = () => {
           rotate: [45, 60, 30, 45]
         }}
         transition={{ 
-          duration: 4, 
+          duration: 3, 
           repeat: Infinity, 
           ease: "linear" 
         }}
@@ -32,10 +32,10 @@ export const ButterflyAnimation: React.FC = () => {
           rotate: [-135, -150, -120, -135]
         }}
         transition={{ 
-          duration: 5, 
+          duration: 3.5, 
           repeat: Infinity, 
           ease: "linear",
-          delay: 1
+          delay: 0.5
         }}
       >
         <ButterflyBody color="#B026FF" />
@@ -51,10 +51,10 @@ export const ButterflyAnimation: React.FC = () => {
           rotate: [-45, -60, -30, -45]
         }}
         transition={{ 
-          duration: 6, 
+          duration: 4, 
           repeat: Infinity, 
           ease: "linear",
-          delay: 0.5
+          delay: 0.2
         }}
       >
         <ButterflyBody color="#00F0FF" />

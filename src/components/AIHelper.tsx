@@ -99,7 +99,7 @@ export default function AIHelper() {
                     onChange={(e) => setSelectedModel(e.target.value)}
                     className="mt-1 bg-black/40 border border-white/10 rounded px-2 py-0.5 text-[10px] text-[#00F0FF] focus:outline-none focus:border-[#00F0FF]/50 appearance-none cursor-pointer"
                   >
-                    <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
+                    <option value="gemini-3.1-flash-lite-preview">High Quality</option>
                     <option value="gemini-2.5-flash">Medium Quality</option>
                     <option value="gemini-3-flash-preview">Fast</option>
                   </select>

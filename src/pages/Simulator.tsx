@@ -447,7 +447,7 @@ export default function Simulator() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
+              <option value="gemini-3.1-flash-lite-preview">High Quality</option>
               <option value="gemini-2.5-flash">Medium Quality</option>
               <option value="gemini-3-flash-preview">Fast</option>
             </select>
@@ -474,7 +474,7 @@ export default function Simulator() {
                 }
               }}
               placeholder={sourceFile ? `Describe simulation based on ${sourceFile.name}...` : "e.g. Interactive Solar System with orbital speeds..."}
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-4 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner resize-none h-[120px]"
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-4 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner resize-none h-[180px]"
             />
             <button 
               onClick={handlePromptBuild}
@@ -546,24 +546,6 @@ export default function Simulator() {
               animate={{ opacity: 1, scale: 1 }}
               className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
             >
-              {/* Toolbar Overlay */}
-              <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <button 
-                  onClick={handleGenerate}
-                  className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
-                  title="Regenerate"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={toggleFullscreen}
-                  className="p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-all"
-                  title="Fullscreen"
-                >
-                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                </button>
-              </div>
-
               {showCode ? (
                 <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
                   <pre>{generatedCode}</pre>
@@ -598,6 +580,20 @@ export default function Simulator() {
                   title="View Code"
                 >
                   <Code className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleGenerate}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                  title="Regenerate"
+                >
+                  <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={toggleFullscreen}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                  title="Fullscreen"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">

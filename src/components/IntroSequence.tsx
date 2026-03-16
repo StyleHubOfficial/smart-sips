@@ -40,16 +40,18 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
 
     // Initialize particles at random positions
     for (let i = 0; i < particleCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * Math.max(canvas.width, canvas.height) * 0.5;
       particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        targetX: Math.random() * canvas.width,
-        targetY: Math.random() * canvas.height,
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+        angle: angle,
+        radius: radius,
         size: Math.random() * 1.5 + 0.5,
         speed: Math.random() * 0.1 + 0.05,
         color: Math.random() > 0.5 ? '#00F0FF' : '#B026FF',
         opacity: Math.random() * 0.5 + 0.5,
-        letterIndex: i % 12, // Distribute among letters of "Smart Sunrise" (12 non-space chars)
+        layer: i % 3,
       });
     }
 
@@ -77,11 +79,11 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
 
       particles.forEach((p) => {
         if (phase === 'particles' || phase === 'forming') {
-          // Random movement
-          p.x += (p.targetX - p.x) * 0.02;
-          p.y += (p.targetY - p.y) * 0.02;
-          if (Math.abs(p.x - p.targetX) < 1) p.targetX = Math.random() * canvas.width;
-          if (Math.abs(p.y - p.targetY) < 1) p.targetY = Math.random() * canvas.height;
+          // Circular movement per layer
+          const angleSpeed = (p.layer + 1) * 0.005 * (p.layer % 2 === 0 ? 1 : -1);
+          p.angle += angleSpeed;
+          p.x = centerX + Math.cos(p.angle) * p.radius;
+          p.y = centerY + Math.sin(p.angle) * p.radius;
         } else {
           p.opacity *= 0.92;
         }
@@ -159,16 +161,17 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
                 {/* Glassmorphic Bar Outro - Blast Expansion */}
                 {phase === 'glass' && (
                   <motion.div
-                    initial={{ width: 0, opacity: 0 }}
+                    initial={{ width: 0, opacity: 0, scaleX: 0 }}
                     animate={{ 
                       width: "140%", 
                       opacity: 1,
+                      scaleX: 1,
                       transition: { 
                         duration: 1.2, 
                         ease: "easeInOut"
                       }
                     }}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden"
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden origin-center"
                     style={{
                       background: "rgba(255, 255, 255, 0.05)",
                       backdropFilter: "blur(60px) saturate(200%)",

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award, Wand2 } from 'lucide-react';
+import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award, Wand2, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -906,35 +906,24 @@ export default function Practice() {
       </div>
 
       {/* Mode Selector */}
-      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-8 w-fit mx-auto md:mx-0">
+      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 mb-8 w-full md:w-fit mx-auto md:mx-0 overflow-x-auto no-scrollbar">
         <button 
           onClick={() => {
             setIsPYQ(false);
             setSourceFile(null);
             setIsSourceConverterMode(false);
           }}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${!isPYQ && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${!isPYQ && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
         >
           <Sparkles className="w-4 h-4" />
           DPP Generator
         </button>
         <button 
           onClick={() => {
-            setIsPYQ(true);
-            setSourceFile(null);
-            setIsSourceConverterMode(false);
-          }}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isPYQ ? 'bg-[#B026FF] text-white shadow-[0_0_20px_rgba(176,38,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
-        >
-          <History className="w-4 h-4" />
-          PYQ Generator
-        </button>
-        <button 
-          onClick={() => {
             setIsPYQ(false);
             setIsSourceConverterMode(true);
           }}
-          className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${isSourceConverterMode ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${isSourceConverterMode ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'text-gray-400 hover:text-white'}`}
         >
           <FileText className="w-4 h-4" />
           Source Converter
@@ -1211,7 +1200,7 @@ export default function Practice() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
+              <option value="gemini-3.1-flash-lite-preview">High Quality</option>
               <option value="gemini-2.5-flash">Medium Quality</option>
               <option value="gemini-3-flash-preview">Fast</option>
             </select>
@@ -1294,8 +1283,8 @@ export default function Practice() {
               handleSearch();
             }
           }}
-          placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : isPYQ ? `Which year's PYQs for ${examType} ${subject}?` : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[120px]"
+          placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
+          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[180px]"
         />
         <button 
           onClick={handlePromptBuild}
@@ -1442,6 +1431,23 @@ export default function Practice() {
                 <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showDashboardSelector ? 'opacity-100 visible' : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'} transition-all z-50 overflow-hidden`}>
                   <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <Database className="w-4 h-4" /> Save to Dashboard
+                  </button>
+                  <button onClick={() => {
+                    const fallbackTitle = query || sourceFile?.name || 'Practice Set';
+                    const safeTitle = fallbackTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
+                    const htmlContent = document.documentElement.innerHTML; // This is a placeholder, handleSaveToDashboard logic should be reused
+                    // Re-using the logic from handleSaveToDashboard for actual download
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${safeTitle}_practice_set.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
+                    <Download className="w-4 h-4" /> Download HTML Quiz
                   </button>
                   <button onClick={() => window.print()} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Print / Export PDF
