@@ -433,8 +433,115 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      {/* Controls Section */}
-      <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden">
+      {/* Simulation Area */}
+      <div className="space-y-6">
+        {loading && (
+          <div className="py-12">
+            <SimLoader />
+          </div>
+        )}
+
+        {!loading && generatedCode && (
+          <div className="space-y-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
+            >
+              {showCode ? (
+                <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
+                  <pre>{generatedCode}</pre>
+                </div>
+              ) : (
+                <iframe 
+                  ref={iframeRef}
+                  srcDoc={generatedCode}
+                  title="Simulation Preview"
+                  className="w-full h-full border-0 bg-black"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+              )}
+            </motion.div>
+
+            {/* Simulation Toolbar */}
+            <div className="flex flex-wrap justify-between items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/10">
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleExplain}
+                  disabled={explainerLoading}
+                  className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+                  title="Explain in Hinglish"
+                >
+                  {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
+                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
+                </button>
+                <button 
+                  onClick={() => setShowCode(!showCode)}
+                  className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
+                  title="View Code"
+                >
+                  <Code className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleGenerate}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                  title="Regenerate"
+                >
+                  <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={toggleFullscreen}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                  title="Fullscreen"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={handleSave}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
+                  title="Save to History"
+                >
+                  <Save className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                  title="Download HTML"
+                >
+                  <Download className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleShare}
+                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
+                  title="Share Simulation"
+                >
+                  <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                </button>
+                <button 
+                  onClick={handleSaveToDashboard}
+                  className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
+                >
+                  <Database className="w-3 h-3 md:w-4 md:h-4" />
+                  Save to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {!loading && !generatedCode && (
+          <div className="text-center py-20 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
+            <Play className="w-16 h-16 mx-auto mb-4 opacity-20" />
+            <p className="text-lg">Enter a concept below to generate an interactive simulation</p>
+          </div>
+        )}
+      </div>
+
+      {/* Controls Section (Input Area) */}
+      <div className="glass-panel rounded-2xl p-6 mt-8 border border-white/10 space-y-4 relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#B026FF]/10 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end relative z-10">
@@ -529,113 +636,6 @@ export default function Simulator() {
             {loading ? 'Generating...' : 'Generate Simulation'}
           </button>
         </div>
-      </div>
-
-      {/* Simulation Area */}
-      <div className="space-y-6">
-        {loading && (
-          <div className="py-12">
-            <SimLoader />
-          </div>
-        )}
-
-        {!loading && generatedCode && (
-          <div className="space-y-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
-            >
-              {showCode ? (
-                <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
-                  <pre>{generatedCode}</pre>
-                </div>
-              ) : (
-                <iframe 
-                  ref={iframeRef}
-                  srcDoc={generatedCode}
-                  title="Simulation Preview"
-                  className="w-full h-full border-0 bg-black"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                  allowFullScreen
-                />
-              )}
-            </motion.div>
-
-            {/* Controls Section */}
-            <div className="flex flex-wrap justify-between items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/10">
-              <div className="flex flex-wrap gap-2">
-                <button 
-                  onClick={handleExplain}
-                  disabled={explainerLoading}
-                  className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
-                  title="Explain in Hinglish"
-                >
-                  {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
-                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
-                </button>
-                <button 
-                  onClick={() => setShowCode(!showCode)}
-                  className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
-                  title="View Code"
-                >
-                  <Code className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleGenerate}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
-                  title="Regenerate"
-                >
-                  <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={toggleFullscreen}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
-                  title="Fullscreen"
-                >
-                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button 
-                  onClick={handleSave}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
-                  title="Save to History"
-                >
-                  <Save className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleDownload}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
-                  title="Download HTML"
-                >
-                  <Download className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleShare}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
-                  title="Share Simulation"
-                >
-                  <Share2 className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleSaveToDashboard}
-                  className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
-                >
-                  <Database className="w-3 h-3 md:w-4 md:h-4" />
-                  Save to Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {!loading && !generatedCode && (
-          <div className="text-center py-20 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
-            <Play className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p className="text-lg">Enter a concept above to generate an interactive simulation</p>
-          </div>
-        )}
       </div>
 
       {/* Explainer Panel */}

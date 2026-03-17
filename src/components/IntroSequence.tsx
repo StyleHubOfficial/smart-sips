@@ -110,13 +110,15 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
 
   return (
     <motion.div 
-      initial={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.8 }}
+      initial={{ opacity: 1, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
+      exit={{ 
+        clipPath: 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)',
+        transition: { duration: 1.5, ease: [0.7, 0, 0.3, 1] }
+      }}
       className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
     >
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-      <ButterflyAnimation />
+      <ButterflyAnimation isRevealing={phase === 'glass'} />
       
       <div className="relative z-20 flex flex-col items-center">
         <AnimatePresence>

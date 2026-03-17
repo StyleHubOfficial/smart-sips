@@ -1,60 +1,72 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export const ButterflyAnimation: React.FC = () => {
+export const ButterflyAnimation: React.FC<{ isRevealing?: boolean }> = ({ isRevealing }) => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Butterfly 1 */}
+      {/* Butterfly 1 - Diagonal Reveal Leader */}
       <motion.div
         className="absolute"
-        initial={{ x: '-10vw', y: '20%', rotate: 45 }}
-        animate={{ 
+        initial={{ x: '-10vw', y: '-10vh', rotate: 45 }}
+        animate={isRevealing ? {
+          x: ['-10vw', '120vw'],
+          y: ['-10vh', '120vh'],
+          rotate: [45, 60, 30, 45]
+        } : { 
           x: ['-10vw', '110vw'],
           y: ['20%', '40%', '10%', '30%'],
           rotate: [45, 60, 30, 45]
         }}
         transition={{ 
-          duration: 3, 
-          repeat: Infinity, 
-          ease: "linear" 
+          duration: isRevealing ? 1.5 : 3, 
+          repeat: isRevealing ? 0 : Infinity, 
+          ease: isRevealing ? "easeInOut" : "linear" 
         }}
       >
         <ButterflyBody color="#00F0FF" />
       </motion.div>
 
-      {/* Butterfly 2 */}
+      {/* Butterfly 2 - Secondary Reveal */}
       <motion.div
         className="absolute"
         initial={{ x: '110vw', y: '60%', rotate: -135 }}
-        animate={{ 
+        animate={isRevealing ? {
+          x: ['110vw', '-20vw'],
+          y: ['110vh', '-20vh'],
+          rotate: [-135, -150, -120, -135]
+        } : { 
           x: ['110vw', '-10vw'],
           y: ['60%', '40%', '80%', '60%'],
           rotate: [-135, -150, -120, -135]
         }}
         transition={{ 
-          duration: 3.5, 
-          repeat: Infinity, 
-          ease: "linear",
-          delay: 0.5
+          duration: isRevealing ? 1.8 : 3.5, 
+          repeat: isRevealing ? 0 : Infinity, 
+          ease: isRevealing ? "easeInOut" : "linear",
+          delay: isRevealing ? 0.2 : 0.5
         }}
       >
         <ButterflyBody color="#B026FF" />
       </motion.div>
 
-      {/* Butterfly 3 */}
+      {/* Butterfly 3 - Center Sweep */}
       <motion.div
         className="absolute"
         initial={{ x: '50vw', y: '110vh', rotate: -45 }}
-        animate={{ 
+        animate={isRevealing ? {
+          x: ['-20vw', '120vw'],
+          y: ['120vh', '-20vh'],
+          rotate: [-45, -60, -30, -45]
+        } : { 
           x: ['50vw', '20vw', '80vw', '50vw'],
           y: ['110vh', '-10vh'],
           rotate: [-45, -60, -30, -45]
         }}
         transition={{ 
-          duration: 4, 
-          repeat: Infinity, 
-          ease: "linear",
-          delay: 0.2
+          duration: isRevealing ? 1.2 : 4, 
+          repeat: isRevealing ? 0 : Infinity, 
+          ease: isRevealing ? "easeInOut" : "linear",
+          delay: isRevealing ? 0.1 : 0.2
         }}
       >
         <ButterflyBody color="#00F0FF" />

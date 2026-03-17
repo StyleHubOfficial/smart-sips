@@ -36,6 +36,7 @@ export default function Practice() {
   const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(66); // percentage
   const [isResizing, setIsResizing] = useState(false);
   const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
@@ -1420,15 +1421,15 @@ export default function Practice() {
 
               <div className="relative group">
                 <button 
-                  onClick={() => setShowDashboardSelector(!showDashboardSelector)}
+                  onClick={() => setShowExportDropdown(!showExportDropdown)}
                   disabled={isSaving}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all border border-[#00F0FF]/30"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {isSaving ? 'Saving...' : 'Export'}
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showDashboardSelector ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
                 </button>
-                <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showDashboardSelector ? 'opacity-100 visible' : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'} transition-all z-50 overflow-hidden`}>
+                <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showExportDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all z-50 overflow-hidden`}>
                   <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <Database className="w-4 h-4" /> Save to Dashboard
                   </button>

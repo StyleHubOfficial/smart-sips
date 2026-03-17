@@ -191,25 +191,36 @@ export default function PYQEngine() {
       Do not include any markdown formatting like \`\`\`json, just the raw JSON array.`;
 
       const response = await ai.models.generateContent({
-        model: deepResearch ? "gemini-3.1-flash-lite-preview" : "gemini-3.1-flash-lite-preview",
+        model: "gemini-3.1-flash-lite-preview",
         contents: prompt,
-        config: {
+        config: deepResearch ? {
           tools: [{ googleSearch: {} }],
-        }
+        } : undefined
       });
 
       const text = response.text || "[]";
+      if (!text || text === "[]") {
+        throw new Error("AI returned an empty response. Please try a more specific topic.");
+      }
+
       let parsedQuestions = [];
       try {
-        const jsonMatch = text.match(/\[.*\]/s);
+        // Try to find JSON array in the response
+        const jsonMatch = text.match(/\[\s*\{.*\}\s*\]/s);
         if (jsonMatch) {
           parsedQuestions = JSON.parse(jsonMatch[0]);
         } else {
+          // Fallback to direct parse
           parsedQuestions = JSON.parse(text);
         }
       } catch (e) {
         console.error("Failed to parse Gemini response as JSON", text);
-        throw new Error("Failed to parse questions from AI response.");
+        // If it's not JSON, maybe it's just text? Try to extract questions manually or throw
+        throw new Error("The AI response was not in the expected format. Please try again.");
+      }
+
+      if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
+        throw new Error("No questions were found for these parameters.");
       }
 
       // Extract grounding chunks for sources
