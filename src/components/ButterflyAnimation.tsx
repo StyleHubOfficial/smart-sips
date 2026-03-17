@@ -4,14 +4,14 @@ import { motion } from 'framer-motion';
 export const ButterflyAnimation: React.FC<{ isRevealing?: boolean }> = ({ isRevealing }) => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Butterfly 1 - Diagonal Reveal Leader */}
+      {/* Butterfly 1 - Diagonal Reveal Leader (Bottom-Left to Top-Right) */}
       <motion.div
         className="absolute"
-        initial={{ x: '-10vw', y: '-10vh', rotate: 45 }}
+        initial={{ x: '-10vw', y: '110vh', rotate: -45 }}
         animate={isRevealing ? {
           x: ['-10vw', '120vw'],
-          y: ['-10vh', '120vh'],
-          rotate: [45, 60, 30, 45]
+          y: ['110vh', '-20vh'],
+          rotate: [-45, -30, -60, -45]
         } : { 
           x: ['-10vw', '110vw'],
           y: ['20%', '40%', '10%', '30%'],
@@ -26,14 +26,14 @@ export const ButterflyAnimation: React.FC<{ isRevealing?: boolean }> = ({ isReve
         <ButterflyBody color="#00F0FF" />
       </motion.div>
 
-      {/* Butterfly 2 - Secondary Reveal */}
+      {/* Butterfly 2 - Secondary Reveal (Bottom-Left to Top-Right) */}
       <motion.div
         className="absolute"
-        initial={{ x: '110vw', y: '60%', rotate: -135 }}
+        initial={{ x: '-20vw', y: '120vh', rotate: -45 }}
         animate={isRevealing ? {
-          x: ['110vw', '-20vw'],
-          y: ['110vh', '-20vh'],
-          rotate: [-135, -150, -120, -135]
+          x: ['-20vw', '110vw'],
+          y: ['120vh', '-10vh'],
+          rotate: [-45, -60, -30, -45]
         } : { 
           x: ['110vw', '-10vw'],
           y: ['60%', '40%', '80%', '60%'],
@@ -49,13 +49,13 @@ export const ButterflyAnimation: React.FC<{ isRevealing?: boolean }> = ({ isReve
         <ButterflyBody color="#B026FF" />
       </motion.div>
 
-      {/* Butterfly 3 - Center Sweep */}
+      {/* Butterfly 3 - Center Sweep (Bottom-Left to Top-Right) */}
       <motion.div
         className="absolute"
-        initial={{ x: '50vw', y: '110vh', rotate: -45 }}
+        initial={{ x: '10vw', y: '110vh', rotate: -45 }}
         animate={isRevealing ? {
-          x: ['-20vw', '120vw'],
-          y: ['120vh', '-20vh'],
+          x: ['10vw', '130vw'],
+          y: ['110vh', '-30vh'],
           rotate: [-45, -60, -30, -45]
         } : { 
           x: ['50vw', '20vw', '80vw', '50vw'],

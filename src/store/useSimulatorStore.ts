@@ -95,7 +95,11 @@ export const useSimulatorStore = create<SimulatorState>()(
             Mode: ${mode.toUpperCase()} (2D Canvas or 3D Three.js)
 
             Requirements:
-            1. Simulation Engine:
+            1. Layout Structure (CRITICAL):
+               - Divide the interface into two distinct vertical parts.
+               - Upper Part: The main simulation/visualization area (Canvas or 3D Stage).
+               - Lower Part (below the simulation): A dedicated control panel for this specific simulation.
+            2. Simulation Engine:
                - If 2D: Use HTML5 Canvas API with high-performance rendering loop. Implement advanced physics (collisions, friction, damping, and fluid motion if applicable).
                - If 3D: Use Three.js (CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js). Include realistic lighting (PointLight, AmbientLight), shadows, and high-quality textures/materials (MeshStandardMaterial).
             2. Interactive Parameters Panel:

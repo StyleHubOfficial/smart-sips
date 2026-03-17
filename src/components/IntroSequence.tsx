@@ -112,7 +112,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
     <motion.div 
       initial={{ opacity: 1, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
       exit={{ 
-        clipPath: 'polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%)',
+        clipPath: 'polygon(100% 0, 100% 0, 100% 0, 100% 0)',
         transition: { duration: 1.5, ease: [0.7, 0, 0.3, 1] }
       }}
       className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
@@ -172,6 +172,13 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
                         duration: 1.2, 
                         ease: "easeInOut"
                       }
+                    }}
+                    exit={{
+                      x: "-100vw",
+                      y: "100vh",
+                      scale: 0.5,
+                      opacity: 0,
+                      transition: { duration: 1, ease: "easeInOut" }
                     }}
                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden origin-center"
                     style={{

@@ -35,6 +35,7 @@ export default function PYQEngine() {
   const [questionType, setQuestionType] = useState('Any');
   const [examFormat, setExamFormat] = useState('Any');
   const [numQuestions, setNumQuestions] = useState('10');
+  const [model, setModel] = useState('gemini-3.1-flash-lite-preview');
   const [deepResearch, setDeepResearch] = useState(false);
   const [showAIInfo, setShowAIInfo] = useState(false);
 
@@ -191,7 +192,7 @@ export default function PYQEngine() {
       Do not include any markdown formatting like \`\`\`json, just the raw JSON array.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
+        model: model,
         contents: prompt,
         config: deepResearch ? {
           tools: [{ googleSearch: {} }],
@@ -534,6 +535,19 @@ export default function PYQEngine() {
                 <option value="10">10 Questions</option>
                 <option value="15">15 Questions</option>
                 <option value="20">20 Questions</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
+              <select 
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors appearance-none"
+              >
+                <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite (High Quality)</option>
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Advanced Reasoning)</option>
+                <option value="gemini-3-flash-preview">Gemini 3 Flash (Fast)</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Balanced)</option>
               </select>
             </div>
             <div className="space-y-2 lg:col-span-2">
