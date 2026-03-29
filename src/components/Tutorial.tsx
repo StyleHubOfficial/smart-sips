@@ -4,8 +4,8 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Smart Sunrise v2.5 Advance",
-    content: "Welcome to the Advance 2.5x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
+    title: "Smart Sunrise v3.0 Advance",
+    content: "Welcome to the Advance 3.0x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
     icon: Sparkles,
     color: "#00F0FF",
     target: "header"
@@ -170,9 +170,17 @@ export default function Tutorial() {
     localStorage.setItem('sunrise_skip_intro', String(newValue));
   };
 
+  const handleSkipForSession = () => {
+    sessionStorage.setItem('sunrise_skip_intro_session', 'true');
+    setIsOpen(false);
+  };
+
   useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v2_seen');
-    if (!hasSeenTutorial) {
+    const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v3_seen');
+    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
+    const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
+
+    if (!hasSeenTutorial && !isSessionSkipped && !isPermanentlySkipped) {
       const timer = setTimeout(() => setIsOpen(true), 3000);
       return () => clearTimeout(timer);
     }
@@ -180,7 +188,7 @@ export default function Tutorial() {
 
   const handleClose = () => {
     setIsOpen(false);
-    localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
+    localStorage.setItem('sunrise_tutorial_v3_seen', 'true');
     setShowUpcoming(false);
     setAccessCode("");
   };
@@ -276,6 +284,12 @@ export default function Tutorial() {
                         <ChevronLeft className="w-5 h-5" />
                       </button>
                     )}
+                    <button 
+                      onClick={handleSkipForSession}
+                      className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all text-sm"
+                    >
+                      Skip for Now
+                    </button>
                     <button 
                       onClick={nextStep}
                       className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black transition-all hover:scale-105 active:scale-95"

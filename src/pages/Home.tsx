@@ -66,14 +66,14 @@ export default function Home() {
         {/* Key Features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32">
           {[
-            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500", link: "/ai-generators" },
-            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", link: "/questions" },
-            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", link: "/questions" },
-            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", link: "/courses" },
-            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", link: "/courses" },
+            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500" },
+            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500" },
+            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600" },
+            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600" },
+            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500" },
           ].map((feature, idx) => (
-            <Link key={idx} to={feature.link} className="block">
               <motion.div
+                key={idx}
                 initial={{ y: 50, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
@@ -94,7 +94,6 @@ export default function Home() {
                 <h3 className="text-xl font-bold mb-3 text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-colors">{feature.title}</h3>
                 <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{feature.desc}</p>
               </motion.div>
-            </Link>
           ))}
         </div>
 

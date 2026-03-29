@@ -144,6 +144,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
             </svg>
             <span className="absolute text-xl font-bold text-white">{displayAccuracy}%</span>
           </div>
+          <div className="text-2xl mt-2">
+            {accuracy >= 90 ? '🏆' : accuracy >= 70 ? '🌟' : accuracy >= 50 ? '👍' : '📚'}
+          </div>
         </div>
 
         <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">

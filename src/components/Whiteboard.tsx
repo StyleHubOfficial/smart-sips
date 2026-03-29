@@ -21,6 +21,7 @@ interface Stroke {
   rotation?: number;
   scale?: { x: number, y: number };
   center?: Point;
+  startTime?: number;
 }
 
 interface WhiteboardProps {
@@ -50,7 +51,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [history, setHistory] = useState<Stroke[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
   
-  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+  const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -128,13 +129,13 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ctx.lineJoin = 'round';
       ctx.globalAlpha = stroke.opacity || 1;
 
-      if (stroke.id === selectedStrokeId) {
+      if (selectedStrokeIds.includes(stroke.id)) {
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#00F0FF';
-      } else if (stroke.tool === 'highlighter') {
+      } else if (stroke.tool === 'highlighter' && stroke.startTime && (Date.now() - stroke.startTime) < 7000) {
         // Blinking/Glow effect for highlighter
         const time = Date.now() / 1000;
-        const glow = Math.sin(time * 3) * 5 + 10;
+        const glow = Math.sin(time * 2) * 5 + 10;
         ctx.shadowBlur = glow;
         ctx.shadowColor = stroke.color;
       } else {
@@ -202,12 +203,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     });
 
     // Draw selection handles if a stroke is selected
-    if (selectedStrokeId) {
-      const selected = strokes.find(s => s.id === selectedStrokeId);
+    selectedStrokeIds.forEach(id => {
+      const selected = strokes.find(s => s.id === id);
       if (selected) {
         drawSelectionHandles(ctx, selected);
       }
-    }
+    });
 
     // Draw laser path separately (not stored in strokes)
     if (laserPath.length > 1) {
@@ -298,7 +299,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
   useEffect(() => {
     redraw();
-  }, [strokes, currentStroke, laserPath, selectedStrokeId]);
+  }, [strokes, currentStroke, laserPath, selectedStrokeIds]);
 
   const saveToHistory = (newStrokes: Stroke[]) => {
     const newHistory = history.slice(0, historyStep + 1);
@@ -415,8 +416,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setIsDrawing(true);
 
     if (tool === 'select') {
-      if (selectedStrokeId) {
-        const selected = strokes.find(s => s.id === selectedStrokeId);
+      if (selectedStrokeIds.length > 0) {
+        const selected = strokes.find(s => s.id === selectedStrokeIds[0]);
         if (selected) {
           const bounds = getStrokeBounds(selected);
           const padding = 10;
@@ -452,12 +453,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
       const stroke = findStrokeAt(pos);
       if (stroke) {
-        setSelectedStrokeId(stroke.id);
+        setSelectedStrokeIds([stroke.id]);
         setIsDragging(true);
         const center = getStrokeCenter(stroke);
         setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
       } else {
-        setSelectedStrokeId(null);
+        setSelectedStrokeIds([]);
         // Start lasso selection
         setTool('lasso');
         const newStroke: Stroke = {
@@ -530,7 +531,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       type: (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') ? 'path' : tool as any,
       startPos: pos,
       endPos: pos,
-      opacity: tool === 'highlighter' ? 0.3 : 1
+      opacity: tool === 'highlighter' ? 0.3 : 1,
+      startTime: Date.now()
     };
 
     setCurrentStroke(newStroke);
@@ -554,10 +556,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
-    if (tool === 'select' && selectedStrokeId) {
+    if (tool === 'select' && selectedStrokeIds.length > 0) {
       if (isDragging) {
         setStrokes(prev => prev.map(s => {
-          if (s.id === selectedStrokeId) {
+          if (selectedStrokeIds.includes(s.id)) {
             const dx = pos.x - cursorPos.x;
             const dy = pos.y - cursorPos.y;
             
@@ -573,7 +575,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         }));
       } else if (isResizing && resizeHandle) {
         setStrokes(prev => prev.map(s => {
-          if (s.id === selectedStrokeId) {
+          if (selectedStrokeIds.includes(s.id)) {
             const center = s.center || getStrokeCenter(s);
             const dx = pos.x - center.x;
             const dy = pos.y - center.y;
@@ -596,7 +598,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         }));
       } else if (isRotating) {
         setStrokes(prev => prev.map(s => {
-          if (s.id === selectedStrokeId) {
+          if (selectedStrokeIds.includes(s.id)) {
             const center = s.center || getStrokeCenter(s);
             const angle = Math.atan2(pos.y - center.y, pos.x - center.x) + Math.PI / 2;
             return {
@@ -658,9 +660,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     if (tool === 'lasso') {
       if (currentStroke && currentStroke.points.length > 3) {
-        const lassoed = strokes.find(s => isStrokeInLasso(s, currentStroke.points));
-        if (lassoed) {
-          setSelectedStrokeId(lassoed.id);
+        const lassoedIds = strokes.filter(s => isStrokeInLasso(s, currentStroke.points)).map(s => s.id);
+        if (lassoedIds.length > 0) {
+          setSelectedStrokeIds(lassoedIds);
         }
       }
       setCurrentStroke(null);
@@ -784,6 +786,16 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
             <Sparkles className="w-5 h-5" />
           </button>
+          {selectedStrokeIds.length > 0 && (
+            <button onClick={() => {
+              const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
+              setStrokes(newStrokes);
+              saveToHistory(newStrokes);
+              setSelectedStrokeIds([]);
+            }} className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
           <div className="w-px h-6 bg-white/10 mx-1"></div>
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
