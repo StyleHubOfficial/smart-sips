@@ -195,7 +195,7 @@ export default function AutoSuggestModal() {
                       <span className="text-gray-500 text-xs uppercase tracking-wider">Key Concepts</span>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {extractedData.keyConcepts?.slice(0, 6).map((concept: string, i: number) => (
-                          <span key={i} className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300">{concept}</span>
+                          <span key={`${concept}-${i}`} className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300">{concept}</span>
                         ))}
                       </div>
                     </div>

@@ -767,7 +767,7 @@ export default function PYQEngine() {
               <div className="p-4 rounded-2xl bg-black/30 border border-white/5 text-xs text-gray-400 font-mono">
                 <p className="text-gray-500 mb-2">// Generated Search Queries</p>
                 <ul className="list-disc list-inside space-y-1">
-                  {searchQueries.map((q, i) => <li key={i}>{q}</li>)}
+                  {searchQueries.map((q, i) => <li key={`${q}-${i}`}>{q}</li>)}
                 </ul>
               </div>
             )}

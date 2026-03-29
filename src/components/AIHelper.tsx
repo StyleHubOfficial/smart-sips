@@ -313,7 +313,7 @@ export default function AIHelper() {
                 <motion.div 
                   initial={{ opacity: 0, y: 15, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  key={idx} 
+                  key={`msg-${idx}`} 
                   className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
@@ -337,7 +337,7 @@ export default function AIHelper() {
                           <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
                             {msg.actions.map((action, aIdx) => (
                               <button
-                                key={aIdx}
+                                key={`action-${aIdx}`}
                                 onClick={() => {
                                   if (action.url?.startsWith('http')) {
                                     window.open(action.url, '_blank');

@@ -120,7 +120,7 @@ export default React.memo(function SimLoader() {
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0">
                  {Array.from({ length: 15 }).map((_, i) => (
                    <motion.div
-                     key={i}
+                     key={`shard-${i}`}
                      className="absolute w-2 h-0.5 bg-[#B026FF] rounded-full"
                      initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
                      animate={{ 
@@ -152,7 +152,7 @@ export default React.memo(function SimLoader() {
           <div className="flex justify-center gap-4 text-[9px] font-mono text-gray-600 overflow-hidden">
             {Array.from({ length: 4 }).map((_, i) => (
               <motion.span
-                key={i}
+                key={`hex-${i}`}
                 animate={{ opacity: [0.2, 0.8, 0.2] }}
                 transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.3 }}
               >

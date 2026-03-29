@@ -120,7 +120,7 @@ export default React.memo(function CinematicLoader() {
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0">
                  {Array.from({ length: 12 }).map((_, i) => (
                    <motion.div
-                     key={i}
+                     key={`particle-${i}`}
                      className="absolute w-1 h-1 bg-[#00F0FF] rounded-full shadow-[0_0_8px_#00F0FF]"
                      initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                      animate={{ 
@@ -155,7 +155,7 @@ export default React.memo(function CinematicLoader() {
           <div className="flex justify-between text-[10px] font-mono text-[#00F0FF]/40 overflow-hidden whitespace-nowrap">
             {Array.from({ length: 3 }).map((_, i) => (
               <motion.span
-                key={i}
+                key={`stream-${i}`}
                 animate={{ opacity: [0.3, 1, 0.3] }}
                 transition={{ duration: 2, repeat: Infinity, delay: i * 0.5 }}
               >
