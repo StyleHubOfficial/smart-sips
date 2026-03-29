@@ -9,8 +9,8 @@
   --color-accent-1: #00F0FF; /* Neon Blue */
   --color-accent-2: #00FFFF; /* Electric Cyan */
   --color-accent-3: #B026FF; /* Soft Purple glow */
-  --color-glass: rgba(255, 255, 255, 0.03);
-  --color-glass-solid: rgba(0, 0, 0, 0.4);
+  --color-glass: rgba(15, 15, 20, 0.85);
+  --color-glass-solid: rgba(0, 0, 0, 0.9);
   --color-glass-border: rgba(255, 255, 255, 0.08);
   --color-border-hover: rgba(0, 240, 255, 0.5);
 }

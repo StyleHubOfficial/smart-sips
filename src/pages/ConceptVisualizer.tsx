@@ -235,7 +235,7 @@ export default function ConceptVisualizer() {
     }
   };
 
-  const handleSaveToDashboard = async () => {
+  const handleUploadToCourses = async () => {
     if (!visualizerData) return;
     
     try {
@@ -275,9 +275,9 @@ export default function ConceptVisualizer() {
       const contextStr = `title=${visualizerData.topic} Visualization|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Science|class=General|description=AI-generated visualization for ${visualizerData.topic}|fileType=HTML Visualization`;
       
       addUpload(file, contextStr);
-      addNotification('success', 'Visualization saved to dashboard!');
+      addNotification('success', 'Visualization uploaded to courses successfully!');
     } catch (error) {
-      addNotification('error', 'Failed to save visualization.');
+      addNotification('error', 'Failed to upload visualization.');
     }
   };
 
@@ -425,11 +425,11 @@ export default function ConceptVisualizer() {
                       <Share2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={handleSaveToDashboard}
+                      onClick={handleUploadToCourses}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
-                      <Database className="w-4 h-4" />
-                      Save to Dashboard
+                      <Upload className="w-4 h-4" />
+                      Upload to Courses
                     </button>
                     <button
                       onClick={toggleFullscreen}

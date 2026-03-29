@@ -30,7 +30,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
     restDelta: 0.001
   });
 
-  const [logo, setLogo] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
   const [siteName, setSiteName] = useState('Smart Sunrise');
 
   const fetchSettings = () => {

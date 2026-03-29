@@ -227,7 +227,7 @@ export default function FlowChart() {
     }
   };
 
-  const handleSaveToDashboard = async () => {
+  const handleUploadToCourses = async () => {
     if (!generatedCode) return;
     
     try {
@@ -256,9 +256,9 @@ export default function FlowChart() {
       const contextStr = `title=${query} ${chartType}|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Diagram|class=General|description=AI-generated ${chartType} for ${query}|fileType=HTML Diagram`;
       
       addUpload(file, contextStr);
-      addNotification('info', `Saving ${chartType} to dashboard...`);
+      addNotification('info', `Uploading ${chartType} to courses...`);
     } catch (error) {
-      addNotification('error', `Failed to save ${chartType}.`);
+      addNotification('error', `Failed to upload ${chartType}.`);
     }
   };
 
@@ -477,11 +477,11 @@ export default function FlowChart() {
                       <Save className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={handleSaveToDashboard}
+                      onClick={handleUploadToCourses}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
-                      <Database className="w-4 h-4" />
-                      Save to Dashboard
+                      <Upload className="w-4 h-4" />
+                      Upload to Courses
                     </button>
                   </>
                 )}

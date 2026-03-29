@@ -2,11 +2,29 @@ import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2 } from 'lucide-react';
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Stroke {
+  id: string;
+  tool: string;
+  points: Point[];
+  color: string;
+  lineWidth: number;
+  type: 'path' | 'rect' | 'circle' | 'line' | 'arrow' | 'text';
+  text?: string;
+  startPos?: Point;
+  endPos?: Point;
+  opacity?: number;
+}
+
 interface WhiteboardProps {
   onClose?: () => void;
   className?: string;
-  initialData?: ImageData;
-  onSave?: (data: ImageData) => void;
+  initialData?: string; // Changed to string (base64 or JSON)
+  onSave?: (data: string) => void;
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
 }
 
@@ -14,125 +32,201 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'pointer' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'selection-erase' | 'laser'>('pen');
-  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'lasso' | 'all'>('pixel');
+  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser'>('pen');
+  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all'>('pixel');
   const [showEraserMenu, setShowEraserMenu] = useState(false);
-  const [lassoPath, setLassoPath] = useState<{x: number, y: number}[]>([]);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
-  const [laserPath, setLaserPath] = useState<{x: number, y: number}[]>([]);
+  const [laserPath, setLaserPath] = useState<Point[]>([]);
   const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
-  const [history, setHistory] = useState<ImageData[]>([]);
+  
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+  const [history, setHistory] = useState<Stroke[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
+  
+  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
-  const [snapshot, setSnapshot] = useState<ImageData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
-
-  useEffect(() => {
-    setTheme(initialTheme);
-  }, [initialTheme]);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
-  const getBackgroundStyle = () => {
-    switch (theme) {
-      case 'light': return 'bg-white';
-      case 'grid': return 'bg-white bg-[size:20px_20px] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)]';
-      case 'transparent': return 'bg-transparent';
-      default: return 'bg-[#1a1b26]';
+  useEffect(() => {
+    if (initialData) {
+      try {
+        const parsed = JSON.parse(initialData);
+        if (Array.isArray(parsed)) {
+          setStrokes(parsed);
+          setHistory([parsed]);
+          setHistoryStep(0);
+        }
+      } catch (e) {
+        console.error("Failed to parse initial whiteboard data", e);
+      }
     }
+  }, [initialData]);
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+    return {
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height)
+    };
+  };
+
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) => {
+    const headlen = 15;
+    const dx = tox - fromx;
+    const dy = toy - fromy;
+    const angle = Math.atan2(dy, dx);
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  };
+
+  const redraw = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
+
+    allStrokes.forEach(stroke => {
+      ctx.beginPath();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = stroke.opacity || 1;
+
+      if (stroke.id === selectedStrokeId) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00F0FF';
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      if (stroke.type === 'path') {
+        if (stroke.points.length < 2) return;
+        
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        
+        // Use quadratic curves for smoother lines
+        for (let i = 1; i < stroke.points.length - 2; i++) {
+          const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+          const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+          ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
+        }
+        
+        // For the last 2 points
+        if (stroke.points.length > 2) {
+          const last = stroke.points.length - 1;
+          ctx.quadraticCurveTo(
+            stroke.points[last - 1].x, 
+            stroke.points[last - 1].y, 
+            stroke.points[last].x, 
+            stroke.points[last].y
+          );
+        }
+        ctx.stroke();
+      } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
+        ctx.strokeRect(
+          stroke.startPos.x, 
+          stroke.startPos.y, 
+          stroke.endPos.x - stroke.startPos.x, 
+          stroke.endPos.y - stroke.startPos.y
+        );
+      } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
+        const radius = Math.sqrt(
+          Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + 
+          Math.pow(stroke.endPos.y - stroke.startPos.y, 2)
+        );
+        ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
+        ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
+        ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
+        ctx.stroke();
+      } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
+        drawArrow(ctx, stroke.startPos.x, stroke.startPos.y, stroke.endPos.x, stroke.endPos.y);
+      } else if (stroke.type === 'text' && stroke.startPos && stroke.text) {
+        ctx.font = `${stroke.lineWidth * 5}px Inter, sans-serif`;
+        ctx.fillStyle = stroke.color;
+        ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
+      }
+    });
+
+    // Draw laser path separately (not stored in strokes)
+    if (laserPath.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff4444';
+      ctx.moveTo(laserPath[0].x, laserPath[0].y);
+      laserPath.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.globalAlpha = 1;
   };
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    redraw();
+  }, [strokes, currentStroke, laserPath, selectedStrokeId]);
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-
-    const resizeCanvas = () => {
-      const rect = container.getBoundingClientRect();
-      if (canvas.width !== rect.width || canvas.height !== rect.height) {
-        const tempImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        ctx.putImageData(tempImageData, 0, 0);
-      }
-    };
-
-    resizeCanvas();
-    
-    if (initialData) {
-      ctx.putImageData(initialData, 0, 0);
-    }
-
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [initialData]);
-
-  const saveState = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !ctx) return;
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const saveToHistory = (newStrokes: Stroke[]) => {
     const newHistory = history.slice(0, historyStep + 1);
-    newHistory.push(imageData);
+    newHistory.push(newStrokes);
     setHistory(newHistory);
     setHistoryStep(newHistory.length - 1);
-    
-    if (onSave) {
-      onSave(imageData);
-    }
+    if (onSave) onSave(JSON.stringify(newStrokes));
   };
 
   const undo = () => {
     if (historyStep > 0) {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-      if (!canvas || !ctx) return;
-
       const prevStep = historyStep - 1;
       setHistoryStep(prevStep);
-      ctx.putImageData(history[prevStep], 0, 0);
-      if (onSave) onSave(history[prevStep]);
+      setStrokes(history[prevStep]);
+      if (onSave) onSave(JSON.stringify(history[prevStep]));
     }
   };
 
   const redo = () => {
     if (historyStep < history.length - 1) {
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-      if (!canvas || !ctx) return;
-
       const nextStep = historyStep + 1;
       setHistoryStep(nextStep);
-      ctx.putImageData(history[nextStep], 0, 0);
-      if (onSave) onSave(history[nextStep]);
+      setStrokes(history[nextStep]);
+      if (onSave) onSave(JSON.stringify(history[nextStep]));
     }
   };
 
   const clear = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !ctx) return;
-
-    const snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setIsWiping(true);
     let p = 0;
     const animate = () => {
       p += 0.05;
       if (p >= 1) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        saveState();
+        setStrokes([]);
+        saveToHistory([]);
         setIsWiping(false);
         setWipeProgress(0);
       } else {
-        ctx.putImageData(snap, 0, 0);
-        ctx.clearRect(0, 0, canvas.width * p, canvas.height);
         setWipeProgress(p);
         requestAnimationFrame(animate);
       }
@@ -140,243 +234,182 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     requestAnimationFrame(animate);
   };
 
-  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+  const isPointNearPath = (point: Point, path: Point[], threshold: number) => {
+    for (let i = 0; i < path.length - 1; i++) {
+      const p1 = path[i];
+      const p2 = path[i + 1];
+      const dist = distToSegment(point, p1, p2);
+      if (dist < threshold) return true;
+    }
+    return false;
+  };
+
+  const distToSegment = (p: Point, v: Point, w: Point) => {
+    const l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2);
+    if (l2 === 0) return Math.sqrt(Math.pow(p.x - v.x, 2) + Math.pow(p.y - v.y, 2));
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.sqrt(Math.pow(p.x - (v.x + t * (w.x - v.x)), 2) + Math.pow(p.y - (v.y + t * (w.y - v.y)), 2));
+  };
+
+  const findStrokeAt = (pos: Point) => {
+    // Search from top to bottom (reverse strokes)
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const stroke = strokes[i];
+      const threshold = stroke.lineWidth + 5;
+      
+      if (stroke.type === 'path') {
+        if (isPointNearPath(pos, stroke.points, threshold)) return stroke;
+      } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
+        const minX = Math.min(stroke.startPos.x, stroke.endPos.x);
+        const maxX = Math.max(stroke.startPos.x, stroke.endPos.x);
+        const minY = Math.min(stroke.startPos.y, stroke.endPos.y);
+        const maxY = Math.max(stroke.startPos.y, stroke.endPos.y);
+        if (pos.x >= minX - 5 && pos.x <= maxX + 5 && pos.y >= minY - 5 && pos.y <= maxY + 5) return stroke;
+      } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
+        const radius = Math.sqrt(Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + Math.pow(stroke.endPos.y - stroke.startPos.y, 2));
+        const dist = Math.sqrt(Math.pow(pos.x - stroke.startPos.x, 2) + Math.pow(pos.y - stroke.startPos.y, 2));
+        if (Math.abs(dist - radius) < threshold) return stroke;
+      } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
+        if (distToSegment(pos, stroke.startPos, stroke.endPos) < threshold) return stroke;
+      }
+    }
+    return null;
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (tool === 'pointer') return;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !ctx) return;
-
     const pos = getPos(e);
     setStartPos(pos);
     setCursorPos(pos);
     setIsDrawing(true);
-    
-    // Take snapshot for shape drawing
-    setSnapshot(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'selection-erase' || tool === 'laser') {
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-      if (tool === 'laser') {
-        setLaserPath([{x: pos.x, y: pos.y}]);
-      }
-    } else if (tool === 'eraser') {
-      if (eraserMode === 'all') {
-        setIsWiping(true);
-        setWipeProgress(0);
-        return;
-      } else if (eraserMode === 'lasso') {
-        setLassoPath([pos]);
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
+    if (tool === 'select') {
+      const stroke = findStrokeAt(pos);
+      if (stroke) {
+        setSelectedStrokeId(stroke.id);
+        setIsDragging(true);
+        setDragOffset({ x: pos.x - stroke.points[0].x, y: pos.y - stroke.points[0].y });
       } else {
-        ctx.beginPath();
-        ctx.moveTo(pos.x, pos.y);
+        setSelectedStrokeId(null);
       }
+      return;
     }
-    
+
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const stroke = findStrokeAt(pos);
+      if (stroke) {
+        const newStrokes = strokes.filter(s => s.id !== stroke.id);
+        setStrokes(newStrokes);
+        saveToHistory(newStrokes);
+      }
+      return;
+    }
+
     if (tool === 'text') {
       const text = prompt('Enter text:');
       if (text) {
-        ctx.font = `${lineWidth * 5}px Inter, sans-serif`;
-        ctx.fillStyle = color;
-        ctx.fillText(text, pos.x, pos.y);
-        saveState();
+        const newStroke: Stroke = {
+          id: Date.now().toString(),
+          tool: 'text',
+          points: [pos],
+          color,
+          lineWidth,
+          type: 'text',
+          text,
+          startPos: pos
+        };
+        const newStrokes = [...strokes, newStroke];
+        setStrokes(newStrokes);
+        saveToHistory(newStrokes);
       }
       setIsDrawing(false);
+      return;
     }
-  };
 
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromX: number, fromY: number, toX: number, toY: number) => {
-    const headlen = 15;
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    ctx.beginPath();
-    ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+    const newStroke: Stroke = {
+      id: Date.now().toString(),
+      tool,
+      points: [pos],
+      color: tool === 'eraser' ? (theme === 'light' ? '#ffffff' : '#1a1b26') : color,
+      lineWidth: tool === 'eraser' ? lineWidth * 5 : lineWidth,
+      type: (tool === 'pen' || tool === 'highlighter' || tool === 'eraser') ? 'path' : tool as any,
+      startPos: pos,
+      endPos: pos,
+      opacity: tool === 'highlighter' ? 0.3 : 1
+    };
+
+    setCurrentStroke(newStroke);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || tool === 'pointer') return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-    if (!canvas || !ctx || !snapshot) return;
-
+    if (!isDrawing) return;
     const pos = getPos(e);
     setCursorPos(pos);
 
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = color;
-    ctx.globalAlpha = tool === 'highlighter' ? 0.3 : 1.0;
-    ctx.globalCompositeOperation = 'source-over';
+    if (tool === 'select' && isDragging && selectedStrokeId) {
+      setStrokes(prev => prev.map(s => {
+        if (s.id === selectedStrokeId) {
+          const dx = pos.x - (s.points[0].x + dragOffset.x);
+          const dy = pos.y - (s.points[0].y + dragOffset.y);
+          
+          return {
+            ...s,
+            points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+            startPos: s.startPos ? { x: s.startPos.x + dx, y: s.startPos.y + dy } : undefined,
+            endPos: s.endPos ? { x: s.endPos.x + dx, y: s.endPos.y + dy } : undefined,
+          };
+        }
+        return s;
+      }));
+      return;
+    }
 
-    if (tool === 'pen' || tool === 'highlighter' || tool === 'laser') {
-      if (tool === 'laser') {
-        ctx.strokeStyle = '#ff4444';
-        ctx.lineWidth = 2;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ff4444';
-        setLaserPath(prev => [...prev, {x: pos.x, y: pos.y}]);
+    if (tool === 'laser') {
+      setLaserPath(prev => [...prev, pos]);
+      return;
+    }
+
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const stroke = findStrokeAt(pos);
+      if (stroke) {
+        setStrokes(prev => prev.filter(s => s.id !== stroke.id));
       }
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-      ctx.shadowBlur = 0; // Reset shadow
-    } else if (tool === 'eraser') {
-      if (eraserMode === 'all') {
-        if (isWiping) {
-          const progress = Math.max(0, Math.min(1, (pos.x - startPos.x) / canvas.width));
-          setWipeProgress(progress);
-          ctx.putImageData(snapshot, 0, 0);
-          ctx.clearRect(0, 0, canvas.width * progress, canvas.height);
-        }
-        return;
-      } else if (eraserMode === 'lasso') {
-        ctx.putImageData(snapshot, 0, 0);
-        setLassoPath(prev => [...prev, pos]);
-        ctx.beginPath();
-        if (lassoPath.length > 0) {
-          ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
-          for (let i = 1; i < lassoPath.length; i++) {
-            ctx.lineTo(lassoPath[i].x, lassoPath[i].y);
-          }
-        }
-        ctx.lineTo(pos.x, pos.y);
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = '#00F0FF';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        return;
-      } else {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.lineWidth = eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8;
-        ctx.shadowBlur = eraserMode === 'stroke' ? 15 : 8;
-        ctx.shadowColor = 'black';
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalCompositeOperation = 'source-over'; // Reset immediately
-      }
-    } else if (tool === 'selection-erase') {
-      ctx.putImageData(snapshot, 0, 0);
-      ctx.fillStyle = '#1a1b26';
-      ctx.fillRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
+      return;
+    }
+
+    if (!currentStroke) return;
+
+    if (currentStroke.type === 'path') {
+      setCurrentStroke({
+        ...currentStroke,
+        points: [...currentStroke.points, pos]
+      });
     } else {
-      // For shapes, restore snapshot first
-      ctx.putImageData(snapshot, 0, 0);
-      
-      if (tool === 'rect') {
-        ctx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
-      } else if (tool === 'circle') {
-        const radius = Math.sqrt(Math.pow(pos.x - startPos.x, 2) + Math.pow(pos.y - startPos.y, 2));
-        ctx.beginPath();
-        ctx.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-      } else if (tool === 'line') {
-        ctx.beginPath();
-        ctx.moveTo(startPos.x, startPos.y);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-      } else if (tool === 'arrow') {
-        drawArrow(ctx, startPos.x, startPos.y, pos.x, pos.y);
-      }
+      setCurrentStroke({
+        ...currentStroke,
+        endPos: pos
+      });
     }
   };
 
   const stopDrawing = () => {
-    if (isDrawing) {
-      setIsDrawing(false);
-      
-      if (tool === 'eraser') {
-        if (eraserMode === 'all' && isWiping) {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (wipeProgress > 0.4) {
-            if (canvas && ctx && snapshot) {
-              let p = wipeProgress;
-              const animate = () => {
-                p += 0.05;
-                if (p >= 1) {
-                  ctx.clearRect(0, 0, canvas.width, canvas.height);
-                  saveState();
-                  setIsWiping(false);
-                  setWipeProgress(0);
-                } else {
-                  ctx.putImageData(snapshot, 0, 0);
-                  ctx.clearRect(0, 0, canvas.width * p, canvas.height);
-                  setWipeProgress(p);
-                  requestAnimationFrame(animate);
-                }
-              };
-              requestAnimationFrame(animate);
-            }
-          } else {
-            if (canvas && ctx && snapshot) {
-              ctx.putImageData(snapshot, 0, 0);
-            }
-            setIsWiping(false);
-            setWipeProgress(0);
-          }
-          return;
-        } else if (eraserMode === 'lasso') {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (canvas && ctx && snapshot && lassoPath.length > 0) {
-            ctx.putImageData(snapshot, 0, 0);
-            ctx.beginPath();
-            ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
-            for (let i = 1; i < lassoPath.length; i++) {
-              ctx.lineTo(lassoPath[i].x, lassoPath[i].y);
-            }
-            ctx.closePath();
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.fill();
-            ctx.globalCompositeOperation = 'source-over';
-            saveState();
-            setLassoPath([]);
-          }
-          return;
-        }
-      }
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    setIsDragging(false);
 
-      if (tool !== 'laser') {
-        saveState();
-      } else {
-        // Clear laser after a delay
-        if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
-        laserTimeoutRef.current = setTimeout(() => {
-          const canvas = canvasRef.current;
-          const ctx = canvas?.getContext('2d');
-          if (canvas && ctx && historyStep >= 0) {
-            ctx.putImageData(history[historyStep], 0, 0);
-          } else if (canvas && ctx) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-          }
-          setLaserPath([]);
-        }, 1000);
-      }
-      setSnapshot(null);
+    if (tool === 'laser') {
+      if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
+      laserTimeoutRef.current = setTimeout(() => setLaserPath([]), 1000);
+      return;
+    }
+
+    if (currentStroke) {
+      const newStrokes = [...strokes, currentStroke];
+      setStrokes(newStrokes);
+      saveToHistory(newStrokes);
+      setCurrentStroke(null);
+    } else if (tool === 'select' || (tool === 'eraser' && eraserMode === 'stroke')) {
+      saveToHistory(strokes);
     }
   };
 
@@ -462,7 +495,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       {/* Toolbar (Shifted to Bottom, higher to avoid nav bar) */}
       <div className="absolute bottom-28 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10 pointer-events-auto">
         <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
-          <button onClick={() => setTool('pointer')} className={`p-2 rounded-lg transition-colors ${tool === 'pointer' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pointer (Interact with background)">
+          <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
             <MousePointer2 className="w-5 h-5" />
           </button>
           <div className="w-px h-6 bg-white/10 mx-1"></div>
@@ -502,14 +535,11 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]"
                 >
-                  <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setLineWidth(5); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                  <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
                   </button>
                   <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
                     <Minus className="w-3 h-3" /> Stroke Eraser
-                  </button>
-                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                    <Circle className="w-3 h-3 border-dashed" /> Lasso Eraser
                   </button>
                   <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
                     <Trash2 className="w-3 h-3" /> Slide to Erase All

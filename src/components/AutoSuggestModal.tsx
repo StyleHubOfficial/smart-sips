@@ -56,7 +56,23 @@ export default function AutoSuggestModal() {
         }
 
         try {
-          const data = await analyzeContentForCoPilot(selectedContent.secure_url, title, apiKey);
+          // Fetch content first if it's a URL
+          let contentToAnalyze = selectedContent.secure_url;
+          
+          // Try to fetch text content if possible
+          try {
+            const response = await fetch(`/api/proxy?url=${encodeURIComponent(selectedContent.secure_url)}`);
+            if (response.ok) {
+              const contentType = response.headers.get('content-type');
+              if (contentType?.includes('text') || contentType?.includes('json') || contentType?.includes('javascript')) {
+                contentToAnalyze = await response.text();
+              }
+            }
+          } catch (e) {
+            console.warn("Could not fetch raw content, passing URL instead", e);
+          }
+
+          const data = await analyzeContentForCoPilot(contentToAnalyze, title, apiKey);
           setExtractedData(data);
         } catch (error) {
           console.error("Analysis failed", error);

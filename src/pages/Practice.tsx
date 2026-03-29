@@ -126,6 +126,32 @@ export default function Practice() {
           <div className="text-3xl font-display font-bold text-emerald-400">{avgSpeed}s</div>
           <div className="text-[10px] text-gray-500 mt-1">Per Question</div>
         </div>
+
+        {!analysis && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:col-span-4 flex justify-center mt-4"
+          >
+            <button
+              onClick={handleStartAnalysis}
+              disabled={analyzing}
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(0,240,255,0.5)] transition-all flex items-center gap-3 group"
+            >
+              {analyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Analyzing Performance...
+                </>
+              ) : (
+                <>
+                  <BrainCircuit className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  Analyze Performance
+                </>
+              )}
+            </button>
+          </motion.div>
+        )}
       </motion.div>
     );
   };
@@ -222,7 +248,19 @@ export default function Practice() {
 
   const handleFinishPractice = async () => {
     setIsTimerRunning(false);
+    setPracticeFinished(true);
     
+    const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
+    const percentage = (score / questions.length) * 100;
+
+    if (percentage >= 80) {
+      setShowCelebration(true);
+      triggerConfetti();
+      setTimeout(() => setShowCelebration(false), 5000);
+    }
+  };
+
+  const handleStartAnalysis = async () => {
     let apiKey = '';
     if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
       apiKey = process.env.GEMINI_API_KEY;
@@ -236,16 +274,6 @@ export default function Practice() {
       return;
     }
 
-    const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
-    const percentage = (score / questions.length) * 100;
-
-    if (percentage >= 80) {
-      setShowCelebration(true);
-      triggerConfetti();
-      setTimeout(() => setShowCelebration(false), 5000);
-    }
-
-    setPracticeFinished(true);
     await analyzeScore(apiKey);
   };
 
@@ -536,7 +564,7 @@ export default function Practice() {
     setSelectedOption(questionId, option);
   };
 
-  const handleSaveToDashboard = async () => {
+  const handleUploadToCourses = async () => {
     if (questions.length === 0) return;
     
     const fallbackTitle = query || (sourceFiles.length > 0 ? sourceFiles[0].name : 'Practice Set');
@@ -1565,7 +1593,7 @@ export default function Practice() {
                           exit={{ scale: 0, opacity: 0 }}
                           className="flex items-center gap-2"
                         >
-                          <Database className="w-4 h-4" /> Save to Dashboard
+                          <Upload className="w-4 h-4" /> Upload to Courses
                         </motion.div>
                       )}
                     </AnimatePresence>

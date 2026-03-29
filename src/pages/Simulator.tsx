@@ -272,7 +272,7 @@ export default function Simulator() {
     addNotification('success', 'Simulation saved to your history.');
   };
 
-  const handleSaveToDashboard = async () => {
+  const handleUploadToCourses = async () => {
     if (!generatedCode) return;
     
     try {
@@ -281,9 +281,9 @@ export default function Simulator() {
       const contextStr = `title=${query} Simulation|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Simulation|class=General|description=AI-generated interactive simulation for ${query}|fileType=HTML Simulation`;
       
       addUpload(file, contextStr);
-      addNotification('info', 'Saving simulation to dashboard...');
+      addNotification('info', 'Uploading simulation to courses...');
     } catch (error) {
-      addNotification('error', 'Failed to save simulation.');
+      addNotification('error', 'Failed to upload simulation.');
     }
   };
 
@@ -698,11 +698,11 @@ export default function Simulator() {
                     <Share2 className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <button 
-                    onClick={handleSaveToDashboard}
+                    onClick={handleUploadToCourses}
                     className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
                   >
-                    <Database className="w-3 h-3 md:w-4 md:h-4" />
-                    Save to Dashboard
+                    <Upload className="w-3 h-3 md:w-4 md:h-4" />
+                    Upload to Courses
                   </button>
                 </div>
               </div>

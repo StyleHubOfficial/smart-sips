@@ -141,7 +141,9 @@ export default function App() {
     return localStorage.getItem('sunrise_skip_intro') !== 'true';
   });
   const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
-  const [isUnlocked, setIsUnlocked] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    return localStorage.getItem('sunrise_unlocked') === 'true';
+  });
   const [accessCode, setAccessCode] = useState("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -174,16 +176,22 @@ export default function App() {
     }
   };
 
+  const handleIntroComplete = () => {
+    setShowEntryAnimation(false);
+    setTimeout(() => {
+      setIsRevealed(true);
+    }, 400);
+    setShowDeveloperCredit(true);
+    // If skip intro was clicked, also skip tutorial/welcome
+    if (localStorage.getItem('sunrise_skip_intro') === 'true') {
+      localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
+    }
+  };
+
   return (
     <MotionConfig reducedMotion={isGlowEnabled ? "never" : "always"}>
       <AnimatePresence>
-        {showEntryAnimation && <IntroSequence key="intro" onComplete={() => {
-          setShowEntryAnimation(false);
-          setTimeout(() => {
-            setIsRevealed(true);
-          }, 400);
-          setShowDeveloperCredit(true);
-        }} />}
+        {showEntryAnimation && <IntroSequence key="intro" onComplete={handleIntroComplete} />}
       </AnimatePresence>
       <AnimatePresence>
         {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
@@ -195,17 +203,54 @@ export default function App() {
         transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
         className="relative z-10"
       >
-        <BrowserRouter>
-          <AppContent 
-            isSmartPanelMode={isSmartPanelMode}
-            setIsSmartPanelMode={setIsSmartPanelMode}
-            isLoginModalOpen={isLoginModalOpen}
-            setIsLoginModalOpen={setIsLoginModalOpen}
-            isNotificationsOpen={isNotificationsOpen}
-            setIsNotificationsOpen={setIsNotificationsOpen}
-            isRevealing={false}
-          />
-        </BrowserRouter>
+        {!isUnlocked ? (
+          <div className="fixed inset-0 z-[10000] bg-[#0a0a0a] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00F0FF10_0%,transparent_70%)]"></div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-panel p-8 rounded-3xl border border-white/10 w-full max-w-md relative z-10 text-center"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] mx-auto mb-6">
+                <div className="w-full h-full bg-[#0a0a0a] rounded-2xl flex items-center justify-center">
+                  <Zap className="w-10 h-10 text-[#00F0FF]" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-display font-bold text-white mb-2">Access Restricted</h2>
+              <p className="text-gray-400 mb-8 text-sm">Please enter the website access code to continue.</p>
+              
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <input 
+                  type="password"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Enter Access Code"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-6 text-white text-center focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+                  autoFocus
+                />
+                <button 
+                  type="submit"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
+                >
+                  Unlock Platform
+                </button>
+              </form>
+              <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
+            </motion.div>
+          </div>
+        ) : (
+          <BrowserRouter>
+            <AppContent 
+              isSmartPanelMode={isSmartPanelMode}
+              setIsSmartPanelMode={setIsSmartPanelMode}
+              isLoginModalOpen={isLoginModalOpen}
+              setIsLoginModalOpen={setIsLoginModalOpen}
+              isNotificationsOpen={isNotificationsOpen}
+              setIsNotificationsOpen={setIsNotificationsOpen}
+              isRevealing={false}
+            />
+          </BrowserRouter>
+        )}
       </motion.div>
     </MotionConfig>
   );
