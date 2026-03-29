@@ -11,15 +11,18 @@ import { usePracticeStore, Question } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { GoogleGenAI } from '@google/genai';
+import { BackButton } from '../components/BackButton';
+import { QuestionExporter } from '../components/QuestionExporter';
+import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 export default function Practice() {
   const { 
-    query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFile, questions, loading, selectedOptions, showSolutions, showHints, showSourceLinks, stepReveals, analysis, analyzing, whiteboardMode,
+    query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFiles, questions, loading, selectedOptions, showSolutions, showHints, showSourceLinks, stepReveals, analysis, analyzing, whiteboardMode,
     isSourceConverterMode, dppMode, mixUp, sequenceWise,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFile, setSelectedOption, setShowHint, setShowSolution, setShowSourceLinks, setStepReveal, generateQuestions, generateSimilarQuestions, analyzeScore, setWhiteboardMode,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFiles, setSelectedOption, setShowHint, setShowSolution, setShowSourceLinks, setStepReveal, generateQuestions, generateSimilarQuestions, analyzeScore, setWhiteboardMode,
     setIsSourceConverterMode, setDppMode, setMixUp, setSequenceWise
   } = usePracticeStore();
   
@@ -51,14 +54,41 @@ export default function Practice() {
   const [version] = useState("Advance 2.5x");
   const [practiceFinished, setPracticeFinished] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const Scorecard = ({ score, total, accuracy, timeTaken }: { score: number, total: number, accuracy: number, timeTaken: number }) => {
     const avgSpeed = score > 0 ? Math.round(timeTaken / total) : 0;
+    const [displayScore, setDisplayScore] = useState(0);
+    const [displayAccuracy, setDisplayAccuracy] = useState(0);
+
+    useEffect(() => {
+      let start = 0;
+      const duration = 1500; // 1.5 seconds
+      const startTime = performance.now();
+
+      const animateScore = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // easeOutQuart
+        const easeProgress = 1 - Math.pow(1 - progress, 4);
+        
+        setDisplayScore(Math.round(easeProgress * score));
+        setDisplayAccuracy(Math.round(easeProgress * accuracy));
+
+        if (progress < 1) {
+          requestAnimationFrame(animateScore);
+        }
+      };
+
+      requestAnimationFrame(animateScore);
+    }, [score, accuracy]);
     
     return (
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
       >
         <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
@@ -71,16 +101,17 @@ export default function Practice() {
                 strokeDasharray={226}
                 initial={{ strokeDashoffset: 226 }}
                 animate={{ strokeDashoffset: 226 - (226 * accuracy) / 100 }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
                 className="text-[#00F0FF]"
               />
             </svg>
-            <span className="absolute text-xl font-bold text-white">{Math.round(accuracy)}%</span>
+            <span className="absolute text-xl font-bold text-white">{displayAccuracy}%</span>
           </div>
         </div>
 
         <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Score</div>
-          <div className="text-3xl font-display font-bold text-[#B026FF]">{score} / {total}</div>
+          <div className="text-3xl font-display font-bold text-[#B026FF]">{displayScore} / {total}</div>
           <div className="text-[10px] text-gray-500 mt-1">Questions Correct</div>
         </div>
 
@@ -339,7 +370,7 @@ export default function Practice() {
   }, [location.state]);
 
   // Check if there's an ongoing upload for this specific practice set
-  const fallbackTitle = query || sourceFile?.name || 'Practice Set';
+  const fallbackTitle = query || (sourceFiles.length > 0 ? sourceFiles[0].name : 'Practice Set');
   const isSaving = uploads.some(u => u.status === 'uploading' && u.contextStr.includes(`title=${fallbackTitle} Practice Set`));
 
   const fetchDashboardFiles = async () => {
@@ -402,30 +433,45 @@ export default function Practice() {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      addNotification('error', 'File size must be less than 5MB');
-      return;
+    const newFiles: { name: string, data: string, mimeType: string }[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file.size > 5 * 1024 * 1024) {
+        addNotification('error', `File ${file.name} is too large (max 5MB)`);
+        continue;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64String = (event.target?.result as string).split(',')[1];
+        newFiles.push({
+          name: file.name,
+          data: base64String,
+          mimeType: file.type || 'text/plain'
+        });
+        
+        if (newFiles.length === files.length) {
+          setSourceFiles([...sourceFiles, ...newFiles]);
+          addNotification('success', `${files.length} file(s) attached successfully`);
+        }
+      };
+      reader.readAsDataURL(file);
     }
+  };
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64String = (event.target?.result as string).split(',')[1];
-      setSourceFile({
-        name: file.name,
-        data: base64String,
-        mimeType: file.type || 'text/plain'
-      });
-      addNotification('success', 'Source file attached successfully');
-    };
-    reader.readAsDataURL(file);
+  const removeSourceFile = (index: number) => {
+    const updatedFiles = [...sourceFiles];
+    updatedFiles.splice(index, 1);
+    setSourceFiles(updatedFiles);
   };
 
   const handleSearch = async () => {
-    if (isSourceConverterMode && !sourceFile) {
-      addNotification('error', 'Please select a source file first');
+    if (isSourceConverterMode && sourceFiles.length === 0) {
+      addNotification('error', 'Please select at least one source file first');
       return;
     }
     if (!isSourceConverterMode && !query.trim()) return;
@@ -493,7 +539,7 @@ export default function Practice() {
   const handleSaveToDashboard = async () => {
     if (questions.length === 0) return;
     
-    const fallbackTitle = query || sourceFile?.name || 'Practice Set';
+    const fallbackTitle = query || (sourceFiles.length > 0 ? sourceFiles[0].name : 'Practice Set');
     const safeTitle = fallbackTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
 
     try {
@@ -582,6 +628,13 @@ export default function Practice() {
       addUpload(file, contextStr);
       
       addNotification('info', 'Saving practice set in background...');
+      setIsSaved(true);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+      setTimeout(() => setIsSaved(false), 3000);
     } catch (error) {
       console.error('Error saving practice set:', error);
       addNotification('error', 'Failed to save practice set.');
@@ -593,10 +646,11 @@ export default function Practice() {
     
     return (
       <motion.div
-        key={`${q.id}-${index}`}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.05 }}
+        key={`q-card-${q.id}-${index}-${compact ? 'compact' : 'full'}`}
+        initial={{ opacity: 0, x: 50 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -50 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(index * 0.05, 0.2) }}
         className={`
           ${isSheetMode 
             ? 'bg-white text-black p-8 shadow-none print:break-inside-avoid' 
@@ -670,18 +724,30 @@ export default function Practice() {
             }
 
             return (
-              <button
+              <motion.button
+                whileHover={!showResult ? { scale: 1.01, backgroundColor: "rgba(255,255,255,0.1)" } : {}}
+                whileTap={!showResult ? { scale: 0.98 } : {}}
+                animate={showResult && isSelected ? { scale: [1, 1.03, 1] } : {}}
+                transition={{ duration: 0.3 }}
                 key={`${q.id}-opt-${optIndex}`}
                 onClick={() => handleOptionClick(q.id, option)}
                 disabled={showResult}
-                className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between group text-sm ${optionClass} ${isSmartPanelMode ? 'text-lg p-4' : ''}`}
+                className={`w-full text-left p-3 rounded-xl border transition-colors duration-300 flex items-center justify-between group text-sm ${optionClass} ${isSmartPanelMode ? 'text-lg p-4' : ''}`}
               >
                 <div className="prose prose-invert max-w-none prose-p:my-0 prose-pre:my-0">
                   <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</Markdown>
                 </div>
-                {showResult && isCorrect && <CheckCircle className="w-4 h-4 text-green-400 shrink-0 ml-2" />}
-                {showResult && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-400 shrink-0 ml-2" />}
-              </button>
+                {showResult && isCorrect && (
+                  <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                    <CheckCircle className="w-5 h-5 text-green-400 shrink-0 ml-2" />
+                  </motion.div>
+                )}
+                {showResult && isSelected && !isCorrect && (
+                  <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                    <XCircle className="w-5 h-5 text-red-400 shrink-0 ml-2" />
+                  </motion.div>
+                )}
+              </motion.button>
             );
           })}
         </div>
@@ -911,7 +977,7 @@ export default function Practice() {
         <button 
           onClick={() => {
             setIsPYQ(false);
-            setSourceFile(null);
+            setSourceFiles([]);
             setIsSourceConverterMode(false);
           }}
           className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${!isPYQ && !isSourceConverterMode ? 'bg-[#00F0FF] text-black shadow-[0_0_20px_rgba(0,240,255,0.3)]' : 'text-gray-400 hover:text-white'}`}
@@ -951,7 +1017,7 @@ export default function Practice() {
               </h3>
               <p className="text-sm text-gray-400">
                 {isPYQ ? 'Generate authentic previous year questions with search grounding' : 
-                 isSourceConverterMode ? (sourceFile ? `Converting ${sourceFile.name} into practice questions` : 'Select a source to convert into questions') : 
+                 isSourceConverterMode ? (sourceFiles.length > 0 ? `Converting ${sourceFiles.length} file(s) into practice questions` : 'Select a source to convert into questions') : 
                  'Create custom Daily Practice Problems (DPP) using advanced AI'}
               </p>
             </div>
@@ -1078,8 +1144,8 @@ export default function Practice() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {!sourceFile ? (
-              <div>
+            {sourceFiles.length === 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-2">
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-col items-center justify-center gap-4 p-10 rounded-3xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group relative overflow-hidden"
@@ -1108,22 +1174,44 @@ export default function Practice() {
                 </button>
               </div>
             ) : (
-              <div className="col-span-2 flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-white/10 text-white">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-white truncate max-w-[200px] md:max-w-md">{sourceFile.name}</div>
-                    <div className="text-xs text-gray-500">Source selected for conversion</div>
-                  </div>
+              <div className="col-span-2 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Selected Sources ({sourceFiles.length})</h4>
+                  <button 
+                    onClick={() => setSourceFiles([])}
+                    className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" /> Clear All
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSourceFile(null)}
-                  className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  {sourceFiles.map((file, idx) => (
+                    <div key={`source-item-${idx}`} className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 group">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-white/10 text-white">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white max-w-[200px] truncate">{file.name}</div>
+                          <div className="text-[10px] text-gray-400 uppercase tracking-widest">Source Material</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeSourceFile(idx)}
+                        className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group"
+                  >
+                    <Plus className="w-5 h-5 text-gray-400 group-hover:text-[#00F0FF]" />
+                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-widest group-hover:text-[#00F0FF]">Add More</div>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1201,9 +1289,9 @@ export default function Practice() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
             >
-              <option value="gemini-3.1-flash-lite-preview">High Quality</option>
-              <option value="gemini-2.5-flash">Medium Quality</option>
-              <option value="gemini-3-flash-preview">Fast</option>
+              <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Medium Quality (G3.1 Lite)</option>
+              <option value="gemini-2.5-flash">Fast (G2.5 Flash)</option>
             </select>
           </div>
 
@@ -1284,7 +1372,7 @@ export default function Practice() {
               handleSearch();
             }
           }}
-          placeholder={isSourceConverterMode ? (sourceFile ? `Describe how to convert ${sourceFile.name}...` : 'Select a source first') : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
+          placeholder={isSourceConverterMode ? (sourceFiles.length > 0 ? `Describe how to convert ${sourceFiles[0].name}...` : 'Select a source first') : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
           className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[180px]"
         />
         <button 
@@ -1300,7 +1388,7 @@ export default function Practice() {
         <div className="mt-4 flex justify-end">
           <button 
             onClick={handleSearch}
-            disabled={loading || (isSourceConverterMode ? !sourceFile : !query.trim())}
+            disabled={loading || (isSourceConverterMode ? sourceFiles.length === 0 : !query.trim())}
             className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
@@ -1312,13 +1400,40 @@ export default function Practice() {
       {/* Questions List */}
       <div className="space-y-6">
         {loading && questions.length === 0 && (
-          <div className="py-8">
-            <CinematicLoader />
+          <div className="py-8 space-y-6">
+            {[1, 2, 3].map((i) => (
+              <motion.div 
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="glass-panel rounded-2xl p-6 border border-white/10 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                <div className="flex gap-4 mb-6">
+                  <div className="w-8 h-8 rounded-full bg-white/10 shrink-0" />
+                  <div className="space-y-3 flex-1">
+                    <div className="h-4 bg-white/10 rounded w-3/4" />
+                    <div className="h-4 bg-white/10 rounded w-1/2" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="h-12 bg-white/5 rounded-xl border border-white/10" />
+                  ))}
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
 
         {questions.length > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6"
+          >
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               Generated Questions <span className="text-gray-500 text-sm font-normal">({questions.length})</span>
             </h3>
@@ -1430,11 +1545,33 @@ export default function Practice() {
                   <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showExportDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all z-50 overflow-hidden`}>
-                  <button onClick={handleSaveToDashboard} disabled={isSaving} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
-                    <Database className="w-4 h-4" /> Save to Dashboard
+                  <button onClick={handleSaveToDashboard} disabled={isSaving || isSaved} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2 relative overflow-hidden">
+                    <AnimatePresence mode="wait">
+                      {isSaved ? (
+                        <motion.div
+                          key="saved"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          className="flex items-center gap-2 text-emerald-400"
+                        >
+                          <CheckCircle className="w-4 h-4" /> Saved Successfully
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="save"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          className="flex items-center gap-2"
+                        >
+                          <Database className="w-4 h-4" /> Save to Dashboard
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </button>
                   <button onClick={() => {
-                    const fallbackTitle = query || sourceFile?.name || 'Practice Set';
+                    const fallbackTitle = query || (sourceFiles.length > 0 ? sourceFiles[0].name : 'Practice Set');
                     const safeTitle = fallbackTitle.replace(/[^a-z0-9]/gi, '_').substring(0, 20);
                     const htmlContent = document.documentElement.innerHTML; // This is a placeholder, handleSaveToDashboard logic should be reused
                     // Re-using the logic from handleSaveToDashboard for actual download
@@ -1450,9 +1587,11 @@ export default function Practice() {
                   }} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <Download className="w-4 h-4" /> Download HTML Quiz
                   </button>
-                  <button onClick={() => window.print()} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Print / Export PDF
-                  </button>
+                  <QuestionExporter 
+                    questions={questions}
+                    title={`${subject} ${examType} Practice Set`}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2"
+                  />
                   <button onClick={() => addNotification('info', 'Worksheet Export coming soon')} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2">
                     <FileText className="w-4 h-4" /> Export as Worksheet
                   </button>
@@ -1465,7 +1604,7 @@ export default function Practice() {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         <AnimatePresence mode="wait">
@@ -1508,11 +1647,37 @@ export default function Practice() {
                   </div>
                 </div>
                 <div className="space-y-6 flex-1">
-                  {questions.map((q, index) => (
-                    <div key={`${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
-                      {renderQuestionCard(q, index, true)}
-                    </div>
-                  ))}
+                  <AnimatePresence mode="popLayout">
+                    {questions.map((q, index) => (
+                      <div key={`${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                        {renderQuestionCard(q, index, true)}
+                      </div>
+                    ))}
+                    {isGeneratingSimilar && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="glass-panel rounded-2xl p-6 border border-[#00F0FF]/30 relative overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.1)]"
+                      >
+                        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />
+                        <div className="flex gap-4 mb-6">
+                          <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 shrink-0 flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                          </div>
+                          <div className="space-y-3 flex-1">
+                            <div className="h-4 bg-white/10 rounded w-3/4" />
+                            <div className="h-4 bg-white/10 rounded w-1/2" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {[1, 2, 3, 4].map((j) => (
+                            <div key={j} className="h-12 bg-white/5 rounded-xl border border-white/10" />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -1677,7 +1842,33 @@ export default function Practice() {
                 viewMode === 'triple' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
                 'space-y-6'
               }>
-                {questions.map((q, index) => renderQuestionCard(q, index))}
+                <AnimatePresence mode="popLayout">
+                  {questions.map((q, index) => renderQuestionCard(q, index))}
+                  {isGeneratingSimilar && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="glass-panel rounded-2xl p-6 border border-[#00F0FF]/30 relative overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.1)]"
+                    >
+                      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />
+                      <div className="flex gap-4 mb-6">
+                        <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 shrink-0 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                        </div>
+                        <div className="space-y-3 flex-1">
+                          <div className="h-4 bg-white/10 rounded w-3/4" />
+                          <div className="h-4 bg-white/10 rounded w-1/2" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[1, 2, 3, 4].map((j) => (
+                          <div key={j} className="h-12 bg-white/5 rounded-xl border border-white/10" />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
               
               {dppMode === 'sheet' && questions.length > 0 && !loading && (
@@ -1691,7 +1882,7 @@ export default function Practice() {
                       const optionIndex = q.options?.indexOf(q.correctAnswer);
                       const answerLetter = optionIndex !== undefined && optionIndex >= 0 ? String.fromCharCode(65 + optionIndex) : q.correctAnswer;
                       return (
-                        <div key={`ans-${q.id}`} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                        <div key={`ans-key-${q.id}-${index}`} className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
                           <span className="w-8 h-8 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF] flex items-center justify-center font-bold text-sm">
                             {index + 1}
                           </span>
@@ -1902,128 +2093,41 @@ export default function Practice() {
           </div>
         )}
 
-        {showDashboardSelector && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDashboardSelector(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
-            >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5 backdrop-blur-xl">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#B026FF]/20 flex items-center justify-center border border-[#B026FF]/30 text-[#B026FF] shadow-lg">
-                    <Database className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-display font-bold text-white tracking-tight">Select from Dashboard</h3>
-                    <p className="text-sm text-gray-400">Choose a previously uploaded file</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => fetchDashboardFiles()}
-                    className="p-2.5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all border border-transparent hover:border-white/10"
-                    title="Refresh Files"
-                  >
-                    <Loader2 className={`w-5 h-5 ${fetchingFiles ? 'animate-spin' : ''}`} />
-                  </button>
-                  <button 
-                    onClick={() => setShowDashboardSelector(false)}
-                    className="p-2.5 hover:bg-red-500/10 rounded-xl text-gray-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-4 border-b border-white/10 bg-black/20">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input 
-                    type="text"
-                    placeholder="Search your files..."
-                    value={dashboardSearch}
-                    onChange={(e) => setDashboardSearch(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#B026FF]/50 transition-all"
-                  />
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {fetchingFiles ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <Loader2 className="w-10 h-10 text-[#B026FF] animate-spin" />
-                    <p className="text-gray-500 animate-pulse">Fetching your content...</p>
-                  </div>
-                ) : dashboardFiles.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                    <FileText className="w-16 h-16 opacity-10 mb-4" />
-                    <p>No files found in your dashboard</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles
-                      .filter(file => (file.title || "").toLowerCase().includes(dashboardSearch.toLowerCase()))
-                      .map((file, index) => (
-                      <button
-                        key={file.public_id || `file-${index}`}
-                        onClick={async () => {
-                          try {
-                            // Fetch the file content and convert to base64
-                            const res = await fetch(file.fileUrl);
-                            const blob = await res.blob();
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              const base64String = (reader.result as string).split(',')[1];
-                              setSourceFile({
-                                name: file.title,
-                                data: base64String,
-                                mimeType: file.type || 'application/pdf'
-                              });
-                              setShowDashboardSelector(false);
-                              addNotification('success', `Selected: ${file.title}`);
-                            };
-                            reader.readAsDataURL(blob);
-                          } catch (error) {
-                            console.error("Failed to load dashboard file", error);
-                            addNotification('error', 'Failed to load file from dashboard');
-                          }
-                        }}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-[#B026FF]/30 hover:bg-[#B026FF]/5 transition-all text-left group"
-                      >
-                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#B026FF] transition-colors">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white truncate">{file.title}</div>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/5 text-gray-500">
-                              {file.type?.split('/')[1] || 'FILE'}
-                            </span>
-                            <span className="text-[10px] text-gray-600">
-                              {new Date(file.createdAt).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Plus className="w-5 h-5 text-[#B026FF]" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
+        {/* Dashboard File Selector */}
+        <DashboardFileSelector
+          isOpen={showDashboardSelector}
+          onClose={() => setShowDashboardSelector(false)}
+          onSelect={async (file) => {
+            try {
+              // Use proxy to fetch actual content for non-data URLs to avoid CORS issues
+              const proxyUrl = `/api/proxy?url=${encodeURIComponent(file.url || file.fileUrl)}`;
+              const res = await fetch(proxyUrl);
+              if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
+              
+              const blob = await res.blob();
+              const reader = new FileReader();
+              reader.onload = () => {
+                const base64String = (reader.result as string).split(',')[1];
+                setSourceFiles([...sourceFiles, {
+                  name: file.name || file.title,
+                  data: base64String,
+                  mimeType: file.type || 'application/pdf'
+                }]);
+                setShowDashboardSelector(false);
+                addNotification('success', `Selected: ${file.name || file.title}`);
+              };
+              reader.onerror = (err) => {
+                console.error("FileReader error:", err);
+                addNotification('error', 'Failed to read file content');
+              };
+              reader.readAsDataURL(blob);
+            } catch (error) {
+              console.error("Failed to load dashboard file", error);
+              addNotification('error', 'Failed to load file from dashboard');
+            }
+          }}
+          title="Select Source Content"
+        />
       </AnimatePresence>
 
       {/* Celebration Overlay */}

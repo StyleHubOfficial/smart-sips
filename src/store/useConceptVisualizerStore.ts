@@ -31,7 +31,7 @@ export const useConceptVisualizerStore = create<ConceptVisualizerState>((set, ge
   sourceFile: null,
   loading: false,
   visualizerData: null,
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   diagramCount: 1,
   setQuery: (query) => set({ query }),
   setSourceFile: (sourceFile) => set({ sourceFile }),

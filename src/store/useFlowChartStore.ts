@@ -37,7 +37,7 @@ export const useFlowChartStore = create<FlowChartState>()(
       generatedCode: '',
       interactiveData: null,
       loading: false,
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       chartType: 'Flowchart',
       savedCharts: [],
       sourceFile: null,

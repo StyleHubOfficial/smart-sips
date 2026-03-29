@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload, Settings } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { useUploadStore } from '../store/useUploadStore';
 import SimLoader from '../components/SimLoader';
+import { DashboardFileSelector } from '../components/DashboardFileSelector';
 import { useLocation } from 'react-router-dom';
 import { generateHinglishExplanation } from '../services/aiExplainerService';
 import { pcmToWav } from '../utils/audio';
@@ -27,6 +28,9 @@ export default function Simulator() {
   const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
   const [fetchingFiles, setFetchingFiles] = useState(false);
   const [dashboardSearch, setDashboardSearch] = useState("");
+  const [dashboardSubject, setDashboardSubject] = useState("");
+  const [dashboardType, setDashboardType] = useState("");
+  const [dashboardTopic, setDashboardTopic] = useState("");
   const [isPromptBuilding, setIsPromptBuilding] = useState(false);
 
   const fetchDashboardFiles = async () => {
@@ -161,24 +165,41 @@ export default function Simulator() {
     try {
       let base64String = '';
       let mimeType = file.type || 'application/pdf';
+      const fileName = file.context?.custom?.title || file.context?.custom?.caption || file.filename || file.public_id || file.display_name || 'Untitled Document';
 
       if (file.url.startsWith('data:')) {
         base64String = file.url.split(',')[1];
         mimeType = file.url.split(';')[0].split(':')[1];
       } else {
-        base64String = btoa("Simulated file content for " + file.name);
+        // Use proxy to fetch actual content for non-data URLs to avoid CORS issues
+        const proxyUrl = `/api/proxy?url=${encodeURIComponent(file.url)}`;
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error(`Proxy fetch failed: ${response.statusText}`);
+        
+        const blob = await response.blob();
+        mimeType = blob.type || mimeType;
+        
+        base64String = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
       }
 
       setSourceFile({
-        name: file.name,
+        name: fileName,
         data: base64String,
         mimeType: mimeType
       });
-      addNotification('success', `Selected ${file.name} from dashboard`);
+      addNotification('success', `Selected ${fileName} from dashboard`);
       setShowDashboardSelector(false);
     } catch (error) {
       console.error("Dashboard selection error:", error);
-      addNotification('error', 'Failed to select file from dashboard');
+      addNotification('error', 'Failed to fetch file content from dashboard');
     }
   };
 
@@ -433,208 +454,334 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      {/* Simulation Area */}
-      <div className="space-y-6">
-        {loading && (
-          <div className="py-12">
-            <SimLoader />
-          </div>
-        )}
-
-        {!loading && generatedCode && (
-          <div className="space-y-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative w-full aspect-video md:aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] group bg-black"
-            >
-              {showCode ? (
-                <div className="absolute inset-0 bg-[#0d1117] p-6 overflow-auto font-mono text-sm text-gray-300 z-10">
-                  <pre>{generatedCode}</pre>
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
+        {/* Controls Section (Input Area) - NOW AT THE TOP */}
+        <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
+          
+          <div className="flex flex-col gap-6 relative z-10">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-2xl bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+                  <Wand2 className="w-6 h-6" />
                 </div>
-              ) : (
-                <iframe 
-                  ref={iframeRef}
-                  srcDoc={generatedCode}
-                  title="Simulation Preview"
-                  className="w-full h-full border-0 bg-black"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                  allowFullScreen
-                />
-              )}
-            </motion.div>
-
-            {/* Simulation Toolbar */}
-            <div className="flex flex-wrap justify-between items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/10">
-              <div className="flex flex-wrap gap-2">
-                <button 
-                  onClick={handleExplain}
-                  disabled={explainerLoading}
-                  className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
-                  title="Explain in Hinglish"
-                >
-                  {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
-                  <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
-                </button>
-                <button 
-                  onClick={() => setShowCode(!showCode)}
-                  className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
-                  title="View Code"
-                >
-                  <Code className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleGenerate}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
-                  title="Regenerate"
-                >
-                  <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={toggleFullscreen}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
-                  title="Fullscreen"
-                >
-                  {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
-                </button>
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Simulation Lab</h2>
+                  <p className="text-sm text-gray-500">Describe your concept or attach a research source</p>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex items-center gap-2">
                 <button 
-                  onClick={handleSave}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
-                  title="Save to History"
+                  onClick={() => {
+                    setShowDashboardSelector(true);
+                    fetchDashboardFiles();
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-all text-sm font-semibold group"
                 >
-                  <Save className="w-4 h-4 md:w-5 md:h-5" />
+                  <Database className="w-4 h-4 group-hover:text-[#00F0FF] transition-colors" />
+                  Dashboard
                 </button>
                 <button 
-                  onClick={handleDownload}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
-                  title="Download HTML"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-all text-sm font-semibold group"
                 >
-                  <Download className="w-4 h-4 md:w-5 md:h-5" />
+                  <Upload className="w-4 h-4 group-hover:text-[#B026FF] transition-colors" />
+                  Upload
                 </button>
-                <button 
-                  onClick={handleShare}
-                  className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
-                  title="Share Simulation"
-                >
-                  <Share2 className="w-4 h-4 md:w-5 md:h-5" />
-                </button>
-                <button 
-                  onClick={handleSaveToDashboard}
-                  className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
-                >
-                  <Database className="w-3 h-3 md:w-4 md:h-4" />
-                  Save to Dashboard
-                </button>
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  accept=".pdf,.txt,.doc,.docx,image/*"
+                />
               </div>
             </div>
-          </div>
-        )}
-        
-        {!loading && !generatedCode && (
-          <div className="text-center py-20 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
-            <Play className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p className="text-lg">Enter a concept below to generate an interactive simulation</p>
-          </div>
-        )}
-      </div>
 
-      {/* Controls Section (Input Area) */}
-      <div className="glass-panel rounded-2xl p-6 mt-8 border border-white/10 space-y-4 relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-[#B026FF]/10 rounded-full blur-[80px] pointer-events-none"></div>
+            <div className="relative group">
+              <textarea 
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={sourceFile ? `Generating based on ${sourceFile.name}...` : "e.g., 'Projectile motion with air resistance', 'Chemical bonding of NaCl'..."}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 transition-all min-h-[120px] resize-none pr-14 text-lg leading-relaxed"
+              />
+              <button 
+                onClick={handlePromptBuild}
+                disabled={isPromptBuilding || !query.trim()}
+                className="absolute bottom-5 right-5 p-3 rounded-xl bg-[#00F0FF]/20 text-[#00F0FF] hover:bg-[#00F0FF]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                title="AI Prompt Builder"
+              >
+                {isPromptBuilding ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
+              </button>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end relative z-10">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <Zap className="w-3 h-3" /> AI Model
-            </label>
-            <select 
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all appearance-none cursor-pointer"
-            >
-              <option value="gemini-3.1-flash-lite-preview">High Quality</option>
-              <option value="gemini-2.5-flash">Medium Quality</option>
-              <option value="gemini-3-flash-preview">Fast</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative flex items-center pt-2 z-10">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-            accept=".pdf,.txt,.csv,.json,.md,.png,.jpg,.jpeg"
-          />
-          <div className="relative flex-1">
-            <textarea 
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleGenerate();
-                }
-              }}
-              placeholder={sourceFile ? `Describe simulation based on ${sourceFile.name}...` : "e.g. Interactive Solar System with orbital speeds..."}
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-4 pr-14 text-white focus:outline-none focus:border-[#B026FF]/50 transition-all shadow-inner resize-none h-[180px]"
-            />
-            <button 
-              onClick={handlePromptBuild}
-              disabled={isPromptBuilding || !query.trim()}
-              className="absolute right-3 top-4 p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all disabled:opacity-30"
-              title="AI Prompt Builder"
-            >
-              {isPromptBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className={`p-4 rounded-xl border transition-all flex items-center gap-2 ${sourceFile ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 text-[#00F0FF]' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}
-              title="Upload Source File"
-            >
-              <Upload className="w-5 h-5" />
-              <span className="hidden md:inline text-sm font-bold">{sourceFile ? 'Source Attached' : 'Upload Source'}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setShowDashboardSelector(true);
-                fetchDashboardFiles();
-              }}
-              className="p-4 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 transition-all flex items-center gap-2"
-              title="Select from Dashboard"
-            >
-              <Database className="w-5 h-5" />
-              <span className="hidden md:inline text-sm font-bold">Dashboard</span>
-            </button>
-          </div>
-        </div>
-        
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex items-center gap-2">
             {sourceFile && (
-               <div className="flex items-center gap-2 bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] px-3 py-2 rounded-xl text-sm">
-                 <FileText className="w-4 h-4" />
-                 <span className="truncate max-w-[150px]">{sourceFile.name}</span>
-                 <button onClick={() => setSourceFile(null)} className="hover:text-white transition-colors ml-1">
-                   <X className="w-4 h-4" />
-                 </button>
-               </div>
-             )}
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center justify-between p-4 rounded-2xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-[#00F0FF]/20">
+                    <FileText className="w-5 h-5 text-[#00F0FF]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{sourceFile.name}</p>
+                    <p className="text-[10px] text-[#00F0FF]/70 uppercase font-bold tracking-widest">{sourceFile.mimeType}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSourceFile(null)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-red-400 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </motion.div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-6 pt-2">
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Subject</span>
+                  <div className="flex bg-black/40 rounded-xl p-1 border border-white/10">
+                    <button 
+                      onClick={() => setSubject('physics')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${subject === 'physics' ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Physics
+                    </button>
+                    <button 
+                      onClick={() => setSubject('chemistry')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${subject === 'chemistry' ? 'bg-[#B026FF] text-white shadow-[0_0_15px_rgba(176,38,255,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      Chemistry
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Dimension</span>
+                  <div className="flex bg-black/40 rounded-xl p-1 border border-white/10">
+                    <button 
+                      onClick={() => setMode('2d')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === '2d' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      2D
+                    </button>
+                    <button 
+                      onClick={() => setMode('3d')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === '3d' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-white'}`}
+                    >
+                      3D
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Model</span>
+                  <select 
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-[#B026FF]/50 transition-all cursor-pointer"
+                  >
+                    <option value="gemini-3-flash-preview">G3 Flash (HQ)</option>
+                    <option value="gemini-3.1-flash-lite-preview">G3.1 Lite (Med)</option>
+                    <option value="gemini-2.5-flash">G2.5 Flash (Fast)</option>
+                  </select>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleGenerate}
+                disabled={loading || (!query.trim() && !sourceFile)}
+                className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-black shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(176,38,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    <span className="uppercase tracking-widest">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-6 h-6 group-hover:scale-125 transition-transform" />
+                    <span className="uppercase tracking-widest">Launch Lab</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-          <button 
-            onClick={handleGenerate}
-            disabled={loading || (!query.trim() && !sourceFile)}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#B026FF] to-[#00F0FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {loading ? 'Generating...' : 'Generate Simulation'}
-          </button>
+        </div>
+
+        {/* Simulation Area */}
+        <div className="space-y-6">
+          {loading && (
+            <div className="py-12">
+              <SimLoader />
+            </div>
+          )}
+
+          {!loading && generatedCode && (
+            <div className="space-y-8">
+              {/* 1. Simulation View */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#00F0FF] uppercase tracking-widest pl-2">
+                  <Box className="w-3 h-3" /> Simulation Model
+                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black"
+                >
+                  <iframe 
+                    ref={iframeRef}
+                    srcDoc={generatedCode + `<style>#controls-container, #theory-container { display: none !important; } body { margin: 0; overflow: hidden; background: #000; }</style>`}
+                    title="Simulation Model"
+                    className="w-full h-full border-0 bg-black"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allowFullScreen
+                  />
+                </motion.div>
+              </div>
+
+              {/* Simulation Toolbar */}
+              <div className="flex flex-wrap justify-between items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/10">
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={handleExplain}
+                    disabled={explainerLoading}
+                    className="p-2 md:p-3 rounded-xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all flex items-center gap-2"
+                    title="Explain in Hinglish"
+                  >
+                    {explainerLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />}
+                    <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Explain</span>
+                  </button>
+                  <button 
+                    onClick={() => setShowCode(!showCode)}
+                    className={`p-2 md:p-3 rounded-xl border transition-all ${showCode ? 'bg-white/10 border-white/30 text-white' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white'}`}
+                    title="View Code"
+                  >
+                    <Code className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={handleGenerate}
+                    className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                    title="Regenerate"
+                  >
+                    <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={toggleFullscreen}
+                    className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white transition-all"
+                    title="Fullscreen"
+                  >
+                    {isFullscreen ? <Minimize className="w-4 h-4 md:w-5 md:h-5" /> : <Maximize className="w-4 h-4 md:w-5 md:h-5" />}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={handleSave}
+                    className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
+                    title="Save to History"
+                  >
+                    <Save className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={handleDownload}
+                    className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all"
+                    title="Download HTML"
+                  >
+                    <Download className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={handleShare}
+                    className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#00F0FF] hover:border-[#00F0FF]/50 transition-all"
+                    title="Share Simulation"
+                  >
+                    <Share2 className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={handleSaveToDashboard}
+                    className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
+                  >
+                    <Database className="w-3 h-3 md:w-4 md:h-4" />
+                    Save to Dashboard
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Controls Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#B026FF] uppercase tracking-widest pl-2">
+                  <Settings className="w-3 h-3" /> Interactive Controls
+                </div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1"
+                >
+                  <iframe 
+                    srcDoc={generatedCode + `<style>#simulation-container, #theory-container { display: none !important; } body { padding: 20px; background: #0a0a0a; color: white; font-family: 'Inter', sans-serif; }</style>`}
+                    title="Simulation Controls"
+                    className="w-full h-[300px] border-0 bg-[#0a0a0a]"
+                  />
+                </motion.div>
+              </div>
+
+              {/* 3. Theory Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#00F0FF] uppercase tracking-widest pl-2">
+                  <FlaskConical className="w-3 h-3" /> Scientific Theory & Explanation
+                </div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1 shadow-[0_0_50px_rgba(176,38,255,0.1)]"
+                >
+                  <iframe 
+                    srcDoc={generatedCode + `
+                      <style>
+                        #simulation-container, #controls-container { display: none !important; } 
+                        body { 
+                          padding: 40px; 
+                          background: #0a0a0a; 
+                          color: #e0e0e0; 
+                          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+                          line-height: 1.8; 
+                          max-width: 900px;
+                          margin: 0 auto;
+                        }
+                        h1, h2, h3 { color: #00F0FF; margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 700; letter-spacing: -0.02em; }
+                        h1 { font-size: 2.5rem; border-bottom: 2px solid #00F0FF20; padding-bottom: 10px; }
+                        h2 { font-size: 1.8rem; border-left: 4px solid #B026FF; padding-left: 15px; }
+                        p { margin-bottom: 1.2em; font-size: 1.1rem; }
+                        ul, ol { margin-bottom: 1.2em; padding-left: 1.5em; }
+                        li { margin-bottom: 0.5em; }
+                        code { background: #1a1a1a; padding: 2px 6px; rounded: 4px; color: #B026FF; font-family: monospace; }
+                        blockquote { border-left: 4px solid #00F0FF; padding-left: 20px; font-style: italic; color: #aaa; margin: 20px 0; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: #111; border-radius: 12px; overflow: hidden; }
+                        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #222; }
+                        th { background: #1a1a1a; color: #00F0FF; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.1em; }
+                        .formula { background: #111; padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: center; font-family: serif; font-size: 1.3rem; margin: 20px 0; color: #fff; }
+                      </style>
+                    `}
+                    title="Scientific Theory"
+                    className="w-full h-[600px] border-0 bg-[#0a0a0a]"
+                  />
+                </motion.div>
+              </div>
+
+              {showCode && (
+                <div className="glass-panel rounded-2xl p-6 border border-white/10 overflow-auto font-mono text-sm text-gray-300 max-h-[500px]">
+                  <pre>{generatedCode}</pre>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!loading && !generatedCode && (
+            <div className="text-center py-20 text-gray-500 border border-dashed border-white/10 rounded-2xl bg-white/5">
+              <Play className="w-16 h-16 mx-auto mb-4 opacity-20" />
+              <p className="text-lg">Enter a concept below to generate an interactive simulation</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -733,73 +880,12 @@ export default function Simulator() {
       )}
 
       {/* Dashboard File Selector Modal */}
-      <AnimatePresence>
-        {showDashboardSelector && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
-            >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-[#B026FF]/20 text-[#B026FF]">
-                    <Database className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
-                    <p className="text-sm text-gray-500">Choose a file to generate simulation from</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowDashboardSelector(false)}
-                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="p-6 overflow-y-auto custom-scrollbar">
-                {fetchingFiles ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <Loader2 className="w-10 h-10 text-[#B026FF] animate-spin" />
-                    <p className="text-gray-400">Fetching your files...</p>
-                  </div>
-                ) : dashboardFiles.length === 0 ? (
-                  <div className="text-center py-20">
-                    <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500">No files found in your dashboard.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file, index) => (
-                      <button
-                        key={file.id || `dashboard-file-${index}`}
-                        onClick={() => handleDashboardFileSelect(file)}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-all text-left group"
-                      >
-                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#B026FF] transition-colors">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white truncate">{file.name}</div>
-                          <div className="text-xs text-gray-500 flex items-center gap-2">
-                            <span>{file.type || 'Document'}</span>
-                            <span>•</span>
-                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#B026FF] transition-colors" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <DashboardFileSelector
+        isOpen={showDashboardSelector}
+        onClose={() => setShowDashboardSelector(false)}
+        onSelect={handleDashboardFileSelect}
+        title="Select Simulation Source"
+      />
     </motion.div>
   );
 }

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, UploadCloud, Settings, BarChart3, MessageSquare, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Terminal, FileSearch } from "lucide-react";
+import { Home, BookOpen, BrainCircuit, Sparkles, Settings, BarChart3, Terminal } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -19,16 +19,54 @@ export default function Navigation() {
           className={({ isActive }) => 
             `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#00F0FF] scale-110 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white'}`
           }
-          title="Dashboard"
+          title="Home"
         >
-          <LayoutDashboard className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Dash</span>
+          <Home className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Home</span>
         </NavLink>
         
         <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
         
-        {role === 'admin' || role === 'developer' ? (
+        <NavLink 
+          to="/courses" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="Courses"
+        >
+          <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Courses</span>
+        </NavLink>
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
+
+        <NavLink 
+          to="/questions" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-yellow-400 scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="Questions Arena"
+        >
+          <BrainCircuit className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Arena</span>
+        </NavLink>
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
+
+        <NavLink 
+          to="/ai-generators" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="AI Generators"
+        >
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">AI Gen</span>
+        </NavLink>
+
+        {(role === 'admin' || role === 'developer' || role === 'teacher') && (
           <>
+            <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
             <NavLink 
               to="/manage" 
               className={({ isActive }) => 
@@ -40,6 +78,10 @@ export default function Navigation() {
               <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Manage</span>
             </NavLink>
             <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
+          </>
+        )}
+        {(role === 'admin' || role === 'developer') && (
+          <>
             <NavLink 
               to="/analytics" 
               className={({ isActive }) => 
@@ -62,82 +104,7 @@ export default function Navigation() {
               <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">AI Dev</span>
             </NavLink>
           </>
-        ) : (
-          <NavLink 
-            to="/upload" 
-            className={({ isActive }) => 
-              `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-            }
-            title="Upload"
-          >
-            <UploadCloud className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Upload</span>
-          </NavLink>
         )}
-
-        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
-
-        <NavLink 
-          to="/practice" 
-          className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-yellow-400 scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'text-gray-400 hover:text-white'}`
-          }
-          title="Practice"
-        >
-          <BrainCircuit className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Practice</span>
-        </NavLink>
-
-        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
-
-        <NavLink 
-          to="/pyq" 
-          className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-gray-400 hover:text-white'}`
-          }
-          title="PYQ Engine"
-        >
-          <FileSearch className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">PYQ</span>
-        </NavLink>
-
-        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
-
-        <NavLink 
-          to="/simulator" 
-          className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#00F0FF] scale-110 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-          }
-          title="Simulator"
-        >
-          <MonitorPlay className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Sim</span>
-        </NavLink>
-
-        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
-        <NavLink 
-          to="/flowchart" 
-          className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#B026FF] scale-110 drop-shadow-[0_0_8px_rgba(176,38,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-          }
-          title="FlowChart"
-        >
-          <GitGraph className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Flow</span>
-        </NavLink>
-
-        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
-
-        <NavLink 
-          to="/visualizer" 
-          className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-[#00F0FF] scale-110 drop-shadow-[0_0_8px_rgba(0,240,255,0.8)]' : 'text-gray-400 hover:text-white'}`
-          }
-          title="Visualizer"
-        >
-          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Vis</span>
-        </NavLink>
       </div>
     </motion.nav>
   );

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle } from 'lucide-react';
+import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from "@google/genai";
+import axios from 'axios';
 import Whiteboard from '../components/Whiteboard';
+import { BackButton } from '../components/BackButton';
+import { QuestionExporter } from '../components/QuestionExporter';
+import { useNavigate } from 'react-router-dom';
 
 interface PYQ {
   question_id: string;
@@ -38,6 +42,7 @@ export default function PYQEngine() {
   const [model, setModel] = useState('gemini-3.1-flash-lite-preview');
   const [deepResearch, setDeepResearch] = useState(false);
   const [showAIInfo, setShowAIInfo] = useState(false);
+  const navigate = useNavigate();
 
   const [searchHistory, setSearchHistory] = useState<any[]>(() => {
     const saved = localStorage.getItem('pyq_search_history');
@@ -100,9 +105,49 @@ export default function PYQEngine() {
     }
   };
 
+  const callOpenRouter = async (prompt: string, modelId: string = "qwen/qwen-2.5-72b-instruct") => {
+    const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY || (typeof process !== 'undefined' && process.env ? process.env.OPENROUTER_API_KEY : '');
+    if (!apiKey) {
+      console.warn("OpenRouter API key is missing. Falling back to Gemini.");
+      return null;
+    }
+
+    try {
+      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        model: modelId,
+        messages: [{ role: "user", content: prompt }],
+      }, {
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "PYQ Engine",
+          "Content-Type": "application/json"
+        }
+      });
+
+      return response.data.choices[0].message.content;
+    } catch (error) {
+      console.error("OpenRouter API error:", error);
+      return null;
+    }
+  };
+
   const handleSearch = async (e?: React.FormEvent, historyItem?: any) => {
     if (e) e.preventDefault();
     
+    if (historyItem) {
+      setExam(historyItem.exam || '');
+      setSubject(historyItem.subject || '');
+      setTopic(historyItem.topic || '');
+      setYear(historyItem.year || '');
+      setSelectedClass(historyItem.selectedClass || 'Class 12');
+      setDifficultyFilter(historyItem.difficultyFilter || 'Any');
+      setQuestionType(historyItem.questionType || 'Any');
+      setExamFormat(historyItem.examFormat || 'Any');
+      setUserPrompt(historyItem.userPrompt || '');
+      setNumQuestions(historyItem.numQuestions || '10');
+    }
+
     const currentExam = historyItem?.exam || exam;
     const currentSubject = historyItem?.subject || subject;
     const currentTopic = historyItem?.topic || topic;
@@ -173,7 +218,7 @@ export default function PYQEngine() {
       Exam Format: ${currentFormat !== 'Any' ? currentFormat : 'Any'}
       Additional Instructions: ${currentPrompt || 'None'}
 
-      ${deepResearch ? 'Use Google Search to verify the authenticity of each question and provide the most accurate source URL.' : ''}
+      ${deepResearch ? 'Use Google Search and Qwen 2.5 logic to verify the authenticity of each question and provide the most accurate source URL.' : ''}
 
       Return the result strictly as a JSON array of objects with the following structure:
       [
@@ -199,12 +244,44 @@ export default function PYQEngine() {
         } : undefined
       });
 
-      const text = response.text || "[]";
+      let text = response.text || "[]";
       if (!text || text === "[]") {
         throw new Error("AI returned an empty response. Please try a more specific topic.");
       }
 
       let parsedQuestions = [];
+      
+      if (deepResearch) {
+        const qwenPrompt = `You are an expert educational researcher. I have found some Previous Year Questions (PYQs) using a search engine. 
+        Your task is to DEEPLY RESEARCH, VERIFY, and ENHANCE these questions using your advanced reasoning (Qwen 2.5 logic). 
+        Ensure they are AUTHENTIC for the exam "${currentExam}" and year "${currentYear || 'Any'}".
+        If a question is incorrect, fix it. If a source URL is missing or incorrect, provide a better one.
+        
+        Initial Questions:
+        ${text}
+        
+        Return the FINAL, VERIFIED questions strictly as a JSON array of objects with the same structure:
+        [
+          {
+            "question_id": "unique_id",
+            "exam": "Exam Name",
+            "year": "Year",
+            "subject": "Subject",
+            "topic": "Topic",
+            "subtopic": "Subtopic",
+            "difficulty": "Easy|Medium|Hard|Advanced",
+            "question_text": "The full question text (use LaTeX for math equations, e.g., $E=mc^2$)",
+            "source_url": "URL where this question was found (if available)"
+          }
+        ]
+        Do not include any markdown formatting like \`\`\`json, just the raw JSON array.`;
+
+        const qwenResult = await callOpenRouter(qwenPrompt);
+        if (qwenResult) {
+          text = qwenResult;
+        }
+      }
+
       try {
         // Try to find JSON array in the response
         const jsonMatch = text.match(/\[\s*\{.*\}\s*\]/s);
@@ -215,8 +292,7 @@ export default function PYQEngine() {
           parsedQuestions = JSON.parse(text);
         }
       } catch (e) {
-        console.error("Failed to parse Gemini response as JSON", text);
-        // If it's not JSON, maybe it's just text? Try to extract questions manually or throw
+        console.error("Failed to parse AI response as JSON", text);
         throw new Error("The AI response was not in the expected format. Please try again.");
       }
 
@@ -231,6 +307,7 @@ export default function PYQEngine() {
 
       const enrichedResults = parsedQuestions.map((q: any, i: number) => ({
         ...q,
+        question_id: q.question_id ? `${q.question_id}-${Date.now()}-${i}` : `pyq-${Date.now()}-${i}`,
         frequency: Math.floor(Math.random() * 5) + 1,
         importance: i === 0 ? 'Exam Favourite' : 'Concept Builder'
       }));
@@ -258,18 +335,39 @@ export default function PYQEngine() {
     setSolutionContent('');
 
     try {
-      const res = await fetch('/api/pyq/generate-solution', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          question_text: q.question_text,
-          subject: q.subject,
-          topic: q.topic
-        })
-      });
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
       
-      const data = await res.json();
-      setSolutionContent(data.solution);
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are an expert teacher. Generate a detailed step-by-step solution for the given question.
+      Structure your response using Markdown:
+      ### Concept Explanation
+      ### Relevant Formulas
+      ### Step-by-Step Solving
+      ### Final Answer
+      ### Common Mistakes
+      
+      Subject: ${q.subject}
+      Topic: ${q.topic}
+      
+      Question:
+      ${q.question_text}`;
+
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+
+      setSolutionContent(response.text || "Failed to generate solution.");
     } catch (error) {
       console.error("Error generating solution:", error);
       setSolutionContent("Failed to generate solution. Please try again.");
@@ -290,18 +388,35 @@ export default function PYQEngine() {
     setSimilarContent('');
 
     try {
-      const res = await fetch('/api/pyq/generate-similar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          question_text: q.question_text,
-          difficulty: q.difficulty,
-          concept: q.subtopic
-        })
-      });
+      let apiKey = '';
+      if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+      }
+      if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+        apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      }
       
-      const data = await res.json();
-      setSimilarContent(data.similar_questions);
+      if (!apiKey) {
+        throw new Error("Gemini API key is missing.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `You are an expert question setter. Generate 5 similar practice questions based on the provided question.
+      Keep the same concept and similar difficulty, but change numerical values or scenarios.
+      Return the output in Markdown format, numbered 1 to 5.
+      
+      Original Question:
+      ${q.question_text}
+      
+      Difficulty: ${q.difficulty}
+      Concept: ${q.subtopic || 'Same as original'}`;
+
+      const response = await ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+
+      setSimilarContent(response.text || "Failed to generate similar questions.");
     } catch (error) {
       console.error("Error generating similar questions:", error);
       setSimilarContent("Failed to generate similar questions. Please try again.");
@@ -333,10 +448,21 @@ export default function PYQEngine() {
     }
   };
 
+  const getModelName = (modelId: string) => {
+    switch (modelId) {
+      case 'gemini-3-flash-preview': return 'High Quality';
+      case 'gemini-3.1-flash-lite-preview': return 'Medium Quality';
+      case 'gemini-2.5-flash': return 'Fast';
+      default: return 'AI Engine';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         
+        <BackButton label="Back" />
+
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-white/10 mb-4">
@@ -372,6 +498,19 @@ export default function PYQEngine() {
             <div className="flex items-center gap-3">
               <button 
                 type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className={`px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-all border ${showHistory ? 'bg-[#00F0FF]/20 text-[#00F0FF] border-[#00F0FF]/30' : 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/10'}`}
+              >
+                <History className={`w-4 h-4 ${showHistory ? 'animate-spin-slow' : ''}`} />
+                <span>History</span>
+                {searchHistory.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded-full bg-[#00F0FF]/20 text-[10px] font-bold">
+                    {searchHistory.length}
+                  </span>
+                )}
+              </button>
+              <button 
+                type="button"
                 onClick={() => {
                   const newHistoryItem = { 
                     exam, subject, topic, year, selectedClass, difficultyFilter, questionType, examFormat, userPrompt, numQuestions, date: new Date().toISOString() 
@@ -384,54 +523,52 @@ export default function PYQEngine() {
                   localStorage.setItem('pyq_search_history', JSON.stringify(newHistory));
                   alert("Search parameters saved to history!");
                 }}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2 transition-colors border border-emerald-500/20"
+                className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2 transition-colors border border-emerald-500/20"
               >
                 <Bookmark className="w-4 h-4" />
                 Save Search
-              </button>
-              <button 
-                type="button"
-                onClick={() => setShowHistory(!showHistory)}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm flex items-center gap-2 transition-colors"
-              >
-                <History className="w-4 h-4" />
-                Recent Searches
               </button>
             </div>
           </div>
 
           <AnimatePresence>
-            {showHistory && searchHistory.length > 0 && (
+            {showHistory && (
               <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-20 right-6 z-50 w-80 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="overflow-hidden"
               >
-                <div className="p-3 border-b border-white/5 bg-white/5 flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-300">Search History</span>
-                  <button type="button" onClick={() => setShowHistory(false)} className="text-gray-500 hover:text-white">
-                    <XCircle className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {searchHistory.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setShowHistory(false);
-                        handleSearch(undefined, item);
-                      }}
-                      className="w-full text-left p-3 border-b border-white/5 hover:bg-white/5 transition-colors flex flex-col gap-1"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-white">{item.exam} - {item.subject}</span>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(item.date).toLocaleDateString()}</span>
-                      </div>
-                      <span className="text-xs text-gray-400">{item.topic} {item.year !== 'Any' ? `(${item.year})` : ''}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                  {searchHistory.length === 0 ? (
+                    <div className="col-span-full py-8 text-center space-y-2">
+                      <History className="w-8 h-8 text-gray-600 mx-auto opacity-20" />
+                      <p className="text-gray-500 italic text-sm">No search history yet.</p>
+                    </div>
+                  ) : (
+                    searchHistory.map((h, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setShowHistory(false);
+                          handleSearch(undefined, h);
+                        }}
+                        className="text-left p-4 rounded-xl bg-black/40 border border-white/5 hover:border-[#00F0FF]/30 transition-all group relative overflow-hidden"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-[#00F0FF] truncate max-w-[150px]">{h.exam || 'Custom Search'}</span>
+                          <span className="text-[10px] text-gray-500">{new Date(h.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-gray-300 font-medium truncate">{h.subject} • {h.topic || 'General'}</p>
+                          {h.userPrompt && (
+                            <p className="text-[10px] text-gray-500 italic truncate">"{h.userPrompt}"</p>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}
@@ -538,16 +675,15 @@ export default function PYQEngine() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI Model</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI Engine</label>
               <select 
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors appearance-none"
               >
-                <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite (High Quality)</option>
-                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Advanced Reasoning)</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash (Fast)</option>
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Balanced)</option>
+                <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+                <option value="gemini-3.1-flash-lite-preview">Medium Quality (G3.1 Lite)</option>
+                <option value="gemini-2.5-flash">Fast (G2.5 Flash)</option>
               </select>
             </div>
             <div className="space-y-2 lg:col-span-2">
@@ -581,7 +717,7 @@ export default function PYQEngine() {
                 onClick={() => setDeepResearch(!deepResearch)}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${deepResearch ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 text-[#00F0FF]' : 'bg-black/50 border-white/10 text-gray-400 hover:border-white/20'}`}
               >
-                <span className="text-sm font-medium">{deepResearch ? 'Enabled (Pro)' : 'Disabled'}</span>
+                <span className="text-sm font-medium">{deepResearch ? 'Enabled' : 'Disabled'}</span>
                 <div className={`w-10 h-5 rounded-full relative transition-colors ${deepResearch ? 'bg-[#00F0FF]' : 'bg-gray-700'}`}>
                   <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${deepResearch ? 'left-6' : 'left-1'}`} />
                 </div>
@@ -641,10 +777,24 @@ export default function PYQEngine() {
         {/* Results */}
         {results.length > 0 && (
           <div className="space-y-6 max-w-4xl mx-auto pt-8">
-            <h2 className="text-2xl font-display font-bold flex items-center gap-3">
-              <BookOpen className="w-6 h-6 text-[#00F0FF]" />
-              Discovered Questions ({results.length})
-            </h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 className="text-2xl font-display font-bold flex items-center gap-3">
+                <BookOpen className="w-6 h-6 text-[#00F0FF]" />
+                Discovered Questions ({results.length})
+              </h2>
+              <div className="flex items-center gap-3">
+                <QuestionExporter 
+                  questions={results} 
+                  title={`${exam} ${subject} ${topic} PYQs`}
+                />
+                <button 
+                  onClick={() => setResults([])}
+                  className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
+                >
+                  Clear Results
+                </button>
+              </div>
+            </div>
 
             {searchSources.length > 0 && (
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
@@ -671,9 +821,10 @@ export default function PYQEngine() {
             <div className="space-y-6">
               {results.map((q, index) => {
                 const isSaved = savedQuestions.some(sq => sq.question_id === q.question_id);
+                const uniqueKey = q.question_id || `pyq-result-${index}`;
                 return (
                 <motion.div 
-                  key={q.question_id || index}
+                  key={uniqueKey}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
@@ -738,14 +889,14 @@ export default function PYQEngine() {
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${activeSolution === q.question_id ? 'bg-[#00F0FF]/20 text-[#00F0FF] border border-[#00F0FF]/30' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-transparent'}`}
                     >
                       <BrainCircuit className="w-4 h-4" />
-                      {activeSolution === q.question_id ? 'Hide Solution' : 'DeepSeek Solution'}
+                      {activeSolution === q.question_id ? 'Hide Solution' : 'AI Solution'}
                     </button>
                     <button 
                       onClick={() => handleGenerateSimilar(q)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${activeSimilar === q.question_id ? 'bg-[#B026FF]/20 text-[#B026FF] border border-[#B026FF]/30' : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-transparent'}`}
                     >
                       <Sparkles className="w-4 h-4" />
-                      {activeSimilar === q.question_id ? 'Hide Similar' : 'Generate Similar'}
+                      {activeSimilar === q.question_id ? 'Hide Similar' : 'AI Similar'}
                     </button>
                     <button 
                       onClick={() => setActiveWhiteboard(q.question_id)}
@@ -774,7 +925,7 @@ export default function PYQEngine() {
                         className="border-t border-[#00F0FF]/20 bg-[#00F0FF]/5 p-6"
                       >
                         <h4 className="text-[#00F0FF] font-bold mb-4 flex items-center gap-2">
-                          <BrainCircuit className="w-5 h-5" /> DeepSeek R1 Solution
+                          <BrainCircuit className="w-5 h-5" /> AI Generated Solution
                         </h4>
                         {isGeneratingSolution ? (
                           <div className="flex items-center gap-3 text-gray-400">
@@ -797,7 +948,7 @@ export default function PYQEngine() {
                         className="border-t border-[#B026FF]/20 bg-[#B026FF]/5 p-6"
                       >
                         <h4 className="text-[#B026FF] font-bold mb-4 flex items-center gap-2">
-                          <Sparkles className="w-5 h-5" /> Llama 3.1 Similar Questions
+                          <Sparkles className="w-5 h-5" /> AI Generated Similar Questions
                         </h4>
                         {isGeneratingSimilar ? (
                           <div className="flex items-center gap-3 text-gray-400">
@@ -852,7 +1003,7 @@ export default function PYQEngine() {
                       <Sparkles className="w-4 h-4" /> Search & Grounding
                     </h4>
                     <p className="text-gray-400 text-sm leading-relaxed">
-                      We use <span className="text-white font-semibold">Gemini 3.1 Pro & Flash</span> models integrated with <span className="text-white font-semibold">Google Search Grounding</span>. This allows the AI to browse the live web, find authentic question papers, and extract real questions instead of generating mock ones.
+                      We use <span className="text-white font-semibold">Advanced AI</span> models (Gemini & Qwen 2.5) integrated with <span className="text-white font-semibold">Google Search Grounding</span>. This allows the AI to browse the live web, find authentic question papers, and extract real questions instead of generating mock ones.
                     </p>
                   </section>
 

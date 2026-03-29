@@ -20,7 +20,7 @@ interface AppState {
   notifications: SiteNotification[];
   maintenanceAlerts: MaintenanceAlert[];
   onlineTimes: Record<string, string>;
-  isSimpleMode: boolean;
+  isGlowEnabled: boolean;
   viewedContent: string[];
   
   addSiteNotification: (notif: Omit<SiteNotification, 'id' | 'timestamp'>) => void;
@@ -30,7 +30,7 @@ interface AppState {
   
   setMaintenanceAlert: (alert: MaintenanceAlert) => void;
   removeMaintenanceAlert: (id: string) => void;
-  toggleSimpleMode: () => void;
+  toggleGlow: () => void;
   markContentAsViewed: (contentId: string) => void;
   resetApp: () => void;
 }
@@ -41,7 +41,7 @@ export const useAppStore = create<AppState>()(
       notifications: [],
       maintenanceAlerts: [],
       onlineTimes: {},
-      isSimpleMode: false,
+      isGlowEnabled: false,
       viewedContent: [],
       
       addSiteNotification: (notif) => set((state) => ({
@@ -74,7 +74,7 @@ export const useAppStore = create<AppState>()(
         maintenanceAlerts: state.maintenanceAlerts.filter(a => a.id !== id)
       })),
 
-      toggleSimpleMode: () => set((state) => ({ isSimpleMode: !state.isSimpleMode })),
+      toggleGlow: () => set((state) => ({ isGlowEnabled: !state.isGlowEnabled })),
       
       markContentAsViewed: (contentId) => set((state) => ({
         viewedContent: state.viewedContent.includes(contentId) 
@@ -86,7 +86,7 @@ export const useAppStore = create<AppState>()(
         notifications: [],
         maintenanceAlerts: [],
         onlineTimes: {},
-        isSimpleMode: false,
+        isGlowEnabled: false,
         viewedContent: []
       })
     }),

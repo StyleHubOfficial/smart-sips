@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Monitor, Maximize, Moon, Sun, Clock, LogIn, LogOut, Zap, User, Bell } from "lucide-react";
 import { format } from "date-fns";
-import { motion } from "motion/react";
+import { motion, useScroll, useSpring } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useThemeStore } from "../store/useThemeStore";
@@ -13,15 +13,41 @@ interface HeaderProps {
   onOpenLogin: () => void;
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
+  isRevealing?: boolean;
 }
 
-export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin, isNotificationsOpen, setIsNotificationsOpen }: HeaderProps) {
+export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin, isNotificationsOpen, setIsNotificationsOpen, isRevealing }: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useThemeStore();
-  const { isSimpleMode, toggleSimpleMode, notifications } = useAppStore();
+  const { isGlowEnabled, toggleGlow, notifications } = useAppStore();
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
+
+  const [logo, setLogo] = useState<string | null>(null);
+  const [siteName, setSiteName] = useState('Smart Sunrise');
+
+  const fetchSettings = () => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.websiteName) setSiteName(data.websiteName);
+        if (data.logoUrl) setLogo(data.logoUrl);
+      })
+      .catch(err => console.error('Failed to load settings:', err));
+  };
+
+  useEffect(() => {
+    fetchSettings();
+    window.addEventListener('settings-updated', fetchSettings);
+    return () => window.removeEventListener('settings-updated', fetchSettings);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -41,23 +67,42 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
   };
 
   return (
-    <motion.header 
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-      className="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-white/5"
-    >
+    <>
+      {!isRevealing && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] origin-left z-[60]"
+          style={{ scaleX }}
+        />
+      )}
+      <motion.header 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-white/5"
+      >
       <div className="flex items-center gap-4">
         <div className="relative group cursor-pointer">
           <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
           <div className="relative flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0E0E12] p-[1px]">
-              <div className="w-full h-full bg-[var(--color-background)] rounded-xl flex items-center justify-center">
-                <Monitor className="w-5 h-5 text-[#00F0FF]" />
+              <div className="w-full h-full bg-[var(--color-background)] rounded-xl flex items-center justify-center overflow-hidden">
+                {logo ? (
+                  <img 
+                    src={logo} 
+                    alt="Logo" 
+                    className="w-full h-full object-cover" 
+                    referrerPolicy="no-referrer" 
+                    onError={() => setLogo(null)}
+                  />
+                ) : (
+                  <Monitor className="w-5 h-5 text-[#00F0FF]" />
+                )}
               </div>
             </div>
             <h1 className="font-display font-bold text-xl tracking-tight hidden sm:block">
-              Smart <span className="text-gradient">Sunrise</span>
+              {siteName}
             </h1>
           </div>
         </div>
@@ -73,76 +118,103 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
 
         <div className="flex items-center gap-2">
           {isAuthenticated && (
-            <>
+            <div className="relative group">
               <button 
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                 className={`p-2.5 rounded-xl transition-all duration-300 relative ${isNotificationsOpen ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
-                title="Notifications"
               >
                 <Bell className="w-5 h-5" />
                 {notifications.length > 0 && (
                   <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
                 )}
               </button>
-            </>
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Notifications
+              </div>
+            </div>
           )}
           
           {isAuthenticated ? (
-            <button 
-              onClick={() => {
-                logout();
-                addNotification('info', 'Logged out successfully');
-              }}
-              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
-              title="Logout"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium hidden sm:block">Logout</span>
-            </button>
+            <div className="relative group">
+              <button 
+                onClick={() => {
+                  logout();
+                  addNotification('info', 'Logged out successfully');
+                }}
+                className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm font-medium hidden sm:block">Logout</span>
+              </button>
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Logout
+              </div>
+            </div>
           ) : (
-            <button 
-              onClick={onOpenLogin}
-              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-[#00F0FF]/20 hover:text-[#00F0FF] transition-all duration-300 flex items-center gap-2"
-              title="Login"
-            >
-              <LogIn className="w-5 h-5" />
-              <span className="text-sm font-medium hidden sm:block">Login</span>
-            </button>
+            <div className="relative group">
+              <button 
+                onClick={onOpenLogin}
+                className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-[#00F0FF]/20 hover:text-[#00F0FF] transition-all duration-300 flex items-center gap-2"
+              >
+                <LogIn className="w-5 h-5" />
+                <span className="text-sm font-medium hidden sm:block">Login</span>
+              </button>
+              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                Login
+              </div>
+            </div>
           )}
 
-          <button 
-            onClick={() => setIsSmartPanelMode(!isSmartPanelMode)}
-            className={`p-2.5 rounded-xl transition-all duration-300 ${isSmartPanelMode ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
-            title="Smart Panel Mode"
-          >
-            <Monitor className="w-5 h-5" />
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={() => setIsSmartPanelMode(!isSmartPanelMode)}
+              className={`p-2.5 rounded-xl transition-all duration-300 ${isSmartPanelMode ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
+            >
+              <Monitor className="w-5 h-5" />
+            </button>
+            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Smart Panel Mode
+            </div>
+          </div>
           
-          <button 
-            onClick={toggleSimpleMode}
-            className={`p-2.5 rounded-xl transition-all duration-300 ${isSimpleMode ? 'bg-yellow-500/20 text-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
-            title="Simple UI Mode"
-          >
-            <Zap className="w-5 h-5" />
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={toggleGlow}
+              className={`p-2.5 rounded-xl transition-all duration-300 ${isGlowEnabled ? 'bg-orange-500/20 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
+            >
+              <Zap className={`w-5 h-5 ${isGlowEnabled ? 'fill-current animate-pulse' : ''}`} />
+            </button>
+            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              {isGlowEnabled ? 'Disable Glow Effects' : 'Enable Glow Effects'}
+            </div>
+          </div>
 
-          <button 
-            onClick={handleFullscreen}
-            className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300 hidden sm:block"
-            title="Toggle Fullscreen"
-          >
-            <Maximize className="w-5 h-5" />
-          </button>
+          <div className="relative group hidden sm:block">
+            <button 
+              onClick={handleFullscreen}
+              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300"
+            >
+              <Maximize className="w-5 h-5" />
+            </button>
+            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Toggle Fullscreen
+            </div>
+          </div>
           
-          <button 
-            onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300"
-            title="Toggle Theme"
-          >
-            {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+          <div className="relative group">
+            <button 
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)] transition-all duration-300"
+            >
+              {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+              Toggle Theme
+            </div>
+          </div>
         </div>
       </div>
     </motion.header>
+    </>
   );
 }

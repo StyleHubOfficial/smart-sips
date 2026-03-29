@@ -1,17 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ButterflyAnimation } from './ButterflyAnimation';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [phase, setPhase] = useState<'particles' | 'forming' | 'glass' | 'complete'>('particles');
-  const [showText, setShowText] = useState(false);
+  const [phase, setPhase] = useState<'core' | 'logo' | 'credit'>('core');
 
   useEffect(() => {
-    // Sequence timing - Faster sequence
-    const t1 = setTimeout(() => setShowText(true), 400); // Show text earlier
-    const t2 = setTimeout(() => setPhase('glass'), 2000); // Show glass bar
-    const t3 = setTimeout(() => onComplete(), 4500); // Complete sequence
+    const t1 = setTimeout(() => setPhase('logo'), 1200);
+    const t2 = setTimeout(() => setPhase('credit'), 2800);
+    const t3 = setTimeout(() => onComplete(), 4500);
 
     return () => {
       clearTimeout(t1);
@@ -23,7 +20,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
     const resizeCanvas = () => {
@@ -33,67 +30,65 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const particles: any[] = [];
-    const particleCount = 400; // More particles for better formation
+    const coreParticles: any[] = [];
+    const coreParticleCount = 40;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Initialize particles at random positions
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < coreParticleCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = Math.random() * Math.max(canvas.width, canvas.height) * 0.5;
-      particles.push({
+      const radius = Math.random() * Math.max(canvas.width, canvas.height) * 0.6;
+      coreParticles.push({
         x: centerX + Math.cos(angle) * radius,
         y: centerY + Math.sin(angle) * radius,
+        targetRadius: Math.random() * 60 + 20,
         angle: angle,
         radius: radius,
         size: Math.random() * 1.5 + 0.5,
-        speed: Math.random() * 0.1 + 0.05,
         color: Math.random() > 0.5 ? '#00F0FF' : '#B026FF',
-        opacity: Math.random() * 0.5 + 0.5,
-        layer: i % 3,
+        opacity: 0,
+        speed: Math.random() * 0.03 + 0.01,
       });
     }
 
     let animationFrameId: number;
 
     const render = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw Grid
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
-      ctx.lineWidth = 1;
-      const gridSize = 60;
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((p) => {
-        if (phase === 'particles' || phase === 'forming') {
-          // Circular movement per layer
-          const angleSpeed = (p.layer + 1) * 0.005 * (p.layer % 2 === 0 ? 1 : -1);
-          p.angle += angleSpeed;
+      if (phase === 'core' || phase === 'logo') {
+        coreParticles.forEach((p) => {
+          p.radius += (p.targetRadius - p.radius) * 0.04;
+          p.angle += p.speed;
           p.x = centerX + Math.cos(p.angle) * p.radius;
           p.y = centerY + Math.sin(p.angle) * p.radius;
-        } else {
-          p.opacity *= 0.92;
-        }
+          
+          if (phase === 'core') {
+            p.opacity = Math.min(p.opacity + 0.03, 0.7);
+          } else {
+            p.opacity *= 0.92;
+            p.radius += 8;
+          }
 
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.opacity;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      });
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.opacity;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        if (phase === 'core') {
+          const glow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 80);
+          glow.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+          glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = glow;
+          ctx.globalAlpha = 1;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, 80, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
 
       animationFrameId = requestAnimationFrame(render);
     };
@@ -106,137 +101,61 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
     };
   }, [phase]);
 
-  const words = "Smart Sunrise".split("");
-
   return (
     <motion.div 
-      initial={{ opacity: 1, clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
-      exit={{ 
-        clipPath: 'polygon(100% 0, 100% 0, 100% 0, 100% 0)',
-        transition: { duration: 1.5, ease: [0.7, 0, 0.3, 1] }
-      }}
-      className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      className="fixed inset-0 z-[9998] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
     >
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
-      <ButterflyAnimation isRevealing={phase === 'glass'} />
       
-      <div className="relative z-20 flex flex-col items-center">
-        <AnimatePresence>
-          {showText && phase !== 'complete' && (
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        onClick={onComplete}
+        className="absolute top-8 right-8 z-[9999] px-5 py-2 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium backdrop-blur-sm"
+      >
+        Skip Intro
+      </motion.button>
+
+      <div className="relative z-20 flex flex-col items-center justify-center w-full h-full">
+        <AnimatePresence mode="wait">
+          {phase === 'logo' && (
             <motion.div
-              className="text-center relative"
-              initial="hidden"
-              animate="visible"
-              exit="hidden"
+              key="logo"
+              className="text-center absolute w-full px-4"
+              initial={{ opacity: 0, scale: 0.9, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 1.05, filter: 'blur(5px)' }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              style={{ willChange: 'transform, opacity, filter' }}
             >
-              <div className="flex justify-center mb-4 relative">
-                {words.map((char, i) => (
-                   <motion.span
-                     key={i}
-                     variants={{
-                       hidden: { opacity: 0, scale: 0, y: 20, filter: 'blur(10px)' },
-                       visible: { 
-                         opacity: 1, 
-                         scale: 1, 
-                         y: 0, 
-                         filter: 'blur(0px)',
-                         transition: { 
-                           type: "spring",
-                           stiffness: 300,
-                           damping: 25,
-                           delay: i * 0.03 
-                         }
-                       }
-                     }}
-                     className={`text-5xl md:text-8xl font-display font-bold inline-block ${char === " " ? "mx-4" : "text-white"}`}
-                     style={{
-                       textShadow: "0 0 20px rgba(0, 240, 255, 0.3)",
-                       background: "linear-gradient(to right, #00F0FF, #B026FF)",
-                       WebkitBackgroundClip: "text",
-                       WebkitTextFillColor: char === " " ? "transparent" : "transparent"
-                     }}
-                   >
-                     {char}
-                   </motion.span>
-                 ))}
+              <h1 className="text-5xl sm:text-6xl md:text-9xl font-display font-bold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] via-white to-[#B026FF]">
+                Smart Sunrise
+              </h1>
+            </motion.div>
+          )}
 
-                {/* Glassmorphic Bar Outro - Blast Expansion */}
-                {phase === 'glass' && (
-                  <motion.div
-                    initial={{ width: 0, opacity: 0, scaleX: 0 }}
-                    animate={{ 
-                      width: "140%", 
-                      opacity: 1,
-                      scaleX: 1,
-                      transition: { 
-                        duration: 1.2, 
-                        ease: "easeInOut"
-                      }
-                    }}
-                    exit={{
-                      x: "-100vw",
-                      y: "100vh",
-                      scale: 0.5,
-                      opacity: 0,
-                      transition: { duration: 1, ease: "easeInOut" }
-                    }}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 md:h-48 z-30 pointer-events-none flex items-center justify-center overflow-hidden origin-center"
-                    style={{
-                      background: "rgba(255, 255, 255, 0.05)",
-                      backdropFilter: "blur(60px) saturate(200%)",
-                      WebkitBackdropFilter: "blur(60px) saturate(200%)",
-                      borderRadius: "100px", // More rounded for iOS look
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.1)",
-                    }}
-                  >
-                    {/* Highlight sweep */}
-                    <motion.div
-                      initial={{ x: "-100%" }}
-                      animate={{ x: "100%" }}
-                      transition={{ duration: 1, delay: 0.2, ease: "easeInOut" }}
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12"
-                    />
-                    
-                    {/* Soft glow pulse at start */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: [0, 0.8, 0], scale: [0.8, 1.5, 2] }}
-                      transition={{ duration: 0.6 }}
-                      className="absolute inset-0 bg-white/40 blur-3xl rounded-full"
-                    />
-
-                    {/* Text reveal inside the bar */}
-                    <motion.div 
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex justify-center whitespace-nowrap"
-                    >
-                      {words.map((char, i) => (
-                        <span
-                          key={`reveal-${i}`}
-                          className={`text-5xl md:text-8xl font-display font-bold inline-block ${char === " " ? "mx-4" : "text-white"}`}
-                          style={{
-                            background: "linear-gradient(to right, #fff, #fff)",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent"
-                          }}
-                        >
-                          {char}
-                        </span>
-                      ))}
-                    </motion.div>
-                  </motion.div>
-                )}
-              </div>
+          {phase === 'credit' && (
+            <motion.div
+              key="credit"
+              className="text-center absolute"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.6 }}
+              style={{ willChange: 'transform, opacity' }}
+            >
+              <h2 className="text-2xl md:text-4xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] mb-2">
+                Powered by Lakshya Bhamu
+              </h2>
+              <div className="h-[1px] w-24 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent mx-auto" />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
-      {/* Glass reflection effect background */}
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-tr from-white/5 to-transparent opacity-30" />
     </motion.div>
   );
 };

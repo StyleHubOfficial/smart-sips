@@ -4,6 +4,7 @@ import { BarChart3, TrendingUp, Users, Eye, FileText, Activity, Shield } from 'l
 import { useAuthStore } from '../store/useAuthStore';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { BackButton } from '../components/BackButton';
 
 interface ContentItem {
   public_id: string;
@@ -85,6 +86,10 @@ export default function Analytics() {
       exit={{ opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
+      <div className="mb-6">
+        <BackButton label="Back to Dashboard" to="/dashboard" />
+      </div>
+
       <div className="mb-10 flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30">
           <BarChart3 className="w-8 h-8 text-[#00F0FF]" />

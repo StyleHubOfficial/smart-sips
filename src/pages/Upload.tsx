@@ -12,7 +12,7 @@ interface UploadProps {
 export default function Upload({ onOpenLogin }: UploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, role } = useAuthStore();
   const { addUpload, uploads } = useUploadStore();
   
   // Find current upload if any
@@ -22,7 +22,6 @@ export default function Upload({ onOpenLogin }: UploadProps) {
   
   const [formData, setFormData] = useState({
     title: "",
-    teacher: localStorage.getItem("sunrise_upload_teacher") || "",
     className: localStorage.getItem("sunrise_upload_class") || "Class 10",
     subject: localStorage.getItem("sunrise_upload_subject") || "Mathematics",
     description: "",
@@ -30,10 +29,9 @@ export default function Upload({ onOpenLogin }: UploadProps) {
   });
 
   useEffect(() => {
-    localStorage.setItem("sunrise_upload_teacher", formData.teacher);
     localStorage.setItem("sunrise_upload_class", formData.className);
     localStorage.setItem("sunrise_upload_subject", formData.subject);
-  }, [formData.teacher, formData.className, formData.subject]);
+  }, [formData.className, formData.subject]);
 
   useEffect(() => {
     if (file) {
@@ -69,7 +67,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     e.preventDefault();
     if (!file) return;
 
-    const contextStr = `title=${formData.title}|teacher=${formData.teacher}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
+    const contextStr = `title=${formData.title}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
     
     // Start background upload
     addUpload(file, contextStr);
@@ -78,7 +76,6 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     setFile(null);
     setFormData(prev => ({
       title: "",
-      teacher: prev.teacher,
       className: prev.className,
       subject: prev.subject,
       description: "",
@@ -86,7 +83,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     }));
   };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || (role !== 'teacher' && role !== 'admin' && role !== 'developer')) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -99,7 +96,7 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           <Lock className="w-10 h-10 text-gray-500" />
         </div>
         <h2 className="text-3xl font-display font-bold mb-4">Authentication Required</h2>
-        <p className="text-gray-400 mb-8 max-w-md">You need to be logged in as a teacher to upload content to Smart Sunrise.</p>
+        <p className="text-gray-400 mb-8 max-w-md">You need to be logged in as a teacher, admin, or developer to upload content to Smart Sunrise.</p>
         <button 
           onClick={onOpenLogin}
           className="px-8 py-3 rounded-xl font-display font-bold tracking-wide transition-all duration-300 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white hover:shadow-[0_0_30px_rgba(0,240,255,0.4)] hover:scale-[1.02]"
@@ -139,18 +136,6 @@ export default function Upload({ onOpenLogin }: UploadProps) {
                 onChange={e => setFormData({...formData, title: e.target.value})}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
                 placeholder="e.g. Chapter 1: Thermodynamics"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300 uppercase tracking-wider">Teacher Name</label>
-              <input 
-                required
-                type="text" 
-                value={formData.teacher}
-                onChange={e => setFormData({...formData, teacher: e.target.value})}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all"
-                placeholder="e.g. Mr. Sharma"
               />
             </div>
 

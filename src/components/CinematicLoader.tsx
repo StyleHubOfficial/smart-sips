@@ -107,9 +107,14 @@ export default React.memo(function CinematicLoader() {
             {/* Main Progress Bar */}
             <motion.div 
               className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] bg-[length:200%_100%] rounded-full"
-              style={{ width: `${progress}%` }}
-              animate={{ backgroundPosition: ["0% 0%", "100% 0%"] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              animate={{ 
+                width: `${progress}%`,
+                backgroundPosition: ["0% 0%", "100% 0%"]
+              }}
+              transition={{ 
+                width: { type: "spring", stiffness: 50, damping: 20 },
+                backgroundPosition: { duration: 2, repeat: Infinity, ease: "linear" }
+              }}
             >
               {/* Particle Emitter at Leading Edge */}
               <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0">

@@ -35,7 +35,7 @@ interface PracticeState {
   dppMode: 'sheet' | 'practice';
   mixUp: boolean;
   sequenceWise: boolean;
-  sourceFile: { name: string, data: string, mimeType: string } | null;
+  sourceFiles: { name: string, data: string, mimeType: string }[];
   questions: Question[];
   loading: boolean;
   selectedOptions: Record<string, string>;
@@ -64,7 +64,7 @@ interface PracticeState {
   setDppMode: (mode: 'sheet' | 'practice') => void;
   setMixUp: (mix: boolean) => void;
   setSequenceWise: (seq: boolean) => void;
-  setSourceFile: (file: { name: string, data: string, mimeType: string } | null) => void;
+  setSourceFiles: (files: { name: string, data: string, mimeType: string }[]) => void;
   setSelectedOption: (questionId: string, option: string) => void;
   setShowHint: (questionId: string, show: boolean) => void;
   setShowSolution: (questionId: string, show: boolean) => void;
@@ -84,7 +84,7 @@ export const usePracticeStore = create<PracticeState>()(
       subject: 'General',
       examType: 'General',
       classLevel: 'Class 12',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       viewMode: 'linear',
       difficulty: 'Medium',
       isPYQ: false,
@@ -97,7 +97,7 @@ export const usePracticeStore = create<PracticeState>()(
       dppMode: 'practice',
       mixUp: false,
       sequenceWise: true,
-      sourceFile: null,
+      sourceFiles: [],
       questions: [],
       loading: false,
       selectedOptions: {},
@@ -126,7 +126,7 @@ export const usePracticeStore = create<PracticeState>()(
       setDppMode: (dppMode) => set({ dppMode }),
       setMixUp: (mixUp) => set({ mixUp }),
       setSequenceWise: (sequenceWise) => set({ sequenceWise }),
-      setSourceFile: (sourceFile) => set({ sourceFile }),
+      setSourceFiles: (sourceFiles) => set({ sourceFiles }),
       
       setSelectedOption: (questionId, option) => 
         set((state) => ({
@@ -153,8 +153,8 @@ export const usePracticeStore = create<PracticeState>()(
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null }),
 
       generateQuestions: async (apiKey, onChunk) => {
-        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFile, isSourceConverterMode, mixUp, sequenceWise, dppMode } = get();
-        if (!query.trim() && !sourceFile) return;
+        const { query, questionCount, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFiles, isSourceConverterMode, mixUp, sequenceWise, dppMode } = get();
+        if (!query.trim() && sourceFiles.length === 0) return;
 
         set({ loading: true, questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, analysis: null });
 
@@ -171,19 +171,19 @@ export const usePracticeStore = create<PracticeState>()(
           
           let prompt = "";
           
-          if (isSourceConverterMode && sourceFile) {
+          if (isSourceConverterMode && sourceFiles.length > 0) {
             prompt = `You are an expert educational content analyzer and question generator.
             [TASK]
-            1. ANALYZE the provided source material (PDF/Image/Text).
-            2. GENERATE exactly ${questionCount} questions based ONLY on the content of this source.
-            3. If the source material does not have enough content for ${questionCount} unique questions, generate the maximum possible number of high-quality questions instead.
-            4. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the source.' : 'MIX UP the order of concepts for a more challenging set.'}
+            1. ANALYZE the provided source material(s) (PDF/Image/Text).
+            2. GENERATE exactly ${questionCount} questions based ONLY on the content of these sources.
+            3. If the source materials do not have enough content for ${questionCount} unique questions, generate the maximum possible number of high-quality questions instead.
+            4. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the sources.' : 'MIX UP the order of concepts for a more challenging set.'}
             5. Question Type: ${questionType}
             6. Difficulty Level: ${difficulty}
             
             [CONSTRAINTS]
-            - DO NOT include any information not present in the source.
-            - If the source contains notes, convert them into conceptual and application-based questions.
+            - DO NOT include any information not present in the sources.
+            - If the sources contain notes, convert them into conceptual and application-based questions.
             - Ensure questions are authentic and pedagogically sound.`;
           } else {
             prompt = `Generate ${questionCount} questions based on this request: "${query}". 
@@ -199,10 +199,10 @@ export const usePracticeStore = create<PracticeState>()(
             The questions must be authentic and well-balanced (including conceptual, numerical, diagram-based, and application questions where applicable).
             Ensure the questions are searched well and are from correct, authentic sources.
             
-            ${sourceFile ? `
-              [SOURCE MATERIAL PROVIDED]
-              You have been provided with a source file. You MUST extract concepts, facts, and information from this source file to generate the questions.
-              Ensure the questions accurately reflect the content of the uploaded document.
+            ${sourceFiles.length > 0 ? `
+              [SOURCE MATERIAL(S) PROVIDED]
+              You have been provided with ${sourceFiles.length} source file(s). You MUST extract concepts, facts, and information from these sources to generate the questions.
+              Ensure the questions accurately reflect the content of the uploaded documents.
             ` : ''}`;
           }
 
@@ -225,14 +225,14 @@ export const usePracticeStore = create<PracticeState>()(
 
           const contents: any = [];
           
-          if (sourceFile) {
+          sourceFiles.forEach(file => {
             contents.push({
               inlineData: {
-                data: sourceFile.data,
-                mimeType: sourceFile.mimeType
+                data: file.data,
+                mimeType: file.mimeType
               }
             });
-          }
+          });
           
           contents.push({ text: prompt });
 

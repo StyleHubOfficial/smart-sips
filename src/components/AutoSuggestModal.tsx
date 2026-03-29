@@ -100,8 +100,11 @@ export default function AutoSuggestModal() {
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-4xl relative z-10 border border-[#00F0FF]/30 shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] flex flex-col"
+          className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-4xl relative z-10 border border-transparent shadow-[0_0_50px_rgba(0,240,255,0.15)] overflow-hidden max-h-[90vh] flex flex-col"
         >
+          {/* Animated Neon Border */}
+          <div className="absolute inset-0 rounded-3xl p-[2px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+          
           <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
           
           <button 

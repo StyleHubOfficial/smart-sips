@@ -45,6 +45,34 @@ async function startServer() {
     res.json({ status: "ok", env: process.env.NODE_ENV });
   });
 
+  // Settings API
+  const SETTINGS_FILE = path.join(__dirname, "settings.json");
+  const fs = await import("fs");
+
+  app.get("/api/settings", (req, res) => {
+    try {
+      if (fs.existsSync(SETTINGS_FILE)) {
+        const settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
+        res.json(settings);
+      } else {
+        res.json({ websiteName: "Smart Sunrise", logoUrl: "" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load settings" });
+    }
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const { websiteName, logoUrl } = req.body;
+      const settings = { websiteName, logoUrl };
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save settings" });
+    }
+  });
+
   // Fetch all resources with metadata
   app.get("/api/content", async (req, res) => {
     try {
@@ -193,6 +221,33 @@ async function startServer() {
         details: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
+    }
+  });
+
+  // Proxy endpoint to fetch external content (e.g., Cloudinary) server-side to avoid CORS issues
+  app.get("/api/proxy", async (req, res) => {
+    try {
+      const { url } = req.query;
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "Missing or invalid URL" });
+      }
+
+      console.log(`Proxying request for: ${url}`);
+      const axios = (await import("axios")).default;
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+
+      const contentType = response.headers['content-type'];
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
+      
+      res.send(response.data);
+    } catch (error: any) {
+      console.error("Proxy error:", error.message);
+      res.status(500).json({ error: "Failed to proxy content", details: error.message });
     }
   });
 

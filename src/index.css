@@ -70,11 +70,14 @@ body {
 }
 
 .glow-border {
-  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
   transition: box-shadow 0.3s ease;
 }
 
-.glow-border:hover {
+.glow-enabled .glow-border {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+}
+
+.glow-enabled .glow-border:hover {
   box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
 }
 
@@ -104,6 +107,21 @@ body {
   }
 }
 
+@keyframes expandWidth {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 1s ease-out forwards;
 }
@@ -116,4 +134,19 @@ body {
   background: linear-gradient(to right, var(--color-accent-1), var(--color-accent-3));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+@keyframes gradient-xy {
+  0%, 100% {
+    background-size: 400% 400%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+.animate-gradient-xy {
+  animation: gradient-xy 3s ease infinite;
 }

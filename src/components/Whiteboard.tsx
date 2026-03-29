@@ -120,8 +120,24 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     if (!canvas || !ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    saveState();
+    const snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setIsWiping(true);
+    let p = 0;
+    const animate = () => {
+      p += 0.05;
+      if (p >= 1) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        saveState();
+        setIsWiping(false);
+        setWipeProgress(0);
+      } else {
+        ctx.putImageData(snap, 0, 0);
+        ctx.clearRect(0, 0, canvas.width * p, canvas.height);
+        setWipeProgress(p);
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
   };
 
   const getPos = (e: React.MouseEvent | React.TouchEvent) => {
@@ -231,6 +247,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         if (isWiping) {
           const progress = Math.max(0, Math.min(1, (pos.x - startPos.x) / canvas.width));
           setWipeProgress(progress);
+          ctx.putImageData(snapshot, 0, 0);
+          ctx.clearRect(0, 0, canvas.width * progress, canvas.height);
         }
         return;
       } else if (eraserMode === 'lasso') {
@@ -253,8 +271,11 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       } else {
         ctx.globalCompositeOperation = 'destination-out';
         ctx.lineWidth = eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8;
+        ctx.shadowBlur = eraserMode === 'stroke' ? 15 : 8;
+        ctx.shadowColor = 'black';
         ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
+        ctx.shadowBlur = 0;
         ctx.globalCompositeOperation = 'source-over'; // Reset immediately
       }
     } else if (tool === 'selection-erase') {
@@ -289,10 +310,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       
       if (tool === 'eraser') {
         if (eraserMode === 'all' && isWiping) {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
           if (wipeProgress > 0.4) {
-            const canvas = canvasRef.current;
-            const ctx = canvas?.getContext('2d');
-            if (canvas && ctx) {
+            if (canvas && ctx && snapshot) {
               let p = wipeProgress;
               const animate = () => {
                 p += 0.05;
@@ -302,6 +323,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   setIsWiping(false);
                   setWipeProgress(0);
                 } else {
+                  ctx.putImageData(snapshot, 0, 0);
+                  ctx.clearRect(0, 0, canvas.width * p, canvas.height);
                   setWipeProgress(p);
                   requestAnimationFrame(animate);
                 }
@@ -309,6 +332,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               requestAnimationFrame(animate);
             }
           } else {
+            if (canvas && ctx && snapshot) {
+              ctx.putImageData(snapshot, 0, 0);
+            }
             setIsWiping(false);
             setWipeProgress(0);
           }
@@ -414,7 +440,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         
         {isWiping && (
           <div 
-            className="absolute top-0 bottom-0 left-0 bg-[#1a1b26] border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
+            className="absolute top-0 bottom-0 left-0 border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
             style={{ width: `${wipeProgress * 100}%` }}
           />
         )}
