@@ -72,27 +72,29 @@ export default function Home() {
             { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", link: "/courses" },
             { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", link: "/courses" },
           ].map((feature, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ y: 50, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              whileHover={{ scale: 1.05, y: -10 }}
-              className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-transparent transition-all duration-500 group cursor-pointer relative overflow-hidden"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
-              {/* Animated Border */}
-              <div className={`absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50`} style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
-              
-              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]`}>
-                <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
-                  <feature.icon className="w-7 h-7 text-white" />
+            <Link key={idx} to={feature.link} className="block">
+              <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ scale: 1.05, y: -10 }}
+                whileTap={{ scale: 0.95 }}
+                className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-transparent group cursor-pointer relative overflow-hidden h-full"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
+                {/* Animated Border */}
+                <div className={`absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50`} style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+                
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]`}>
+                  <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
+                    <feature.icon className="w-7 h-7 text-white" />
+                  </div>
                 </div>
-              </div>
-              <h3 className="text-xl font-bold mb-3 text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-colors">{feature.title}</h3>
-              <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{feature.desc}</p>
-            </motion.div>
+                <h3 className="text-xl font-bold mb-3 text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-colors">{feature.title}</h3>
+                <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{feature.desc}</p>
+              </motion.div>
+            </Link>
           ))}
         </div>
 

@@ -13,11 +13,14 @@ interface Stroke {
   points: Point[];
   color: string;
   lineWidth: number;
-  type: 'path' | 'rect' | 'circle' | 'line' | 'arrow' | 'text';
+  type: 'path' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'lasso';
   text?: string;
   startPos?: Point;
   endPos?: Point;
   opacity?: number;
+  rotation?: number;
+  scale?: { x: number, y: number };
+  center?: Point;
 }
 
 interface WhiteboardProps {
@@ -32,8 +35,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser'>('pen');
-  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all'>('pixel');
+  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso'>('pen');
+  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso'>('pixel');
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
@@ -49,7 +52,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   
   const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -106,6 +112,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
 
     allStrokes.forEach(stroke => {
+      ctx.save();
+      
+      if (stroke.center && (stroke.rotation || stroke.scale)) {
+        ctx.translate(stroke.center.x, stroke.center.y);
+        if (stroke.rotation) ctx.rotate(stroke.rotation);
+        if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
+        ctx.translate(-stroke.center.x, -stroke.center.y);
+      }
+
       ctx.beginPath();
       ctx.strokeStyle = stroke.color;
       ctx.lineWidth = stroke.lineWidth;
@@ -114,25 +129,38 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ctx.globalAlpha = stroke.opacity || 1;
 
       if (stroke.id === selectedStrokeId) {
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = '#00F0FF';
+      } else if (stroke.tool === 'highlighter') {
+        // Blinking/Glow effect for highlighter
+        const time = Date.now() / 1000;
+        const glow = Math.sin(time * 3) * 5 + 10;
+        ctx.shadowBlur = glow;
+        ctx.shadowColor = stroke.color;
       } else {
         ctx.shadowBlur = 0;
       }
 
-      if (stroke.type === 'path') {
-        if (stroke.points.length < 2) return;
+      if (stroke.type === 'path' || stroke.type === 'lasso') {
+        if (stroke.points.length < 2) {
+          ctx.restore();
+          return;
+        }
         
+        if (stroke.type === 'lasso') {
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = '#00F0FF';
+          ctx.lineWidth = 1;
+        }
+
         ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
         
-        // Use quadratic curves for smoother lines
         for (let i = 1; i < stroke.points.length - 2; i++) {
           const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
           const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
           ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
         }
         
-        // For the last 2 points
         if (stroke.points.length > 2) {
           const last = stroke.points.length - 1;
           ctx.quadraticCurveTo(
@@ -143,6 +171,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           );
         }
         ctx.stroke();
+        if (stroke.type === 'lasso') ctx.setLineDash([]);
       } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
         ctx.strokeRect(
           stroke.startPos.x, 
@@ -168,7 +197,17 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         ctx.fillStyle = stroke.color;
         ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
       }
+      
+      ctx.restore();
     });
+
+    // Draw selection handles if a stroke is selected
+    if (selectedStrokeId) {
+      const selected = strokes.find(s => s.id === selectedStrokeId);
+      if (selected) {
+        drawSelectionHandles(ctx, selected);
+      }
+    }
 
     // Draw laser path separately (not stored in strokes)
     if (laserPath.length > 1) {
@@ -184,6 +223,77 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     ctx.globalAlpha = 1;
+  };
+
+  const drawSelectionHandles = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+    const bounds = getStrokeBounds(stroke);
+    const padding = 10;
+    
+    ctx.strokeStyle = '#00F0FF';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(bounds.minX - padding, bounds.minY - padding, bounds.maxX - bounds.minX + padding * 2, bounds.maxY - bounds.minY + padding * 2);
+    ctx.setLineDash([]);
+
+    // Handles
+    ctx.fillStyle = '#00F0FF';
+    const handleSize = 8;
+    
+    // Resize handles
+    const handles = [
+      { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
+      { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
+      { x: bounds.minX - padding, y: bounds.maxY + padding, id: 'bl' },
+      { x: bounds.maxX + padding, y: bounds.maxY + padding, id: 'br' },
+    ];
+
+    handles.forEach(h => {
+      ctx.fillRect(h.x - handleSize/2, h.y - handleSize/2, handleSize, handleSize);
+    });
+
+    // Rotation handle
+    const rotX = (bounds.minX + bounds.maxX) / 2;
+    const rotY = bounds.minY - padding - 30;
+    ctx.beginPath();
+    ctx.moveTo(rotX, bounds.minY - padding);
+    ctx.lineTo(rotX, rotY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(rotX, rotY, handleSize/2, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const getStrokeBounds = (stroke: Stroke) => {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
+    if (stroke.type === 'path' || stroke.type === 'lasso') {
+      stroke.points.forEach(p => {
+        minX = Math.min(minX, p.x);
+        maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y);
+        maxY = Math.max(maxY, p.y);
+      });
+    } else if (stroke.startPos && stroke.endPos) {
+      minX = Math.min(stroke.startPos.x, stroke.endPos.x);
+      maxX = Math.max(stroke.startPos.x, stroke.endPos.x);
+      minY = Math.min(stroke.startPos.y, stroke.endPos.y);
+      maxY = Math.max(stroke.startPos.y, stroke.endPos.y);
+    } else if (stroke.startPos) {
+      minX = stroke.startPos.x;
+      maxX = stroke.startPos.x + 100;
+      minY = stroke.startPos.y - 20;
+      maxY = stroke.startPos.y;
+    }
+    
+    return { minX, maxX, minY, maxY };
+  };
+
+  const getStrokeCenter = (stroke: Stroke) => {
+    const bounds = getStrokeBounds(stroke);
+    return {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2
+    };
   };
 
   useEffect(() => {
@@ -277,6 +387,27 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     return null;
   };
 
+  const isPointInPolygon = (point: Point, polygon: Point[]) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      const intersect = ((yi > point.y) !== (yj > point.y)) &&
+        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  const isStrokeInLasso = (stroke: Stroke, lassoPoints: Point[]) => {
+    if (stroke.type === 'path') {
+      return stroke.points.some(p => isPointInPolygon(p, lassoPoints));
+    } else if (stroke.startPos && stroke.endPos) {
+      return isPointInPolygon(stroke.startPos, lassoPoints) || isPointInPolygon(stroke.endPos, lassoPoints);
+    }
+    return false;
+  };
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const pos = getPos(e);
     setStartPos(pos);
@@ -284,14 +415,78 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setIsDrawing(true);
 
     if (tool === 'select') {
+      if (selectedStrokeId) {
+        const selected = strokes.find(s => s.id === selectedStrokeId);
+        if (selected) {
+          const bounds = getStrokeBounds(selected);
+          const padding = 10;
+          const handleSize = 10;
+          
+          // Check handles
+          const handles = [
+            { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
+            { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
+            { x: bounds.minX - padding, y: bounds.maxY + padding, id: 'bl' },
+            { x: bounds.maxX + padding, y: bounds.maxY + padding, id: 'br' },
+          ];
+          
+          const clickedHandle = handles.find(h => 
+            Math.abs(pos.x - h.x) < handleSize && Math.abs(pos.y - h.y) < handleSize
+          );
+          
+          if (clickedHandle) {
+            setIsResizing(true);
+            setResizeHandle(clickedHandle.id);
+            return;
+          }
+          
+          // Check rotation handle
+          const rotX = (bounds.minX + bounds.maxX) / 2;
+          const rotY = bounds.minY - padding - 30;
+          if (Math.abs(pos.x - rotX) < handleSize && Math.abs(pos.y - rotY) < handleSize) {
+            setIsRotating(true);
+            return;
+          }
+        }
+      }
+
       const stroke = findStrokeAt(pos);
       if (stroke) {
         setSelectedStrokeId(stroke.id);
         setIsDragging(true);
-        setDragOffset({ x: pos.x - stroke.points[0].x, y: pos.y - stroke.points[0].y });
+        const center = getStrokeCenter(stroke);
+        setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
       } else {
         setSelectedStrokeId(null);
+        // Start lasso selection
+        setTool('lasso');
+        const newStroke: Stroke = {
+          id: 'lasso-' + Date.now(),
+          tool: 'lasso',
+          points: [pos],
+          color: '#00F0FF',
+          lineWidth: 1,
+          type: 'lasso',
+          startPos: pos,
+          opacity: 0.5
+        };
+        setCurrentStroke(newStroke);
       }
+      return;
+    }
+
+    if (tool === 'eraser' && eraserMode === 'lasso') {
+      const newStroke: Stroke = {
+        id: 'lasso-eraser-' + Date.now(),
+        tool: 'eraser',
+        points: [pos],
+        color: '#ff4444',
+        lineWidth: 1,
+        type: 'lasso',
+        startPos: pos,
+        opacity: 0.5
+      };
+      setCurrentStroke(newStroke);
       return;
     }
 
@@ -346,21 +541,83 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const pos = getPos(e);
     setCursorPos(pos);
 
-    if (tool === 'select' && isDragging && selectedStrokeId) {
-      setStrokes(prev => prev.map(s => {
-        if (s.id === selectedStrokeId) {
-          const dx = pos.x - (s.points[0].x + dragOffset.x);
-          const dy = pos.y - (s.points[0].y + dragOffset.y);
-          
-          return {
-            ...s,
-            points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
-            startPos: s.startPos ? { x: s.startPos.x + dx, y: s.startPos.y + dy } : undefined,
-            endPos: s.endPos ? { x: s.endPos.x + dx, y: s.endPos.y + dy } : undefined,
-          };
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const stroke = findStrokeAt(pos);
+      if (stroke) {
+        const newStrokes = strokes.filter(s => s.id !== stroke.id);
+        if (newStrokes.length !== strokes.length) {
+          setStrokes(newStrokes);
+          // Only save to history when a stroke is actually removed
+          saveToHistory(newStrokes);
         }
-        return s;
-      }));
+      }
+      return;
+    }
+
+    if (tool === 'select' && selectedStrokeId) {
+      if (isDragging) {
+        setStrokes(prev => prev.map(s => {
+          if (s.id === selectedStrokeId) {
+            const dx = pos.x - cursorPos.x;
+            const dy = pos.y - cursorPos.y;
+            
+            return {
+              ...s,
+              points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+              startPos: s.startPos ? { x: s.startPos.x + dx, y: s.startPos.y + dy } : undefined,
+              endPos: s.endPos ? { x: s.endPos.x + dx, y: s.endPos.y + dy } : undefined,
+              center: s.center ? { x: s.center.x + dx, y: s.center.y + dy } : undefined
+            };
+          }
+          return s;
+        }));
+      } else if (isResizing && resizeHandle) {
+        setStrokes(prev => prev.map(s => {
+          if (s.id === selectedStrokeId) {
+            const center = s.center || getStrokeCenter(s);
+            const dx = pos.x - center.x;
+            const dy = pos.y - center.y;
+            
+            // Calculate scale based on distance from center
+            const initialBounds = getStrokeBounds(s);
+            const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
+            const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
+            
+            const scaleX = Math.abs(dx * 2) / initialWidth;
+            const scaleY = Math.abs(dy * 2) / initialHeight;
+            
+            return {
+              ...s,
+              scale: { x: scaleX, y: scaleY },
+              center
+            };
+          }
+          return s;
+        }));
+      } else if (isRotating) {
+        setStrokes(prev => prev.map(s => {
+          if (s.id === selectedStrokeId) {
+            const center = s.center || getStrokeCenter(s);
+            const angle = Math.atan2(pos.y - center.y, pos.x - center.x) + Math.PI / 2;
+            return {
+              ...s,
+              rotation: angle,
+              center
+            };
+          }
+          return s;
+        }));
+      }
+      return;
+    }
+
+    if (tool === 'lasso' || (tool === 'eraser' && eraserMode === 'lasso')) {
+      if (currentStroke) {
+        setCurrentStroke({
+          ...currentStroke,
+          points: [...currentStroke.points, pos]
+        });
+      }
       return;
     }
 
@@ -396,6 +653,30 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     if (!isDrawing) return;
     setIsDrawing(false);
     setIsDragging(false);
+    setIsResizing(false);
+    setIsRotating(false);
+
+    if (tool === 'lasso') {
+      if (currentStroke && currentStroke.points.length > 3) {
+        const lassoed = strokes.find(s => isStrokeInLasso(s, currentStroke.points));
+        if (lassoed) {
+          setSelectedStrokeId(lassoed.id);
+        }
+      }
+      setCurrentStroke(null);
+      setTool('select');
+      return;
+    }
+
+    if (tool === 'eraser' && eraserMode === 'lasso') {
+      if (currentStroke && currentStroke.points.length > 3) {
+        const newStrokes = strokes.filter(s => !isStrokeInLasso(s, currentStroke.points));
+        setStrokes(newStrokes);
+        saveToHistory(newStrokes);
+      }
+      setCurrentStroke(null);
+      return;
+    }
 
     if (tool === 'laser') {
       if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
@@ -437,13 +718,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setIsFullscreen(!isFullscreen);
   };
 
+  const gridBg = `bg-[#1a1b26] bg-[url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L0 0 0 20' fill='none' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.1'/%3E%3C/svg%3E")]`;
+
   return (
     <div 
       ref={containerRef}
-      className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'pointer' ? 'pointer-events-none' : ''} ${className}`}
+      className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
     >
       {/* Canvas Area */}
-      <div className={`flex-1 relative ${tool === 'pointer' ? '' : 'cursor-none touch-none'} ${getBackgroundStyle()}`}>
+      <div className={`flex-1 relative ${tool === 'select' ? '' : 'cursor-none touch-none'} ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -457,7 +740,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         />
 
         {/* Custom Cursor for Eraser/Pen feedback */}
-        {!isWiping && tool !== 'pointer' && (
+        {!isWiping && tool !== 'select' && (
           <div 
             className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
             style={{
@@ -497,6 +780,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
           <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
             <MousePointer2 className="w-5 h-5" />
+          </button>
+          <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
+            <Sparkles className="w-5 h-5" />
           </button>
           <div className="w-px h-6 bg-white/10 mx-1"></div>
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
@@ -540,6 +826,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   </button>
                   <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
                     <Minus className="w-3 h-3" /> Stroke Eraser
+                  </button>
+                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                    <Sparkles className="w-3 h-3" /> Lasso Eraser
                   </button>
                   <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
                     <Trash2 className="w-3 h-3" /> Slide to Erase All

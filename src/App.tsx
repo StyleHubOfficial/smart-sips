@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Zap } from "lucide-react";
 import Home from "./pages/Home";
 import Courses from "./pages/Courses";
 import QuestionsArena from "./pages/QuestionsArena";
@@ -28,6 +28,7 @@ import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
 import DeveloperCredit from "./components/DeveloperCredit";
 import { PageTransition } from "./components/PageTransition";
+import AutoSuggestModal from "./components/AutoSuggestModal";
 
 function AppContent({ 
   isSmartPanelMode, 
@@ -115,6 +116,7 @@ function AppContent({
         <GlobalUploadProgress />
         <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
         <Tutorial />
+        <AutoSuggestModal />
 
         <AnimatePresence>
           {showBackToTop && (
@@ -142,7 +144,7 @@ export default function App() {
   });
   const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    return localStorage.getItem('sunrise_unlocked') === 'true';
+    return localStorage.getItem('sunrise_unlocked_v6') === 'true';
   });
   const [accessCode, setAccessCode] = useState("");
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -170,21 +172,24 @@ export default function App() {
     e.preventDefault();
     if (accessCode === "smart@sunrise" || accessCode === "ss123") {
       setIsUnlocked(true);
-      localStorage.setItem('sunrise_unlocked', 'true');
+      localStorage.setItem('sunrise_unlocked_v6', 'true');
     } else {
       alert("Invalid Access Code");
     }
   };
 
-  const handleIntroComplete = () => {
+  const handleIntroComplete = (skipped?: boolean) => {
     setShowEntryAnimation(false);
     setTimeout(() => {
       setIsRevealed(true);
     }, 400);
-    setShowDeveloperCredit(true);
+    
     // If skip intro was clicked, also skip tutorial/welcome
-    if (localStorage.getItem('sunrise_skip_intro') === 'true') {
+    if (skipped) {
       localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
+      localStorage.setItem('sunrise_skip_intro', 'true');
+    } else {
+      setShowDeveloperCredit(true);
     }
   };
 

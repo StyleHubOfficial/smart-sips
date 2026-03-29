@@ -57,9 +57,11 @@ export default function AIGenerators() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: idx * 0.1, type: "spring", stiffness: 100, damping: 20 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             <Link to={gen.link} className="block h-full">
-              <div className="glass-panel p-8 rounded-3xl border border-white/10 hover:border-white/30 transition-all duration-500 h-full flex flex-col group relative overflow-hidden hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+              <div className="glass-panel p-8 rounded-3xl border border-white/10 hover:border-white/30 h-full flex flex-col group relative overflow-hidden hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
                 <div className={`absolute inset-0 bg-gradient-to-br ${gen.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
                 
                 <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gen.color} p-[1px] mb-8 group-hover:scale-110 transition-transform duration-500 relative z-10`}>

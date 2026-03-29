@@ -13,7 +13,7 @@ export default function Navigation() {
       transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
       className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] sm:w-auto max-w-2xl"
     >
-      <div className="glass-panel rounded-full px-4 sm:px-6 py-3 flex items-center justify-between sm:justify-center sm:gap-4 border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-x-auto hide-scrollbar">
+      <div className="glass-panel bg-[#0E0E12] sm:bg-[#0E0E12]/90 rounded-full px-4 sm:px-6 py-3 flex items-center justify-between sm:justify-center sm:gap-4 border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.5)] overflow-x-auto hide-scrollbar">
         <NavLink 
           to="/" 
           className={({ isActive }) => 

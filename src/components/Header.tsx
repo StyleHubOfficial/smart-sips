@@ -86,8 +86,8 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
         <div className="relative group cursor-pointer">
           <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
           <div className="relative flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00F0FF] to-[#0E0E12] p-[1px]">
-              <div className="w-full h-full bg-[var(--color-background)] rounded-xl flex items-center justify-center overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+              <div className="w-full h-full bg-[#0E0E12] rounded-full flex items-center justify-center overflow-hidden">
                 {logo ? (
                   <img 
                     src={logo} 

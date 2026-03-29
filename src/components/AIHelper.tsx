@@ -21,19 +21,19 @@ export default function AIHelper() {
   const [wallpaper, setWallpaper] = useState<'default' | 'matrix' | 'stars' | 'waves'>('default');
   const [showWallpaperMenu, setShowWallpaperMenu] = useState(false);
   
-  const matrixData = useMemo(() => Array.from({ length: 25 }).map(() => ({
+  const matrixData = useMemo(() => Array.from({ length: 60 }).map(() => ({
     left: `${Math.random() * 100}%`,
-    duration: 3 + Math.random() * 4,
+    duration: 1.5 + Math.random() * 2.5,
     delay: Math.random() * 5,
-    text: Array.from({ length: 10 }).map(() => Math.floor(Math.random() * 2)).join('')
+    text: Array.from({ length: 25 }).map(() => Math.random() > 0.5 ? Math.floor(Math.random() * 2) : String.fromCharCode(0x30A0 + Math.random() * 96)).join('')
   })), []);
 
-  const starsData = useMemo(() => Array.from({ length: 60 }).map(() => ({
+  const starsData = useMemo(() => Array.from({ length: 120 }).map(() => ({
     left: `${Math.random() * 100}%`,
     top: `${Math.random() * 100}%`,
-    duration: 1.5 + Math.random() * 3,
+    duration: 0.8 + Math.random() * 1.5,
     delay: Math.random() * 3,
-    size: Math.random() * 2 + 1
+    size: Math.random() * 2.5 + 0.5
   })), []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -166,8 +166,11 @@ export default function AIHelper() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[400px] h-full sm:h-[600px] sm:max-h-[80vh] bg-[#0a0a0a]/95 backdrop-blur-2xl border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden"
+            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[420px] h-full sm:h-[650px] sm:max-h-[85vh] bg-transparent border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden"
           >
+            {/* Background Layer */}
+            <div className="absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-2xl z-[-1] rounded-3xl" />
+
             {/* Header */}
             <div className="p-5 border-b border-white/10 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-between relative z-20">
               <div className="flex items-center gap-3">
@@ -244,33 +247,33 @@ export default function AIHelper() {
             </div>
 
             {/* Wallpaper Backgrounds */}
-            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl">
               {wallpaper === 'matrix' && (
-                <div className="absolute inset-0 opacity-20 overflow-hidden">
+                <div className="absolute inset-0 opacity-60 overflow-hidden bg-black/80">
                   {matrixData.map((m, i) => (
                     <motion.div
                       key={i}
-                      initial={{ y: -200, opacity: 0 }}
-                      animate={{ y: 800, opacity: [0, 1, 1, 0] }}
+                      initial={{ y: -800 }}
+                      animate={{ y: 1000 }}
                       transition={{ duration: m.duration, repeat: Infinity, delay: m.delay, ease: "linear" }}
-                      className="text-[#00F0FF] text-[10px] font-mono whitespace-pre leading-none"
+                      className="text-[#00F0FF] text-[16px] font-mono whitespace-pre leading-none opacity-100"
                       style={{ left: m.left, position: 'absolute' }}
                     >
                       {m.text.split('').map((char, ci) => (
-                        <div key={ci} className="my-1">{char}</div>
+                        <div key={ci} className="my-1 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)]">{char}</div>
                       ))}
                     </motion.div>
                   ))}
                 </div>
               )}
               {wallpaper === 'stars' && (
-                <div className="absolute inset-0 opacity-40">
+                <div className="absolute inset-0 opacity-90 bg-black/80">
                   {starsData.map((s, i) => (
                     <motion.div
                       key={i}
                       animate={{ 
-                        opacity: [0.1, 0.8, 0.1],
-                        scale: [0.8, 1.2, 0.8]
+                        opacity: [0.4, 1, 0.4],
+                        scale: [0.8, 1.5, 0.8]
                       }}
                       transition={{ duration: s.duration, repeat: Infinity, delay: s.delay }}
                       className="absolute bg-white rounded-full"
@@ -279,26 +282,25 @@ export default function AIHelper() {
                         top: s.top,
                         width: s.size,
                         height: s.size,
-                        boxShadow: '0 0 10px rgba(255,255,255,0.5)'
+                        boxShadow: '0 0 15px rgba(255,255,255,1)'
                       }}
                     />
                   ))}
                 </div>
               )}
               {wallpaper === 'waves' && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                  {Array.from({ length: 4 }).map((_, i) => (
+                <div className="absolute inset-0 flex items-center justify-center opacity-70 overflow-hidden bg-black/80">
+                  {Array.from({ length: 10 }).map((_, i) => (
                     <motion.div
                       key={i}
                       animate={{ 
-                        scale: [1, 1.8, 1],
-                        opacity: [0.3, 0.1, 0.3],
+                        scale: [1, 2.2 + i * 0.4, 1],
+                        opacity: [0.6, 0.1, 0.6],
                         rotate: [0, 180, 360],
-                        borderRadius: ["40%", "50%", "40%"]
                       }}
-                      transition={{ duration: 10 + i * 5, repeat: Infinity, ease: "linear" }}
-                      className="absolute w-[180%] aspect-square border border-[#B026FF]/30"
-                      style={{ borderWidth: `${1 + i}px` }}
+                      transition={{ duration: 8 + i * 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute w-[200%] aspect-square border border-[#00F0FF]/40 rounded-full"
+                      style={{ borderWidth: `${2 + i * 0.5}px`, boxShadow: 'inset 0 0 40px rgba(0,240,255,0.3)' }}
                     />
                   ))}
                 </div>

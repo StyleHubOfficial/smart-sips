@@ -4,6 +4,7 @@ import { Sparkles, Loader2, Maximize2, Minimize2, FileText, X, Plus, Share2, Wan
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useConceptVisualizerStore } from '../store/useConceptVisualizerStore';
 import { useUploadStore } from '../store/useUploadStore';
+import UploadToCoursesModal from '../components/UploadToCoursesModal';
 import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
@@ -12,6 +13,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from '@google/genai';
+import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 export default function ConceptVisualizer() {
   const {
@@ -31,6 +33,7 @@ export default function ConceptVisualizer() {
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
@@ -235,7 +238,7 @@ export default function ConceptVisualizer() {
     }
   };
 
-  const handleUploadToCourses = async () => {
+  const handleUploadToCourses = async (data: { class: string; subject: string }) => {
     if (!visualizerData) return;
     
     try {
@@ -272,9 +275,9 @@ export default function ConceptVisualizer() {
 
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const file = new File([blob], `${visualizerData.topic.replace(/[^a-z0-9]/gi, '_')}_Visualization.html`, { type: 'text/html' });
-      const contextStr = `title=${visualizerData.topic} Visualization|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Science|class=General|description=AI-generated visualization for ${visualizerData.topic}|fileType=HTML Visualization`;
+      const contextStr = `title=${visualizerData.topic} Visualization|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=${data.subject}|class=${data.class}|description=AI-generated visualization for ${visualizerData.topic}|fileType=HTML Visualization`;
       
-      addUpload(file, contextStr);
+      await addUpload(file, contextStr);
       addNotification('success', 'Visualization uploaded to courses successfully!');
     } catch (error) {
       addNotification('error', 'Failed to upload visualization.');
@@ -425,7 +428,7 @@ export default function ConceptVisualizer() {
                       <Share2 className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={handleUploadToCourses}
+                      onClick={() => setShowUploadModal(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
                       <Upload className="w-4 h-4" />
@@ -492,78 +495,19 @@ export default function ConceptVisualizer() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {isFileSelectorOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-2xl bg-[#0f172a] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF]">
-                    <Database className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
-                </div>
-                <button 
-                  onClick={() => setIsFileSelectorOpen(false)}
-                  className="p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+      {/* Dashboard File Selector Modal */}
+      <DashboardFileSelector 
+        isOpen={isFileSelectorOpen}
+        onClose={() => setIsFileSelectorOpen(false)}
+        onSelect={handleDashboardFileSelect}
+      />
 
-              <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                {fetchingFiles ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-4">
-                    <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin" />
-                    <p className="text-gray-400">Fetching your files...</p>
-                  </div>
-                ) : dashboardFiles.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400">No files found in your dashboard.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file, index) => (
-                      <button
-                        key={file.id || `dashboard-file-${index}`}
-                        onClick={() => {
-                          handleDashboardFileSelect(file);
-                          setIsFileSelectorOpen(false);
-                        }}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all group text-left"
-                      >
-                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#00F0FF] transition-colors">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-white font-bold truncate">{file.name}</div>
-                          <div className="text-xs text-gray-500 flex items-center gap-2 mt-1">
-                            <span>{file.type || 'Document'}</span>
-                            <span>•</span>
-                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#00F0FF] transition-colors" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Upload to Courses Modal */}
+      <UploadToCoursesModal 
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUploadToCourses}
+      />
     </motion.div>
   );
 }

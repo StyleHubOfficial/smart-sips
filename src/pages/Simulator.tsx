@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload, Settings } from 'lucide-react';
+import UploadToCoursesModal from '../components/UploadToCoursesModal';
+import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
-import { useUploadStore } from '../store/useUploadStore';
 import SimLoader from '../components/SimLoader';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 import { useLocation } from 'react-router-dom';
@@ -21,6 +22,7 @@ export default function Simulator() {
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showCode, setShowCode] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -109,8 +111,8 @@ export default function Simulator() {
 
   useEffect(() => {
     if (location.state?.sourceContent) {
-      const { sourceContent, extractedData } = location.state;
-      const autoQuery = `Generate a simulation for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      const { sourceContent, extractedData, autoFillQuery } = location.state;
+      const autoQuery = autoFillQuery || `Generate a simulation for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
       setQuery(autoQuery);
       
       // Auto-generate after a short delay to allow state to settle
@@ -272,16 +274,16 @@ export default function Simulator() {
     addNotification('success', 'Simulation saved to your history.');
   };
 
-  const handleUploadToCourses = async () => {
+  const handleUploadToCourses = async (data: { class: string; subject: string }) => {
     if (!generatedCode) return;
     
     try {
       const blob = new Blob([generatedCode], { type: 'text/html' });
       const file = new File([blob], `${query.replace(/[^a-z0-9]/gi, '_')}_simulation.html`, { type: 'text/html' });
-      const contextStr = `title=${query} Simulation|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Simulation|class=General|description=AI-generated interactive simulation for ${query}|fileType=HTML Simulation`;
+      const contextStr = `title=${query} Simulation|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=${data.subject}|class=${data.class}|description=AI-generated interactive simulation for ${query}|fileType=HTML Simulation`;
       
-      addUpload(file, contextStr);
-      addNotification('info', 'Uploading simulation to courses...');
+      await addUpload(file, contextStr);
+      addNotification('success', 'Simulation uploaded to courses successfully!');
     } catch (error) {
       addNotification('error', 'Failed to upload simulation.');
     }
@@ -677,11 +679,11 @@ export default function Simulator() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button 
-                    onClick={handleSave}
+                    onClick={() => setShowUploadModal(true)}
                     className="p-2 md:p-3 rounded-xl bg-black/40 border border-white/10 text-gray-400 hover:text-[#B026FF] hover:border-[#B026FF]/50 transition-all"
-                    title="Save to History"
+                    title="Upload to Courses"
                   >
-                    <Save className="w-4 h-4 md:w-5 md:h-5" />
+                    <Upload className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <button 
                     onClick={handleDownload}
@@ -698,7 +700,7 @@ export default function Simulator() {
                     <Share2 className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <button 
-                    onClick={handleUploadToCourses}
+                    onClick={() => setShowUploadModal(true)}
                     className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-[#B026FF]/20 hover:bg-[#B026FF]/30 text-[#B026FF] border border-[#B026FF]/30 transition-all text-[10px] md:text-sm font-bold"
                   >
                     <Upload className="w-3 h-3 md:w-4 md:h-4" />
@@ -878,6 +880,14 @@ export default function Simulator() {
           className="hidden"
         />
       )}
+
+      {/* Upload to Courses Modal */}
+      <UploadToCoursesModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUploadToCourses}
+        title="Upload Simulation to Courses"
+      />
 
       {/* Dashboard File Selector Modal */}
       <DashboardFileSelector

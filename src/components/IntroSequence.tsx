@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 
-export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+export const IntroSequence: React.FC<{ onComplete: (skipped?: boolean) => void }> = ({ onComplete }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [phase, setPhase] = useState<'core' | 'logo' | 'credit'>('core');
 
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('logo'), 1200);
     const t2 = setTimeout(() => setPhase('credit'), 2800);
-    const t3 = setTimeout(() => onComplete(), 4500);
+    const t3 = setTimeout(() => onComplete(false), 4500);
 
     return () => {
       clearTimeout(t1);
@@ -114,7 +114,7 @@ export const IntroSequence: React.FC<{ onComplete: () => void }> = ({ onComplete
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        onClick={onComplete}
+        onClick={() => onComplete(true)}
         className="absolute top-8 right-8 z-[9999] px-5 py-2 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium backdrop-blur-sm"
       >
         Skip Intro

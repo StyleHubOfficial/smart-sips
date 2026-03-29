@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit, Wand2, Database } from 'lucide-react';
+import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit, Wand2, Database, Upload } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useFlowChartStore } from '../store/useFlowChartStore';
 import { useUploadStore } from '../store/useUploadStore';
+import UploadToCoursesModal from '../components/UploadToCoursesModal';
 import { useAuthStore } from '../store/useAuthStore';
 import { InteractiveTree } from '../components/InteractiveTree';
 import CinematicLoader from '../components/CinematicLoader';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
+import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 mermaid.initialize({
   startOnLoad: true,
@@ -27,6 +29,7 @@ export default function FlowChart() {
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   const [showHistory, setShowHistory] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,8 +45,8 @@ export default function FlowChart() {
 
   useEffect(() => {
     if (location.state?.sourceContent) {
-      const { sourceContent, extractedData } = location.state;
-      const autoQuery = `Create a ${chartType} for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Include: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      const { sourceContent, extractedData, autoFillQuery } = location.state;
+      const autoQuery = autoFillQuery || `Create a ${chartType} for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Include: ${extractedData?.keyConcepts?.join(', ') || ''}`;
       setQuery(autoQuery);
       
       setTimeout(() => {
@@ -227,7 +230,7 @@ export default function FlowChart() {
     }
   };
 
-  const handleUploadToCourses = async () => {
+  const handleUploadToCourses = async (data: { class: string; subject: string }) => {
     if (!generatedCode) return;
     
     try {
@@ -253,10 +256,10 @@ export default function FlowChart() {
 
       const blob = new Blob([htmlContent], { type: 'text/html' });
       const file = new File([blob], `${query.replace(/[^a-z0-9]/gi, '_')}_${chartType.replace(/[^a-z0-9]/gi, '_')}.html`, { type: 'text/html' });
-      const contextStr = `title=${query} ${chartType}|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=Diagram|class=General|description=AI-generated ${chartType} for ${query}|fileType=HTML Diagram`;
+      const contextStr = `title=${query} ${chartType}|teacher=${role === 'teacher' ? 'Teacher' : role}|subject=${data.subject}|class=${data.class}|description=AI-generated ${chartType} for ${query}|fileType=HTML Diagram`;
       
-      addUpload(file, contextStr);
-      addNotification('info', `Uploading ${chartType} to courses...`);
+      await addUpload(file, contextStr);
+      addNotification('success', `${chartType} uploaded to courses successfully!`);
     } catch (error) {
       addNotification('error', `Failed to upload ${chartType}.`);
     }
@@ -477,7 +480,7 @@ export default function FlowChart() {
                       <Save className="w-4 h-4" />
                     </button>
                     <button 
-                      onClick={handleUploadToCourses}
+                      onClick={() => setShowUploadModal(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 text-[#00F0FF] border border-[#00F0FF]/30 transition-all text-sm font-bold"
                     >
                       <Upload className="w-4 h-4" />
@@ -537,73 +540,18 @@ export default function FlowChart() {
       </div>
 
       {/* Dashboard File Selector Modal */}
-      <AnimatePresence>
-        {showDashboardSelector && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
-            >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-[#00F0FF]/20 text-[#00F0FF]">
-                    <Database className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Select from Dashboard</h3>
-                    <p className="text-sm text-gray-500">Choose a file to generate diagram from</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowDashboardSelector(false)}
-                  className="p-2 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+      <DashboardFileSelector 
+        isOpen={showDashboardSelector}
+        onClose={() => setShowDashboardSelector(false)}
+        onSelect={handleDashboardFileSelect}
+      />
 
-              <div className="p-6 overflow-y-auto custom-scrollbar">
-                {fetchingFiles ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <Loader2 className="w-10 h-10 text-[#00F0FF] animate-spin" />
-                    <p className="text-gray-400">Fetching your files...</p>
-                  </div>
-                ) : dashboardFiles.length === 0 ? (
-                  <div className="text-center py-20">
-                    <FileText className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-                    <p className="text-gray-500">No files found in your dashboard.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3">
-                    {dashboardFiles.map((file, index) => (
-                      <button
-                        key={file.id || `dashboard-file-${index}`}
-                        onClick={() => handleDashboardFileSelect(file)}
-                        className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-[#00F0FF]/5 transition-all text-left group"
-                      >
-                        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-[#00F0FF] transition-colors">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white truncate">{file.name}</div>
-                          <div className="text-xs text-gray-500 flex items-center gap-2">
-                            <span>{file.type || 'Document'}</span>
-                            <span>•</span>
-                            <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-[#00F0FF] transition-colors" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Upload to Courses Modal */}
+      <UploadToCoursesModal 
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUploadToCourses}
+      />
     </motion.div>
   );
 }

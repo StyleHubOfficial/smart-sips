@@ -50,32 +50,50 @@ export default function AutoSuggestModal() {
         }
 
         if (!apiKey) {
-          console.error("API Key missing");
+          console.error("AutoSuggest: Gemini API Key missing.");
           setIsAnalyzing(false);
           return;
         }
 
         try {
+          console.log("AutoSuggest: Starting analysis for", title);
           // Fetch content first if it's a URL
           let contentToAnalyze = selectedContent.secure_url;
           
-          // Try to fetch text content if possible
-          try {
-            const response = await fetch(`/api/proxy?url=${encodeURIComponent(selectedContent.secure_url)}`);
-            if (response.ok) {
-              const contentType = response.headers.get('content-type');
-              if (contentType?.includes('text') || contentType?.includes('json') || contentType?.includes('javascript')) {
+          // Try to fetch text content if possible (for text-based files)
+          const isTextFile = selectedContent.format === 'txt' || selectedContent.format === 'json' || selectedContent.format === 'md';
+          
+          if (isTextFile) {
+            try {
+              const response = await fetch(`/api/proxy?url=${encodeURIComponent(selectedContent.secure_url)}`);
+              if (response.ok) {
                 contentToAnalyze = await response.text();
+                console.log("AutoSuggest: Successfully fetched text content");
               }
+            } catch (e) {
+              console.warn("AutoSuggest: Could not fetch raw content, passing URL instead", e);
             }
-          } catch (e) {
-            console.warn("Could not fetch raw content, passing URL instead", e);
           }
 
           const data = await analyzeContentForCoPilot(contentToAnalyze, title, apiKey);
+          console.log("AutoSuggest: Analysis successful", data);
           setExtractedData(data);
         } catch (error) {
-          console.error("Analysis failed", error);
+          console.error("AutoSuggest: Analysis failed", error);
+          // Set a minimal fallback data if it fails completely
+          setExtractedData({
+            topic: title,
+            keyConcepts: ["Educational Content"],
+            formulas: [],
+            definitions: [],
+            diagrams: [],
+            experimentReferences: [],
+            suggestions: [
+              { toolName: "Practice Questions", description: "Generate practice questions from this content", toolId: "practice", previewIcon: "BrainCircuit", autoFillQuery: `Generate practice questions for: ${title}` },
+              { toolName: "Concept Map", description: "Create a visual flowchart of the concepts", toolId: "flowchart", previewIcon: "GitGraph", autoFillQuery: `Create a flowchart for: ${title}` },
+              { toolName: "Summary", description: "Get a concise summary of the key points", toolId: "summary", previewIcon: "BookOpen", autoFillQuery: `Summarize the content: ${title}` }
+            ]
+          });
         } finally {
           setIsAnalyzing(false);
         }

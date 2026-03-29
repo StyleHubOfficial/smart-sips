@@ -17,6 +17,7 @@ import { GoogleGenAI } from '@google/genai';
 import { BackButton } from '../components/BackButton';
 import { QuestionExporter } from '../components/QuestionExporter';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
+import UploadToCoursesModal from '../components/UploadToCoursesModal';
 
 export default function Practice() {
   const { 
@@ -33,8 +34,8 @@ export default function Practice() {
   const location = useLocation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slideModeConfig, setSlideModeConfig] = useState<{ questionsPerSlide: 1 | 2, overlay: boolean }>({ questionsPerSlide: 1, overlay: false });
-  const [slideWhiteboardData, setSlideWhiteboardData] = useState<Record<number, ImageData>>({});
-  const [sideWhiteboardData, setSideWhiteboardData] = useState<ImageData | undefined>(undefined);
+  const [slideWhiteboardData, setSlideWhiteboardData] = useState<Record<number, string>>({});
+  const [sideWhiteboardData, setSideWhiteboardData] = useState<string | undefined>(undefined);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
   const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(66); // percentage
   const [isResizing, setIsResizing] = useState(false);
@@ -48,6 +49,8 @@ export default function Practice() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [targetTimerSeconds, setTargetTimerSeconds] = useState(0);
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadContent, setUploadContent] = useState<{ title: string; content: string; type: string } | null>(null);
   const [generationMode, setGenerationMode] = useState<'live' | 'last'>('live');
   const [showSimilarModal, setShowSimilarModal] = useState<{questionId: string, type: 'ai' | 'pyq' | 'search'} | null>(null);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
@@ -55,6 +58,40 @@ export default function Practice() {
   const [practiceFinished, setPracticeFinished] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  const handleUploadReport = () => {
+    const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
+    const accuracy = (score / questions.length) * 100;
+    
+    // Create a structured report for upload
+    const reportContent = `
+# Practice Session Report
+**Topic:** ${query}
+**Subject:** ${subject}
+**Exam Type:** ${examType}
+**Score:** ${score} / ${questions.length}
+**Accuracy:** ${accuracy.toFixed(1)}%
+**Time Taken:** ${formatTime(timerSeconds)}
+
+## Questions & Answers
+${questions.map((q, i) => `
+### Question ${i + 1}
+${q.question}
+**Your Answer:** ${selectedOptions[q.id] || 'Not Answered'}
+**Correct Answer:** ${q.correctAnswer}
+**Status:** ${selectedOptions[q.id] === q.correctAnswer ? '✅ Correct' : '❌ Incorrect'}
+`).join('\n')}
+
+${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
+    `;
+
+    setUploadContent({
+      title: `Practice: ${query || 'Session'} (${new Date().toLocaleDateString()})`,
+      content: reportContent,
+      type: 'practice_report'
+    });
+    setShowUploadModal(true);
+  };
 
   const Scorecard = ({ score, total, accuracy, timeTaken }: { score: number, total: number, accuracy: number, timeTaken: number }) => {
     const avgSpeed = score > 0 ? Math.round(timeTaken / total) : 0;
@@ -375,8 +412,8 @@ export default function Practice() {
 
   useEffect(() => {
     if (location.state?.sourceContent) {
-      const { sourceContent, extractedData } = location.state;
-      const autoQuery = `Create practice questions for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
+      const { sourceContent, extractedData, autoFillQuery } = location.state;
+      const autoQuery = autoFillQuery || `Create practice questions for: ${extractedData?.topic || sourceContent.context?.custom?.title || 'this content'}. Focus on: ${extractedData?.keyConcepts?.join(', ') || ''}`;
       setQuery(autoQuery);
       
       setTimeout(() => {
@@ -564,7 +601,7 @@ export default function Practice() {
     setSelectedOption(questionId, option);
   };
 
-  const handleUploadToCourses = async () => {
+  const handleUploadPracticeSet = async () => {
     if (questions.length === 0) return;
     
     const fallbackTitle = query || (sourceFiles.length > 0 ? sourceFiles[0].name : 'Practice Set');
@@ -1573,7 +1610,7 @@ export default function Practice() {
                   <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 <div className={`absolute right-0 mt-2 w-56 bg-[#0f172a] border border-white/10 rounded-xl shadow-2xl ${showExportDropdown ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all z-50 overflow-hidden`}>
-                  <button onClick={handleSaveToDashboard} disabled={isSaving || isSaved} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2 relative overflow-hidden">
+                  <button onClick={handleUploadPracticeSet} disabled={isSaving || isSaved} className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-2 relative overflow-hidden">
                     <AnimatePresence mode="wait">
                       {isSaved ? (
                         <motion.div
@@ -1943,7 +1980,7 @@ export default function Practice() {
               className="px-12 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all disabled:opacity-50 flex items-center gap-3"
             >
               <CheckCircle className="w-6 h-6" />
-              Finish & Analyze Performance
+              Check Score
             </button>
           </div>
         )}
@@ -1962,11 +1999,33 @@ export default function Practice() {
                 <Loader2 className="w-12 h-12 text-[#00F0FF] animate-spin" />
                 <p className="text-gray-400 font-medium animate-pulse">AI is analyzing your performance...</p>
               </div>
-            ) : (
+            ) : analysis ? (
               <DetailedAnalysis data={analysis} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-3xl border border-white/10">
+                <BrainCircuit className="w-12 h-12 text-[#B026FF] mb-4 opacity-50" />
+                <h4 className="text-xl font-bold text-white mb-2">Deep Performance Analysis</h4>
+                <p className="text-gray-400 text-center max-w-md mb-6 px-6">
+                  Get AI-powered insights, feedback, and personalized tips based on your practice session.
+                </p>
+                <button 
+                  onClick={handleStartAnalysis}
+                  className="px-8 py-3 rounded-xl bg-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all flex items-center gap-2"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Analyze Performance
+                </button>
+              </div>
             )}
 
-            <div className="flex justify-center gap-4">
+            <div className="flex flex-wrap justify-center gap-4">
+              <button 
+                onClick={handleUploadReport}
+                className="px-8 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold hover:bg-emerald-500/20 transition-all flex items-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Upload to Courses
+              </button>
               <button 
                 onClick={() => {
                   setPracticeFinished(false);
@@ -2155,6 +2214,25 @@ export default function Practice() {
             }
           }}
           title="Select Source Content"
+        />
+
+        <UploadToCoursesModal
+          isOpen={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          title={uploadContent?.title || 'Upload Practice Report'}
+          onUpload={async (data) => {
+            if (!uploadContent) return;
+            try {
+              const file = new File([uploadContent.content], `${uploadContent.title}.md`, { type: 'text/markdown' });
+              const contextStr = `title=${uploadContent.title}|subject=${data.subject}|class=${data.class}|description=Practice Session Report|fileType=Markdown|tags=practice,report`;
+              await addUpload(file, contextStr);
+              addNotification('success', 'Practice report uploaded to courses!');
+              setShowUploadModal(false);
+            } catch (error) {
+              console.error('Upload failed:', error);
+              addNotification('error', 'Failed to upload report');
+            }
+          }}
         />
       </AnimatePresence>
 

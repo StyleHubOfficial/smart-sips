@@ -24,11 +24,12 @@ export async function analyzeContentForCoPilot(
   apiKey: string
 ): Promise<ContentAnalysis> {
   const ai = new GoogleGenAI({ apiKey });
+  const isUrl = content.startsWith('http');
 
   const prompt = `
     Analyze the following educational content and provide a structured analysis for a "Classroom Co-Pilot" system.
     Content Source: ${fileName}
-    Content Body: ${content}
+    ${isUrl ? `Content URL: ${content}` : `Content Body: ${content}`}
 
     Extract the following:
     1. Topic: The main subject or lesson.
@@ -40,15 +41,15 @@ export async function analyzeContentForCoPilot(
 
     Based on this analysis, suggest at least 5 educational tools that can be generated from this content.
     Available Tools:
-    - Concept Visualizer (Interactive visual explanations)
-    - Virtual Laboratory Simulation (Interactive 2D/3D experiments)
-    - Concept Map (Mermaid mindmap/flowchart)
-    - Practice Questions (MCQs and descriptive)
-    - Diagram Generator (SVG diagrams)
-    - Step-by-Step Solution (For problems)
-    - Quiz (Interactive assessment)
-    - Summary Notes (Concise revision notes)
-    - Board Exam Questions (Previous year style)
+    - visualizer: Concept Visualizer (Interactive visual explanations)
+    - simulator: Virtual Laboratory Simulation (Interactive 2D/3D experiments)
+    - flowchart: Concept Map (Mermaid mindmap/flowchart)
+    - practice: Practice Questions (MCQs and descriptive)
+    - diagram: Diagram Generator (SVG diagrams)
+    - solution: Step-by-Step Solution (For problems)
+    - quiz: Interactive assessment
+    - summary: Concise revision notes
+    - board: Board Exam Questions (Previous year style)
 
     Respond ONLY in JSON format following this schema:
     {
@@ -71,9 +72,10 @@ export async function analyzeContentForCoPilot(
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: [{ text: prompt }],
+    model: 'gemini-3-flash-preview',
+    contents: prompt,
     config: {
+      tools: isUrl ? [{ urlContext: {} }] : undefined,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,

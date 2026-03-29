@@ -84,15 +84,35 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
         
         // Derive a better name if title is missing
         const deriveName = () => {
-          if (meta.title) return meta.title;
-          const fileName = file.public_id.split('/').pop() || "";
-          const isHash = (text: string) => text.length > 15 && !text.includes(' ') && !text.includes('-') && !text.includes('_');
+          if (meta.title && meta.title.length > 2) return meta.title;
           
-          if (fileName && !isHash(fileName)) {
-            const cleanName = fileName.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\.[^/.]+$/, "");
-            if (cleanName.length > 2) return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+          // Try to get name from public_id or filename
+          const rawName = file.filename || file.public_id.split('/').pop() || "";
+          
+          // Check if it's likely a hash (long string of random chars)
+          const isHash = (text: string) => {
+            if (text.length < 15) return false;
+            // If it has no spaces, underscores, or hyphens and is long, it's likely a hash
+            return !/[_\-\s]/.test(text) && /[a-z]/.test(text) && /[0-9]/.test(text);
+          };
+          
+          if (rawName && !isHash(rawName)) {
+            const cleanName = rawName
+              .replace(/_/g, ' ')
+              .replace(/-/g, ' ')
+              .replace(/\.[^/.]+$/, "") // Remove extension
+              .replace(/\d{10,}/g, '') // Remove long numeric strings (timestamps)
+              .trim();
+              
+            if (cleanName.length > 2) {
+              return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+            }
           }
-          return meta.subject ? `${meta.subject} Resource` : "Educational Resource";
+          
+          // Fallback to subject or generic name
+          if (meta.subject) return `${meta.subject} Resource`;
+          if (meta.class) return `${meta.class} Material`;
+          return "Educational Document";
         };
 
         return {
