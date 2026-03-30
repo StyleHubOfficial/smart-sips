@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2 } from 'lucide-react';
 
 interface Point {
@@ -73,6 +73,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const dragControls = useDragControls();
 
   useEffect(() => {
     if (initialData) {
@@ -838,251 +839,255 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const gridBg = `bg-[#1a1b26] bg-[url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L0 0 0 20' fill='none' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.1'/%3E%3C/svg%3E")]`;
 
   return (
-    <div 
-      ref={containerRef}
-      className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
-    >
-      {/* Canvas Area */}
-      <div className={`flex-1 relative ${tool === 'select' ? '' : 'cursor-none touch-none'} ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
-        <canvas
-          ref={canvasRef}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          className="absolute inset-0 w-full h-full"
-        />
+    <>
+      <div 
+        ref={containerRef}
+        className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
+      >
+        {/* Canvas Area */}
+        <div className={`flex-1 relative ${tool === 'select' ? '' : 'cursor-none touch-none'} ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
+          <canvas
+            ref={canvasRef}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+            className="absolute inset-0 w-full h-full"
+          />
 
-        {/* Custom Cursor for Eraser/Pen feedback */}
-        {!isWiping && tool !== 'select' && (
-          <div 
-            className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
-            style={{
-              left: cursorPos.x,
-              top: cursorPos.y,
-              width: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
-              height: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
-              transform: 'translate(-50%, -50%)',
-              display: cursorPos.x < 0 ? 'none' : 'block'
-            }}
-          />
-        )}
-        
-        {isWiping && (
-          <div 
-            className="absolute top-0 bottom-0 left-0 border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
-            style={{ width: `${wipeProgress * 100}%` }}
-          />
-        )}
-        {tool === 'eraser' && eraserMode === 'all' && !isWiping && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white/80 pointer-events-none animate-pulse">
-            Slide from left to right to clear entire board
-          </div>
-        )}
-        
-        {isFullscreen && (
-          <div className="absolute top-4 right-4 pointer-events-none">
-            <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
-              Smart Panel Mode Active • High Precision Drawing
+          {/* Custom Cursor for Eraser/Pen feedback */}
+          {!isWiping && tool !== 'select' && (
+            <div 
+              className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
+              style={{
+                left: cursorPos.x,
+                top: cursorPos.y,
+                width: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
+                height: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
+                transform: 'translate(-50%, -50%)',
+                display: cursorPos.x < 0 ? 'none' : 'block'
+              }}
+            />
+          )}
+          
+          {isWiping && (
+            <div 
+              className="absolute top-0 bottom-0 left-0 border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
+              style={{ width: `${wipeProgress * 100}%` }}
+            />
+          )}
+          {tool === 'eraser' && eraserMode === 'all' && !isWiping && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 text-white/80 pointer-events-none animate-pulse">
+              Slide from left to right to clear entire board
             </div>
-          </div>
-        )}
+          )}
+          
+          {isFullscreen && (
+            <div className="absolute top-4 right-4 pointer-events-none">
+              <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
+                Smart Panel Mode Active • High Precision Drawing
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Floating Draggable Toolbar */}
       <motion.div 
         drag
+        dragControls={dragControls}
+        dragListener={false}
         dragMomentum={false}
-        className="absolute bottom-28 left-4 right-4 flex items-center justify-between p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] cursor-move group"
+        className="fixed bottom-28 left-4 right-4 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
       >
-        <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
-          <div className="p-2 text-white/20 group-hover:text-white/40 transition-colors">
-            <MousePointer2 className="w-4 h-4" />
-          </div>
-          <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
-            <MousePointer2 className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
-            <Sparkles className="w-5 h-5" />
-          </button>
-          
-          {selectedStrokeIds.length > 0 && (
-            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
-              <button onClick={() => {
-                const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
-                setStrokes(newStrokes);
-                saveToHistory(newStrokes);
-                setSelectedStrokeIds([]);
-              }} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
-                <Trash2 className="w-4 h-4" />
-              </button>
-              <input 
-                type="color" 
-                onChange={(e) => {
-                  const newStrokes = strokes.map(s => 
-                    selectedStrokeIds.includes(s.id) ? { ...s, color: e.target.value } : s
-                  );
-                  setStrokes(newStrokes);
-                  saveToHistory(newStrokes);
-                }}
-                className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
-                title="Change Color of Selected"
-              />
-              <div className="flex flex-col gap-0.5">
-                <button 
-                  onClick={() => {
-                    const newStrokes = strokes.map(s => {
-                      if (!selectedStrokeIds.includes(s.id)) return s;
-                      const scale = (s.scale?.x || 1) * 1.1;
-                      return { ...s, scale: { x: scale, y: scale } };
-                    });
-                    setStrokes(newStrokes);
-                    saveToHistory(newStrokes);
-                  }}
-                  className="p-0.5 text-white/60 hover:text-white"
-                >
-                  <Maximize2 className="w-3 h-3" />
-                </button>
-                <button 
-                  onClick={() => {
-                    const newStrokes = strokes.map(s => {
-                      if (!selectedStrokeIds.includes(s.id)) return s;
-                      const scale = (s.scale?.x || 1) * 0.9;
-                      return { ...s, scale: { x: scale, y: scale } };
-                    });
-                    setStrokes(newStrokes);
-                    saveToHistory(newStrokes);
-                  }}
-                  className="p-0.5 text-white/60 hover:text-white"
-                >
-                  <Minimize2 className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="w-px h-6 bg-white/10 mx-1"></div>
-          <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
-            <Pen className="w-5 h-5" />
-          </button>
-          <button onClick={() => {
-            setTheme(prev => prev === 'dark' ? 'light' : prev === 'light' ? 'grid' : prev === 'grid' ? 'transparent' : 'dark');
-          }} className={`p-2 rounded-lg transition-colors ${theme === 'transparent' ? 'text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Toggle Theme">
-            <Sparkles className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
-            <Highlighter className="w-5 h-5" />
-          </button>
-          
-          {/* Advanced Eraser */}
-          <div className="relative flex items-center">
-            <button 
-              onClick={() => {
-                if (tool === 'eraser') {
-                  setShowEraserMenu(!showEraserMenu);
-                } else {
-                  setTool('eraser');
-                  setShowEraserMenu(false);
-                }
-              }} 
-              className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
-              title="Eraser (Click again for options)"
-            >
-              <Eraser className="w-5 h-5" />
-            </button>
-            <AnimatePresence>
-              {showEraserMenu && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[160px]"
-                >
-                  <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
-                  </button>
-                  <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                    <Minus className="w-3 h-3" /> Stroke Eraser
-                  </button>
-                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
-                    <Sparkles className="w-3 h-3" /> Lasso Pixel Eraser
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">
-            <Type className="w-5 h-5" />
-          </button>
-          
-          <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-          <button onClick={() => setTool('rect')} className={`p-2 rounded-lg transition-colors ${tool === 'rect' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Rectangle">
-            <Square className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTool('circle')} className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Circle">
-            <Circle className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTool('line')} className={`p-2 rounded-lg transition-colors ${tool === 'line' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Line">
-            <Minus className="w-5 h-5" />
-          </button>
-          <button onClick={() => setTool('arrow')} className={`p-2 rounded-lg transition-colors ${tool === 'arrow' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Arrow">
-            <ArrowUpRight className="w-5 h-5" />
-          </button>
-          
-          <div className="w-px h-6 bg-white/10 mx-1"></div>
-          
-          <div className="flex items-center gap-2 px-2">
-            <input 
-              type="color" 
-              value={color} 
-              onChange={(e) => setColor(e.target.value)}
-              className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-              title="Color"
-            />
-            <input 
-              type="range" 
-              min="1" 
-              max="20" 
-              value={lineWidth} 
-              onChange={(e) => setLineWidth(parseInt(e.target.value))}
-              className="w-20 accent-[#00F0FF]"
-              title="Stroke Thickness"
-            />
-          </div>
-          
-          <div className="w-px h-6 bg-white/10 mx-1"></div>
-          
-          <button onClick={undo} disabled={historyStep <= 0} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Undo">
-            <Undo className="w-5 h-5" />
-          </button>
-          <button onClick={redo} disabled={historyStep >= history.length - 1} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Redo">
-            <Redo className="w-5 h-5" />
-          </button>
+        <div 
+            onPointerDown={(e) => dragControls.start(e)}
+            className="cursor-move flex items-center justify-between pb-2 border-b border-white/10 mb-2"
+        >
+            <span className="text-white/50 text-xs font-medium">Toolbar</span>
         </div>
-        
-        <div className="flex items-center gap-1">
-          <button onClick={toggleFullscreen} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Toggle Fullscreen">
-            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-          </button>
-          <button onClick={clear} className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Clear All">
-            <Trash2 className="w-5 h-5" />
-          </button>
-          <button onClick={download} className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors" title="Download">
-            <Download className="w-5 h-5" />
-          </button>
-          {onClose && (
-            <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-1" title="Close Whiteboard">
-              <X className="w-5 h-5" />
-            </button>
-          )}
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
+              <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
+                <MousePointer2 className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
+                <Sparkles className="w-5 h-5" />
+              </button>
+              
+              {selectedStrokeIds.length > 0 && (
+                <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
+                  <button onClick={() => {
+                    const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
+                    setStrokes(newStrokes);
+                    saveToHistory(newStrokes);
+                    setSelectedStrokeIds([]);
+                  }} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <input 
+                    type="color" 
+                    onChange={(e) => {
+                      const newStrokes = strokes.map(s => 
+                        selectedStrokeIds.includes(s.id) ? { ...s, color: e.target.value } : s
+                      );
+                      setStrokes(newStrokes);
+                      saveToHistory(newStrokes);
+                    }}
+                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
+                    title="Change Color of Selected"
+                  />
+                  <div className="flex flex-col gap-0.5">
+                    <button 
+                      onClick={() => {
+                        const newStrokes = strokes.map(s => {
+                          if (!selectedStrokeIds.includes(s.id)) return s;
+                          const scale = (s.scale?.x || 1) * 1.1;
+                          return { ...s, scale: { x: scale, y: scale } };
+                        });
+                        setStrokes(newStrokes);
+                        saveToHistory(newStrokes);
+                      }}
+                      className="p-0.5 text-white/60 hover:text-white"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const newStrokes = strokes.map(s => {
+                          if (!selectedStrokeIds.includes(s.id)) return s;
+                          const scale = (s.scale?.x || 1) * 0.9;
+                          return { ...s, scale: { x: scale, y: scale } };
+                        });
+                        setStrokes(newStrokes);
+                        saveToHistory(newStrokes);
+                      }}
+                      className="p-0.5 text-white/60 hover:text-white"
+                    >
+                      <Minimize2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
+                <Pen className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
+                <Highlighter className="w-5 h-5" />
+              </button>
+              
+              {/* Advanced Eraser */}
+              <div className="relative flex items-center">
+                <button 
+                  onClick={() => {
+                    if (tool === 'eraser') {
+                      setShowEraserMenu(!showEraserMenu);
+                    } else {
+                      setTool('eraser');
+                      setShowEraserMenu(false);
+                    }
+                  }} 
+                  className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
+                  title="Eraser (Click again for options)"
+                >
+                  <Eraser className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showEraserMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[160px]"
+                    >
+                      <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
+                        <Minus className="w-3 h-3" /> Stroke Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
+                        <Sparkles className="w-3 h-3" /> Lasso Pixel Eraser
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">
+                <Type className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <button onClick={() => setTool('rect')} className={`p-2 rounded-lg transition-colors ${tool === 'rect' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Rectangle">
+                <Square className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('circle')} className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Circle">
+                <Circle className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('line')} className={`p-2 rounded-lg transition-colors ${tool === 'line' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Line">
+                <Minus className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('arrow')} className={`p-2 rounded-lg transition-colors ${tool === 'arrow' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Arrow">
+                <ArrowUpRight className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              
+              <div className="flex items-center gap-2 px-2">
+                <input 
+                  type="color" 
+                  value={color} 
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                  title="Color"
+                />
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="20" 
+                  value={lineWidth} 
+                  onChange={(e) => setLineWidth(parseInt(e.target.value))}
+                  className="w-20 accent-[#00F0FF]"
+                  title="Stroke Thickness"
+                />
+              </div>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              
+              <button onClick={undo} disabled={historyStep <= 0} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Undo">
+                <Undo className="w-5 h-5" />
+              </button>
+              <button onClick={redo} disabled={historyStep >= history.length - 1} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Redo">
+                <Redo className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button onClick={toggleFullscreen} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Toggle Fullscreen">
+                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+              <button onClick={clear} className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Clear All">
+                <Trash2 className="w-5 h-5" />
+              </button>
+              <button onClick={download} className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors" title="Download">
+                <Download className="w-5 h-5" />
+              </button>
+              {onClose && (
+                <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-1" title="Close Whiteboard">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
         </div>
       </motion.div>
-    </div>
+    </>
   );
 }
 

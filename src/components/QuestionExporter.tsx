@@ -41,6 +41,9 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
       const canvas = await html2canvas(exportRef.current, {
         scale: 2,
         useCORS: true,
+        windowWidth: 1200,
+        logging: false,
+        foreignObjectRendering: true,
       });
       
       const imgData = canvas.toDataURL('image/png');

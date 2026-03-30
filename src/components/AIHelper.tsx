@@ -208,103 +208,18 @@ export default function AIHelper() {
                 </button>
                 <div className="relative">
                   <button 
-                    onClick={() => setShowWallpaperMenu(!showWallpaperMenu)}
-                    className="text-gray-400 hover:text-[#00F0FF] transition-colors p-2 hover:bg-white/5 rounded-xl"
-                    title="Change Wallpaper"
+                    onClick={() => setIsOpen(false)}
+                    className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-red-500/10 rounded-xl group"
+                    title="Close Assistant"
                   >
-                    <ImageIcon className="w-4 h-4" />
+                    <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   </button>
-                  <AnimatePresence>
-                    {showWallpaperMenu && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                        className="absolute right-0 top-full mt-2 w-40 bg-[#111]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-50 p-1"
-                      >
-                        {(['default', 'matrix', 'stars', 'waves'] as const).map((w) => (
-                          <button
-                            key={w}
-                            onClick={() => { setWallpaper(w); setShowWallpaperMenu(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-xs rounded-xl transition-all capitalize flex items-center justify-between ${wallpaper === w ? 'bg-[#00F0FF]/10 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                          >
-                            {w}
-                            {wallpaper === w && <Zap className="w-3 h-3 fill-current" />}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-red-500/10 rounded-xl group"
-                  title="Close Assistant"
-                >
-                  <X className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </button>
               </div>
             </div>
 
             {/* Wallpaper Backgrounds */}
             <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl">
-              {wallpaper === 'matrix' && (
-                <div className="absolute inset-0 opacity-60 overflow-hidden bg-black/80">
-                  {matrixData.map((m, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ y: -800 }}
-                      animate={{ y: 1000 }}
-                      transition={{ duration: m.duration, repeat: Infinity, delay: m.delay, ease: "linear" }}
-                      className="text-[#00F0FF] text-[16px] font-mono whitespace-pre leading-none opacity-100"
-                      style={{ left: m.left, position: 'absolute' }}
-                    >
-                      {m.text.split('').map((char, ci) => (
-                        <div key={ci} className="my-1 drop-shadow-[0_0_12px_rgba(0,240,255,0.8)]">{char}</div>
-                      ))}
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-              {wallpaper === 'stars' && (
-                <div className="absolute inset-0 opacity-90 bg-black/80">
-                  {starsData.map((s, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ 
-                        opacity: [0.4, 1, 0.4],
-                        scale: [0.8, 1.5, 0.8]
-                      }}
-                      transition={{ duration: s.duration, repeat: Infinity, delay: s.delay }}
-                      className="absolute bg-white rounded-full"
-                      style={{ 
-                        left: s.left, 
-                        top: s.top,
-                        width: s.size,
-                        height: s.size,
-                        boxShadow: '0 0 15px rgba(255,255,255,1)'
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-              {wallpaper === 'waves' && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-70 overflow-hidden bg-black/80">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{ 
-                        scale: [1, 2.2 + i * 0.4, 1],
-                        opacity: [0.6, 0.1, 0.6],
-                        rotate: [0, 180, 360],
-                      }}
-                      transition={{ duration: 8 + i * 2, repeat: Infinity, ease: "linear" }}
-                      className="absolute w-[200%] aspect-square border border-[#00F0FF]/40 rounded-full"
-                      style={{ borderWidth: `${2 + i * 0.5}px`, boxShadow: 'inset 0 0 40px rgba(0,240,255,0.3)' }}
-                    />
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Messages Area */}

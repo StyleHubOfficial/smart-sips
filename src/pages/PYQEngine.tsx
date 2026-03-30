@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
 import { PenPaperAnimation } from '../components/PenPaperAnimation';
 import Markdown from 'react-markdown';
@@ -57,6 +57,7 @@ export default function PYQEngine() {
 
   const [showHistory, setShowHistory] = useState(false);
   const [activeWhiteboard, setActiveWhiteboard] = useState<string | null>(null);
+  const dragControls = useDragControls();
 
   const [isSearching, setIsSearching] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -71,6 +72,13 @@ export default function PYQEngine() {
   const [activeSimilar, setActiveSimilar] = useState<string | null>(null);
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
+
+  useEffect(() => {
+    const savedResults = sessionStorage.getItem('pyq_generated_results');
+    if (savedResults) {
+      setResults(JSON.parse(savedResults));
+    }
+  }, []);
 
   const handlePromptBuild = async () => {
     if (!userPrompt.trim()) return;
@@ -314,6 +322,7 @@ export default function PYQEngine() {
       }));
 
       setResults(enrichedResults);
+      sessionStorage.setItem('pyq_generated_results', JSON.stringify(enrichedResults));
 
     } catch (error) {
       console.error("Error in PYQ pipeline:", error);
@@ -527,7 +536,7 @@ export default function PYQEngine() {
                 className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2 transition-colors border border-emerald-500/20"
               >
                 <Bookmark className="w-4 h-4" />
-                Save Search
+                Save
               </button>
             </div>
           </div>
@@ -789,7 +798,19 @@ export default function PYQEngine() {
                   title={`${exam} ${subject} ${topic} PYQs`}
                 />
                 <button 
-                  onClick={() => setResults([])}
+                  onClick={() => {
+                    localStorage.setItem('pyq_generated_results', JSON.stringify(results));
+                    alert("Results saved to local storage!");
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium transition-colors border border-emerald-500/20"
+                >
+                  Save Results
+                </button>
+                <button 
+                  onClick={() => {
+                    setResults([]);
+                    sessionStorage.removeItem('pyq_generated_results');
+                  }}
                   className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
                 >
                   Clear Results
@@ -1048,11 +1069,16 @@ export default function PYQEngine() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               drag
+              dragControls={dragControls}
+              dragListener={false}
               dragMomentum={false}
               className="fixed top-20 right-10 z-[100] w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-white rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 flex flex-col"
               style={{ resize: 'both', overflow: 'hidden', minWidth: '300px', minHeight: '300px' }}
             >
-              <div className="flex items-center justify-between p-3 bg-gray-100 border-b border-gray-200 cursor-move">
+              <div 
+                className="flex items-center justify-between p-3 bg-gray-100 border-b border-gray-200 cursor-move"
+                onPointerDown={(e) => dragControls.start(e)}
+              >
                 <div className="flex items-center gap-2">
                   <PenTool className="w-4 h-4 text-gray-600" />
                   <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Floating Whiteboard</span>

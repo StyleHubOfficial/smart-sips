@@ -108,49 +108,50 @@ export default function Home() {
         {/* Key Features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32">
           {[
-            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500", delay: 0.1 },
-            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", delay: 0.2 },
-            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3 },
-            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", delay: 0.4 },
-            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.5 },
+            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500", delay: 0.1, link: "/ai-generators" },
+            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", delay: 0.2, link: "/practice" },
+            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3, link: "/pyq" },
+            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", delay: 0.4, link: "/flowchart" },
+            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.5, link: "/courses" },
           ].map((feature, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ y: 50, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ 
-                  duration: 0.6,
-                  delay: feature.delay,
-                  type: "spring",
-                  stiffness: 100
-                }}
-                whileHover={{ 
-                  scale: 1.05, 
-                  y: -15,
-                  transition: { duration: 0.2 }
-                }}
-                whileTap={{ scale: 0.98 }}
-                className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-300"
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
-                
-                {/* Animated Glow Effect */}
-                <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+              <Link to={feature.link} key={idx} className="block h-full">
+                <motion.div
+                  initial={{ y: 50, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ 
+                    duration: 0.6,
+                    delay: feature.delay,
+                    type: "spring",
+                    stiffness: 100
+                  }}
+                  whileHover={{ 
+                    scale: 1.05, 
+                    y: -15,
+                    transition: { duration: 0.2 }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-300"
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                  
+                  {/* Animated Glow Effect */}
+                  <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
 
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.05)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
-                  <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
-                    <feature.icon className="w-7 h-7 text-white group-hover:animate-pulse" />
+                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.05)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
+                    <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
+                      <feature.icon className="w-7 h-7 text-white group-hover:animate-pulse" />
+                    </div>
                   </div>
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#00F0FF] transition-colors duration-300">{feature.title}</h3>
-                <p className="text-gray-400 group-hover:text-gray-200 transition-colors duration-300 leading-relaxed">{feature.desc}</p>
-                
-                <div className="mt-6 flex items-center text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
-                  <span className="text-sm font-bold uppercase tracking-wider">Explore Now</span>
-                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.div>
+                  <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#00F0FF] transition-colors duration-300">{feature.title}</h3>
+                  <p className="text-gray-400 group-hover:text-gray-200 transition-colors duration-300 leading-relaxed">{feature.desc}</p>
+                  
+                  <div className="mt-6 flex items-center text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                    <span className="text-sm font-bold uppercase tracking-wider">Explore Now</span>
+                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
+              </Link>
           ))}
         </div>
 
