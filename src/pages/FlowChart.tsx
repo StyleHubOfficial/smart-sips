@@ -45,14 +45,18 @@ export default function FlowChart() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+  const isGenerating = tasks.some(t => (t.toolId === 'flowchart' || t.toolId === 'diagram') && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for FlowChart
-    const flowChartTask = tasks.find(t => t.toolId === 'flowchart' && t.status === 'completed');
-    if (flowChartTask && !generatedCode) {
-      useFlowChartStore.getState().setGeneratedCode(flowChartTask.result);
+    const flowChartTask = tasks.find(t => (t.toolId === 'flowchart' || t.toolId === 'diagram'));
+    if (flowChartTask) {
+      if (flowChartTask.status === 'completed' && !generatedCode) {
+        useFlowChartStore.getState().setGeneratedCode(flowChartTask.result);
+        if (flowChartTask.query) setQuery(flowChartTask.query);
+      }
     }
-  }, [tasks, generatedCode]);
+  }, [tasks, generatedCode, setQuery]);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
@@ -364,7 +368,7 @@ export default function FlowChart() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-48"
                 />
                 <button 
                   onClick={handlePromptBuild}
@@ -405,11 +409,11 @@ export default function FlowChart() {
               
               <button 
                 onClick={handleGenerate}
-                disabled={loading || (!query.trim() && !sourceFile)}
+                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                {loading ? 'Generating...' : `Generate ${chartType}`}
+                {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : `Generate ${chartType}`}
               </button>
             </div>
           </div>
@@ -504,13 +508,13 @@ export default function FlowChart() {
 
             {/* Content */}
             <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
-              {loading ? (
+              {loading || isGenerating ? (
                 <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
                   <div className="w-full max-w-md space-y-2">
                     <div className="flex justify-between text-xs font-mono text-[#00F0FF]">
                       <span>Synthesizing Knowledge Structure...</span>
-                      <span>{query ? 'Analyzing Topic' : 'Processing Source'}</span>
+                      <span>{isGenerating ? 'Background Task' : (query ? 'Analyzing Topic' : 'Processing Source')}</span>
                     </div>
                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                       <motion.div 

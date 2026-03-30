@@ -39,14 +39,18 @@ export default function ConceptVisualizer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+  const isGenerating = tasks.some(t => (t.toolId === 'concept-visualizer' || t.toolId === 'visualizer') && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for Concept Visualizer
-    const visualizerTask = tasks.find(t => t.toolId === 'concept-visualizer' && t.status === 'completed');
-    if (visualizerTask && !visualizerData) {
-      useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
+    const visualizerTask = tasks.find(t => (t.toolId === 'concept-visualizer' || t.toolId === 'visualizer'));
+    if (visualizerTask) {
+      if (visualizerTask.status === 'completed' && !visualizerData) {
+        useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
+        if (visualizerTask.query) setQuery(visualizerTask.query);
+      }
     }
-  }, [tasks, visualizerData]);
+  }, [tasks, visualizerData, setQuery]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
@@ -407,7 +411,7 @@ export default function ConceptVisualizer() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Quantum Entanglement, Mitosis, Black Holes..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-48"
                 />
                 <button 
                   onClick={handlePromptBuild}
@@ -448,11 +452,11 @@ export default function ConceptVisualizer() {
 
               <button
                 onClick={handleGenerate}
-                disabled={loading || (!query.trim() && !sourceFile)}
+                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
-                {loading ? 'Generating...' : 'Generate Diagrams'}
+                {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : 'Generate Diagrams'}
               </button>
             </div>
           </div>
@@ -501,11 +505,11 @@ export default function ConceptVisualizer() {
 
             {/* Content */}
             <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
-              {loading ? (
+              {loading || isGenerating ? (
                 <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
                   <div className="w-full max-w-md space-y-2 text-center">
-                    <span className="text-xs font-mono text-[#00F0FF]">Generating Educational Diagrams...</span>
+                    <span className="text-xs font-mono text-[#00F0FF]">{isGenerating ? 'Background Generating...' : 'Generating Educational Diagrams...'}</span>
                   </div>
                 </div>
               ) : visualizerData ? (

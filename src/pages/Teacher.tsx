@@ -21,6 +21,8 @@ export default function Teacher() {
     renderAnnotations: true,
   });
 
+  const [showSlideGrid, setShowSlideGrid] = useState(false);
+
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
@@ -106,33 +108,89 @@ export default function Teacher() {
 
   if (showWhiteboard) {
     return (
-      <div className="fixed inset-0 z-[60] bg-black">
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[70] flex items-center gap-4 bg-black/50 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10">
+      <div className="fixed inset-0 z-[60] bg-black overflow-hidden">
+        {/* Floating Slide Changer at Bottom Left */}
+        <div className="absolute bottom-6 left-6 z-[100] flex items-center gap-2 bg-black/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 shadow-2xl">
           <button 
             onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
             disabled={currentSlideIndex === 0}
-            className="p-2 text-white hover:bg-white/10 rounded-full disabled:opacity-30"
+            className="p-2.5 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="text-white font-mono text-sm">
-            Slide {currentSlideIndex + 1} / {slides.length}
-          </span>
+          
+          <button 
+            onClick={() => setShowSlideGrid(true)}
+            className="px-4 py-2 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors flex items-center gap-2"
+          >
+            <span className="opacity-50">Slide</span>
+            <span className="font-bold">{currentSlideIndex + 1}</span>
+            <span className="opacity-50">/</span>
+            <span className="opacity-50">{slides.length}</span>
+          </button>
+
           <button 
             onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))}
             disabled={currentSlideIndex === slides.length - 1}
-            className="p-2 text-white hover:bg-white/10 rounded-full disabled:opacity-30"
+            className="p-2.5 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          <div className="w-[1px] h-4 bg-white/20 mx-2" />
-          <button 
-            onClick={() => setShowWhiteboard(false)}
-            className="text-xs font-bold text-red-400 hover:text-red-300 uppercase tracking-wider"
-          >
-            Exit
-          </button>
         </div>
+
+        {/* Exit Button at Top Right */}
+        <button 
+          onClick={() => setShowWhiteboard(false)}
+          className="absolute top-6 right-6 z-[100] px-6 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-2xl font-bold text-sm transition-all backdrop-blur-xl"
+        >
+          Exit Session
+        </button>
+
+        {/* Slide Grid Overlay */}
+        <AnimatePresence>
+          {showSlideGrid && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-2xl p-8 overflow-y-auto"
+            >
+              <div className="max-w-6xl mx-auto">
+                <div className="flex items-center justify-between mb-12">
+                  <h2 className="text-3xl font-display font-bold text-white">All Slides</h2>
+                  <button 
+                    onClick={() => setShowSlideGrid(false)}
+                    className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white transition-colors"
+                  >
+                    <Trash2 className="w-6 h-6 rotate-45" /> {/* Using Trash2 rotated as a close icon for simplicity or just X */}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                  {slides.map((slide, idx) => (
+                    <motion.div
+                      key={slide.id}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        setCurrentSlideIndex(idx);
+                        setShowSlideGrid(false);
+                      }}
+                      className={`relative aspect-[16/9] rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
+                        currentSlideIndex === idx ? 'border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <img src={slide.imageUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
+                        Page {idx + 1}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <Whiteboard 
           key={slides[currentSlideIndex].id}
@@ -141,8 +199,6 @@ export default function Teacher() {
           onClose={() => setShowWhiteboard(false)}
           className="h-full w-full"
           theme="dark"
-          // We'll pass the slide image as a background
-          // @ts-ignore
           backgroundImage={slides[currentSlideIndex].imageUrl}
         />
       </div>
@@ -183,6 +239,31 @@ export default function Teacher() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {isProcessing && (
+              <div className="glass-panel rounded-[2rem] p-8 border border-indigo-500/30 bg-indigo-500/5 mb-8">
+                <div className="flex justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-white">Processing Material</span>
+                      <p className="text-xs text-gray-400">Converting pages to high-quality interactive slides...</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-mono text-indigo-400 font-bold">{processProgress} / {totalItems}</span>
+                </div>
+                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
+                  <motion.div 
+                    className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)]"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${(processProgress / Math.max(1, totalItems)) * 100}%` }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                  />
+                </div>
+              </div>
+            )}
+
             {slides.length === 0 ? (
               <div 
                 {...getRootProps()} 
@@ -217,23 +298,6 @@ export default function Teacher() {
                     <Sparkles className="w-4 h-4" /> Images
                   </div>
                 </div>
-
-                {isProcessing && (
-                  <div className="absolute inset-x-0 bottom-0 p-8">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Processing Pages</span>
-                      <span className="text-xs font-mono text-indigo-400">{processProgress} / {totalItems}</span>
-                    </div>
-                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
-                      <motion.div 
-                        className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${(processProgress / totalItems) * 100}%` }}
-                        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

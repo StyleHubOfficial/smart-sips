@@ -63,14 +63,18 @@ export default function Simulator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+  const isGenerating = tasks.some(t => t.toolId === 'simulator' && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for Simulator
-    const simulatorTask = tasks.find(t => t.toolId === 'simulator' && t.status === 'completed');
-    if (simulatorTask && !generatedCode) {
-      setGeneratedCode(simulatorTask.result);
+    const simulatorTask = tasks.find(t => t.toolId === 'simulator');
+    if (simulatorTask) {
+      if (simulatorTask.status === 'completed' && !generatedCode) {
+        setGeneratedCode(simulatorTask.result);
+        if (simulatorTask.query) setQuery(simulatorTask.query);
+      }
     }
-  }, [tasks, generatedCode, setGeneratedCode]);
+  }, [tasks, generatedCode, setGeneratedCode, setQuery]);
 
   const handleExplain = async () => {
     if (!generatedCode) return;
@@ -516,7 +520,7 @@ export default function Simulator() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={sourceFile ? `Generating based on ${sourceFile.name}...` : "e.g., 'Projectile motion with air resistance', 'Chemical bonding of NaCl'..."}
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 transition-all min-h-[120px] resize-none pr-14 text-lg leading-relaxed"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 transition-all min-h-[180px] resize-none pr-14 text-lg leading-relaxed"
               />
               <button 
                 onClick={handlePromptBuild}
@@ -604,13 +608,13 @@ export default function Simulator() {
 
               <button 
                 onClick={handleGenerate}
-                disabled={loading || (!query.trim() && !sourceFile)}
+                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
                 className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-black shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(176,38,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
               >
-                {loading ? (
+                {loading || isGenerating ? (
                   <>
                     <Loader2 className="w-6 h-6 animate-spin" />
-                    <span className="uppercase tracking-widest">Generating...</span>
+                    <span className="uppercase tracking-widest">{isGenerating ? 'Background Generating...' : 'Generating...'}</span>
                   </>
                 ) : (
                   <>
@@ -625,13 +629,13 @@ export default function Simulator() {
 
         {/* Simulation Area */}
         <div className="space-y-6">
-          {loading && (
+          {(loading || isGenerating) && (
             <div className="py-12">
               <SimLoader />
             </div>
           )}
 
-          {!loading && generatedCode && (
+          {!(loading || isGenerating) && generatedCode && (
             <div className="space-y-8">
               {/* 1. Simulation View */}
               <div className="space-y-3">

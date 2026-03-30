@@ -144,7 +144,6 @@ export default function AutoSuggestModal() {
     
     setGeneratingAll(false);
     closeModal();
-    alert("Background generation started! You can see the results in each section.");
   };
 
   return (

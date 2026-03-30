@@ -66,15 +66,21 @@ export default function Practice() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const { tasks } = useGenerationStore();
+  const isGenerating = tasks.some(t => ['practice', 'solution', 'quiz', 'summary', 'board'].includes(t.toolId) && t.status === 'generating');
 
   useEffect(() => {
-    // Check if there's a background generation task for Practice
-    const practiceTask = tasks.find(t => t.toolId === 'practice' && t.status === 'completed');
+    // Check if there's a background generation task for Practice and related tools
+    const practiceTask = tasks.find(t => ['practice', 'solution', 'quiz', 'summary', 'board'].includes(t.toolId) && t.status === 'completed');
     if (practiceTask && questions.length === 0) {
-      const parsedQuestions = typeof practiceTask.result === 'string' ? JSON.parse(practiceTask.result) : practiceTask.result;
-      usePracticeStore.getState().setQuestions(parsedQuestions);
+      try {
+        const parsedQuestions = typeof practiceTask.result === 'string' ? JSON.parse(practiceTask.result) : practiceTask.result;
+        usePracticeStore.getState().setQuestions(parsedQuestions);
+        if (practiceTask.query) setQuery(practiceTask.query);
+      } catch (e) {
+        console.error("Failed to parse background practice questions", e);
+      }
     }
-  }, [tasks, questions]);
+  }, [tasks, questions, setQuery]);
 
   const handleUploadReport = () => {
     const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
@@ -1498,7 +1504,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
             }
           }}
           placeholder={isSourceConverterMode ? (sourceFiles.length > 0 ? `Describe how to convert ${sourceFiles[0].name}...` : 'Select a source first') : `e.g. ${questionCount} ${difficulty} questions of ${examType} in ${subject}...`}
-          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[180px]"
+          className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-6 pr-16 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-[240px]"
         />
         <button 
           onClick={handlePromptBuild}
@@ -1513,19 +1519,25 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         <div className="mt-4 flex justify-end">
           <button 
             onClick={handleSearch}
-            disabled={loading || (isSourceConverterMode ? sourceFiles.length === 0 : !query.trim())}
+            disabled={loading || isGenerating || (isSourceConverterMode ? sourceFiles.length === 0 : !query.trim())}
             className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-            {loading ? 'Generating...' : 'Generate Questions'}
+            {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+            {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : 'Generate Questions'}
           </button>
         </div>
       </div>
 
       {/* Questions List */}
       <div className="space-y-6">
-        {loading && questions.length === 0 && (
+        {(loading || isGenerating) && questions.length === 0 && (
           <div className="py-8 space-y-6">
+            <div className="flex flex-col items-center justify-center py-10 space-y-4">
+              <Loader2 className="w-12 h-12 text-[#00F0FF] animate-spin" />
+              <p className="text-gray-400 font-mono text-sm animate-pulse">
+                {isGenerating ? 'AI is generating your practice set in the background...' : 'Generating your personalized practice set...'}
+              </p>
+            </div>
             {[1, 2, 3].map((i) => (
               <motion.div 
                 key={i}

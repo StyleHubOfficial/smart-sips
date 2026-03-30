@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import { AIGeneratorModal } from './AIGeneratorModal';
 import { 
   Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, 
   ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2, Wand2, ScanText, Scissors,
@@ -43,6 +44,7 @@ interface WhiteboardProps {
 
 export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan'>('pen');
@@ -57,13 +59,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
-  const [laserPath, setLaserPath] = useState<Point[]>([]);
   const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
   const [isOCRProcessing, setIsOCRProcessing] = useState(false);
   
   const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const currentPointsRef = useRef<Point[]>([]);
+  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -80,6 +83,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [historyStep, setHistoryStep] = useState(-1);
   
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -94,6 +98,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [backgroundType, setBackgroundType] = useState<'none' | 'grid' | 'dots' | 'lines'>('none');
   const dragControls = useDragControls();
+
+  const laserPathRef = useRef<Point[]>([]);
 
   useEffect(() => {
     if (initialData) {
@@ -113,62 +119,153 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
+      const bgCanvas = bgCanvasRef.current;
       const container = containerRef.current;
-      if (!canvas || !container) return;
+      if (!canvas || !bgCanvas || !container) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       
-      // Set display size
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      [canvas, bgCanvas].forEach(c => {
+        c.style.width = `${rect.width}px`;
+        c.style.height = `${rect.height}px`;
+        c.width = rect.width * dpr;
+        c.height = rect.height * dpr;
+        const ctx = c.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+      });
       
-      // Set actual size in memory
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      
-      // Scale context to match dpr
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-        redraw();
-      }
+      redrawBackground();
+      redraw();
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isFullscreen]);
+  }, [isFullscreen, backgroundImage, theme, backgroundType]);
 
-  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-    
-    // Coordinates relative to the canvas element
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
+  const redrawBackground = () => {
+    const canvas = bgCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
-    // Adjust for scale and offset to get "world" coordinates
-    return {
-      x: (x - offset.x) / scale,
-      y: (y - offset.y) / scale
-    };
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(offset.x, offset.y);
+    ctx.scale(scale, scale);
+
+    renderBackground(ctx, w / scale, h / scale);
+
+    if (backgroundImage) {
+      const img = new Image();
+      img.src = backgroundImage;
+      if (img.complete) {
+        const canvasW = w;
+        const canvasH = h;
+        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
+        const x = (canvasW - img.width * imgScale) / 2;
+        const y = (canvasH - img.height * imgScale) / 2;
+        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
+      } else {
+        img.onload = () => redrawBackground();
+      }
+    }
+
+    strokes.forEach(stroke => {
+      drawStroke(ctx, stroke);
+    });
+
+    ctx.restore();
   };
 
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) => {
-    const headlen = 15;
-    const dx = tox - fromx;
-    const dy = toy - fromy;
-    const angle = Math.atan2(dy, dx);
-    ctx.moveTo(fromx, fromy);
-    ctx.lineTo(tox, toy);
-    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
+  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+    ctx.save();
+    
+    if (stroke.center && (stroke.rotation || stroke.scale)) {
+      ctx.translate(stroke.center.x, stroke.center.y);
+      if (stroke.rotation) ctx.rotate(stroke.rotation);
+      if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
+      ctx.translate(-stroke.center.x, -stroke.center.y);
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = stroke.color;
+    ctx.lineWidth = stroke.lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = stroke.opacity || 1;
+
+    if (selectedStrokeIds.includes(stroke.id)) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00F0FF';
+    } else if (stroke.tool === 'highlighter' && stroke.startTime) {
+      const elapsed = Date.now() - stroke.startTime;
+      if (elapsed < 7000) {
+        const time = Date.now() / 1000;
+        const pulse = (Math.sin(time * 3) + 1) / 2;
+        const glow = pulse * 15 + 5;
+        ctx.shadowBlur = glow;
+        ctx.shadowColor = stroke.color;
+        const fadeStart = 5000;
+        if (elapsed > fadeStart) {
+          const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
+          ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
+          ctx.shadowBlur *= (1 - fadeProgress);
+        } else {
+          ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
+        }
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = stroke.opacity || 0.3;
+      }
+    }
+
+    if (stroke.type === 'path' || stroke.type === 'lasso') {
+      if (stroke.points.length < 2) {
+        ctx.restore();
+        return;
+      }
+      if (stroke.type === 'lasso') {
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 1;
+      }
+      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length - 2; i++) {
+        const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+        const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+        ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
+      }
+      if (stroke.points.length > 2) {
+        const last = stroke.points.length - 1;
+        ctx.quadraticCurveTo(stroke.points[last - 1].x, stroke.points[last - 1].y, stroke.points[last].x, stroke.points[last].y);
+      }
+      ctx.stroke();
+      if (stroke.type === 'lasso') ctx.setLineDash([]);
+    } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
+      ctx.strokeRect(stroke.startPos.x, stroke.startPos.y, stroke.endPos.x - stroke.startPos.x, stroke.endPos.y - stroke.startPos.y);
+    } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
+      const radius = Math.sqrt(Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + Math.pow(stroke.endPos.y - stroke.startPos.y, 2));
+      ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
+      ctx.stroke();
+    } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
+      ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
+      ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
+      ctx.stroke();
+    } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
+      drawArrow(ctx, stroke.startPos.x, stroke.startPos.y, stroke.endPos.x, stroke.endPos.y);
+    } else if (stroke.type === 'text' && stroke.startPos && stroke.text) {
+      ctx.font = `${stroke.lineWidth * 5}px Inter, sans-serif`;
+      ctx.fillStyle = stroke.color;
+      ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
+    }
+    ctx.restore();
   };
 
   const redraw = () => {
@@ -176,169 +273,45 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.width / dpr;
+    const h = canvas.height / dpr;
 
+    ctx.clearRect(0, 0, w, h);
     ctx.save();
-    // Apply pan and zoom transformations
     ctx.translate(offset.x, offset.y);
     ctx.scale(scale, scale);
 
-    // Render background patterns
-    renderBackground(ctx, (canvas.width / (window.devicePixelRatio || 1)) / scale, (canvas.height / (window.devicePixelRatio || 1)) / scale);
-
-    // Draw background image if exists
-    if (backgroundImage) {
-      const img = new Image();
-      img.src = backgroundImage;
-      if (img.complete) {
-        // Center and scale image to fit/fill properly
-        const canvasW = canvas.width / (window.devicePixelRatio || 1);
-        const canvasH = canvas.height / (window.devicePixelRatio || 1);
-        
-        // Calculate scale to fit the image while maintaining aspect ratio
-        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
-        const x = (canvasW - img.width * imgScale) / 2;
-        const y = (canvasH - img.height * imgScale) / 2;
-        
-        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
+    if (currentStroke) {
+      // Use currentPointsRef for live drawing paths to avoid state-driven lag
+      if (currentStroke.type === 'path' || currentStroke.type === 'lasso') {
+        drawStroke(ctx, { ...currentStroke, points: currentPointsRef.current });
       } else {
-        img.onload = () => redraw();
+        drawStroke(ctx, currentStroke);
       }
     }
 
-    const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
-
-    allStrokes.forEach(stroke => {
-      ctx.save();
-      
-      if (stroke.center && (stroke.rotation || stroke.scale)) {
-        ctx.translate(stroke.center.x, stroke.center.y);
-        if (stroke.rotation) ctx.rotate(stroke.rotation);
-        if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
-        ctx.translate(-stroke.center.x, -stroke.center.y);
-      }
-
+    const lPath = laserPathRef.current;
+    if (lPath.length > 1) {
       ctx.beginPath();
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.lineWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.globalAlpha = stroke.opacity || 1;
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff4444';
+      ctx.moveTo(lPath[0].x, lPath[0].y);
+      lPath.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
 
-      if (selectedStrokeIds.includes(stroke.id)) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00F0FF';
-      } else if (stroke.tool === 'highlighter' && stroke.startTime) {
-        const elapsed = Date.now() - stroke.startTime;
-        if (elapsed < 7000) {
-          // Blinking/Glow effect for highlighter
-          const time = Date.now() / 1000;
-          const pulse = (Math.sin(time * 3) + 1) / 2; // 0 to 1
-          const glow = pulse * 15 + 5;
-          ctx.shadowBlur = glow;
-          ctx.shadowColor = stroke.color;
-          
-          // Fade out the effect as it nears 7 seconds
-          const fadeStart = 5000;
-          if (elapsed > fadeStart) {
-            const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
-            ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
-            ctx.shadowBlur *= (1 - fadeProgress);
-          } else {
-            ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
-          }
-        } else {
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = stroke.opacity || 0.3;
-        }
-      } else {
-        ctx.shadowBlur = 0;
-      }
+    ctx.restore();
 
-      if (stroke.type === 'path' || stroke.type === 'lasso') {
-        if (stroke.points.length < 2) {
-          ctx.restore();
-          return;
-        }
-        
-        if (stroke.type === 'lasso') {
-          ctx.setLineDash([5, 5]);
-          ctx.strokeStyle = '#00F0FF';
-          ctx.lineWidth = 1;
-        }
-
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        
-        for (let i = 1; i < stroke.points.length - 2; i++) {
-          const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
-          const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
-          ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
-        }
-        
-        if (stroke.points.length > 2) {
-          const last = stroke.points.length - 1;
-          ctx.quadraticCurveTo(
-            stroke.points[last - 1].x, 
-            stroke.points[last - 1].y, 
-            stroke.points[last].x, 
-            stroke.points[last].y
-          );
-        }
-        ctx.stroke();
-        if (stroke.type === 'lasso') ctx.setLineDash([]);
-      } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
-        ctx.strokeRect(
-          stroke.startPos.x, 
-          stroke.startPos.y, 
-          stroke.endPos.x - stroke.startPos.x, 
-          stroke.endPos.y - stroke.startPos.y
-        );
-      } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
-        const radius = Math.sqrt(
-          Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + 
-          Math.pow(stroke.endPos.y - stroke.startPos.y, 2)
-        );
-        ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-      } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
-        ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
-        ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
-        ctx.stroke();
-      } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
-        drawArrow(ctx, stroke.startPos.x, stroke.startPos.y, stroke.endPos.x, stroke.endPos.y);
-      } else if (stroke.type === 'text' && stroke.startPos && stroke.text) {
-        ctx.font = `${stroke.lineWidth * 5}px Inter, sans-serif`;
-        ctx.fillStyle = stroke.color;
-        ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
-      }
-      
-      ctx.restore();
-    });
-
-    ctx.restore(); // Restore from pan/zoom save
-
-    // Draw selection handles if strokes are selected
     if (selectedStrokeIds.length > 0) {
       const selectedStrokes = strokes.filter(s => selectedStrokeIds.includes(s.id));
       if (selectedStrokes.length > 0) {
         drawSelectionHandles(ctx, selectedStrokes);
       }
     }
-
-    // Draw laser path separately (not stored in strokes)
-    if (laserPath.length > 1) {
-      ctx.beginPath();
-      ctx.strokeStyle = '#ff4444';
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#ff4444';
-      ctx.moveTo(laserPath[0].x, laserPath[0].y);
-      laserPath.forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    ctx.globalAlpha = 1;
   };
 
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, selectedStrokes: Stroke[]) => {
@@ -454,54 +427,46 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   useEffect(() => {
+    redrawBackground();
+  }, [strokes, offset, scale, selectedStrokeIds]);
+
+  useEffect(() => {
     let animationFrame: number;
     const animate = () => {
-      const hasActiveHighlighter = strokes.some(s => s.tool === 'highlighter' && s.startTime && (Date.now() - s.startTime < 7000));
-      if (hasActiveHighlighter || currentStroke?.tool === 'highlighter') {
-        redraw();
-      }
+      redraw();
       animationFrame = requestAnimationFrame(animate);
     };
     animate();
     return () => cancelAnimationFrame(animationFrame);
-  }, [strokes, currentStroke]);
-
-  useEffect(() => {
-    redraw();
-  }, [strokes, currentStroke, laserPath, selectedStrokeIds, scale, offset]);
+  }, [currentStroke, selectedStrokeIds, scale, offset]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const bgCanvas = bgCanvasRef.current;
+    if (!canvas || !bgCanvas) return;
     
-    // Create a temporary canvas to include the background
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
 
-    // Fill background
-    tempCtx.fillStyle = theme === 'dark' ? '#0E0E12' : '#FFFFFF';
+    // Fill background color
+    if (theme === 'dark' || theme === 'grid') {
+      tempCtx.fillStyle = '#1a1b26';
+    } else if (theme === 'light') {
+      tempCtx.fillStyle = '#ffffff';
+    } else {
+      tempCtx.fillStyle = '#000000';
+    }
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw background image if exists
-    if (backgroundImage) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = backgroundImage;
-      img.onload = () => {
-        tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.drawImage(canvas, 0, 0);
-        const link = document.createElement('a');
-        link.download = `whiteboard-${Date.now()}.png`;
-        link.href = tempCanvas.toDataURL('image/png');
-        link.click();
-      };
-      return;
-    }
+    // Draw background canvas (includes grid and background image and finished strokes)
+    tempCtx.drawImage(bgCanvas, 0, 0);
 
+    // Draw main canvas (active stroke if any)
     tempCtx.drawImage(canvas, 0, 0);
+
     const link = document.createElement('a');
     link.download = `whiteboard-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
@@ -511,20 +476,33 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const downloadAsPDF = async () => {
     const { jsPDF } = await import('jspdf');
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const bgCanvas = bgCanvasRef.current;
+    if (!canvas || !bgCanvas) return;
 
-    const imgData = canvas.toDataURL('image/png');
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    // Fill background color
+    if (theme === 'dark' || theme === 'grid') {
+      tempCtx.fillStyle = '#1a1b26';
+    } else if (theme === 'light') {
+      tempCtx.fillStyle = '#ffffff';
+    } else {
+      tempCtx.fillStyle = '#000000';
+    }
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    tempCtx.drawImage(bgCanvas, 0, 0);
+    tempCtx.drawImage(canvas, 0, 0);
+
+    const imgData = tempCanvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
       unit: 'px',
       format: [canvas.width, canvas.height]
     });
-
-    // If theme is dark, we should probably add a dark background to the PDF too
-    if (theme === 'dark') {
-      pdf.setFillColor(14, 14, 18); // #0E0E12
-      pdf.rect(0, 0, canvas.width, canvas.height, 'F');
-    }
 
     pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(`whiteboard-${Date.now()}.pdf`);
@@ -825,20 +803,42 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
   };
 
+  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+    
+    return {
+      x: (clientX - rect.left - offset.x) / scale,
+      y: (clientY - rect.top - offset.y) / scale
+    };
+  };
+
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) => {
+    const headlen = 15;
+    const dx = tox - fromx;
+    const dy = toy - fromy;
+    const angle = Math.atan2(dy, dx);
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+  };
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if ('touches' in e) {
-      // Prevent scrolling while drawing
       e.preventDefault();
     }
 
-    if (tool === 'pan') {
+    if (tool === 'pan' || (e as React.MouseEvent).button === 1) {
       setIsPanning(true);
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (rect) {
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-        setLastPanPos({ x: clientX, y: clientY });
-      }
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+      setLastPanPos({ x: clientX, y: clientY });
       return;
     }
 
@@ -846,6 +846,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setStartPos(pos);
     setCursorPos(pos);
     setIsDrawing(true);
+    currentPointsRef.current = [pos];
 
     if (tool === 'select') {
       if (selectedStrokeIds.length > 0) {
@@ -855,7 +856,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           const padding = 10;
           const handleSize = 10;
           
-          // Check handles
           const handles = [
             { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
             { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
@@ -873,11 +873,19 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             return;
           }
           
-          // Check rotation handle
           const rotX = (bounds.minX + bounds.maxX) / 2;
           const rotY = bounds.minY - padding - 30;
           if (Math.abs(pos.x - rotX) < handleSize && Math.abs(pos.y - rotY) < handleSize) {
             setIsRotating(true);
+            return;
+          }
+
+          // Check if click is inside the bounds of the selected strokes
+          const isInsideSelection = pos.x >= bounds.minX && pos.x <= bounds.maxX && pos.y >= bounds.minY && pos.y <= bounds.maxY;
+          if (isInsideSelection) {
+            setIsDragging(true);
+            const center = getStrokeCenter(selected);
+            setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
             return;
           }
         }
@@ -891,7 +899,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
       } else {
         setSelectedStrokeIds([]);
-        // Start lasso selection
         setTool('lasso');
         const newStroke: Stroke = {
           id: 'lasso-' + Date.now(),
@@ -975,6 +982,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       e.preventDefault();
     }
 
+    const pos = getPos(e);
+    setCursorPos(pos);
+
     if (isPanning) {
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
@@ -988,8 +998,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (!isDrawing) return;
-    const pos = getPos(e);
-    setCursorPos(pos);
 
     if (tool === 'eraser' && eraserMode === 'stroke') {
       const stroke = findStrokeAt(pos);
@@ -997,7 +1005,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         const newStrokes = strokes.filter(s => s.id !== stroke.id);
         if (newStrokes.length !== strokes.length) {
           setStrokes(newStrokes);
-          // Only save to history when a stroke is actually removed
           saveToHistory(newStrokes);
         }
       }
@@ -1028,7 +1035,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             const dx = pos.x - center.x;
             const dy = pos.y - center.y;
             
-            // Calculate scale based on distance from center
             const initialBounds = getStrokeBounds(s);
             const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
             const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
@@ -1061,36 +1067,22 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
+    currentPointsRef.current.push(pos);
+
     if (tool === 'lasso' || tool === 'ai-ocr' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
-      if (currentStroke) {
-        setCurrentStroke({
-          ...currentStroke,
-          points: [...currentStroke.points, pos]
-        });
-      }
+      // No need to setCurrentStroke here, redraw uses currentPointsRef
       return;
     }
 
     if (tool === 'laser') {
-      setLaserPath(prev => [...prev, pos]);
-      return;
-    }
-
-    if (tool === 'eraser' && eraserMode === 'stroke') {
-      const stroke = findStrokeAt(pos);
-      if (stroke) {
-        setStrokes(prev => prev.filter(s => s.id !== stroke.id));
-      }
+      laserPathRef.current.push(pos);
       return;
     }
 
     if (!currentStroke) return;
 
     if (currentStroke.type === 'path') {
-      setCurrentStroke({
-        ...currentStroke,
-        points: [...currentStroke.points, pos]
-      });
+      // No need to setCurrentStroke here, redraw uses currentPointsRef
     } else {
       setCurrentStroke({
         ...currentStroke,
@@ -1115,6 +1107,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         }
       }
       setCurrentStroke(null);
+      currentPointsRef.current = [];
       setTool('select');
       return;
     }
@@ -1124,6 +1117,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         performOCR(currentStroke.points);
       }
       setCurrentStroke(null);
+      currentPointsRef.current = [];
       setTool('select');
       return;
     }
@@ -1135,20 +1129,24 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         saveToHistory(newStrokes);
       }
       setCurrentStroke(null);
+      currentPointsRef.current = [];
       return;
     }
 
     if (tool === 'laser') {
       if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
-      laserTimeoutRef.current = setTimeout(() => setLaserPath([]), 1000);
+      laserTimeoutRef.current = setTimeout(() => {
+        laserPathRef.current = [];
+        currentPointsRef.current = [];
+      }, 1000);
       return;
     }
 
     if (currentStroke) {
-      let strokeToSave = currentStroke;
+      let strokeToSave = { ...currentStroke, points: [...currentPointsRef.current] };
       
       if (tool === 'smart-pen') {
-        const recognized = recognizeShape(currentStroke.points);
+        const recognized = recognizeShape(currentPointsRef.current);
         if (recognized) {
           strokeToSave = recognized;
         }
@@ -1158,6 +1156,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       setStrokes(newStrokes);
       saveToHistory(newStrokes);
       setCurrentStroke(null);
+      currentPointsRef.current = [];
     } else if (tool === 'select' || (tool === 'eraser' && eraserMode === 'stroke')) {
       saveToHistory(strokes);
     }
@@ -1239,6 +1238,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         {/* Canvas Area */}
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
           <canvas
+            ref={bgCanvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+          />
+          <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}
             onMouseMove={draw}
@@ -1283,22 +1286,40 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         </div>
       </div>
 
-      {/* Floating Draggable Toolbar */}
-      <motion.div 
-        drag
-        dragControls={dragControls}
-        dragListener={false}
-        dragMomentum={false}
-        className="absolute bottom-4 left-4 right-4 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+      {/* Floating Toolbar Toggle */}
+      <button 
+        onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center justify-center z-[100] hover:scale-110 transition-transform active:scale-95"
       >
-        <div 
-            onPointerDown={(e) => dragControls.start(e)}
-            className="cursor-move flex items-center justify-between pb-2 border-b border-white/10 mb-2"
-        >
-            <span className="text-white/50 text-xs font-medium">Toolbar</span>
-        </div>
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
+        <Settings className={`w-6 h-6 transition-transform duration-500 ${isToolbarOpen ? 'rotate-90' : ''}`} />
+      </button>
+
+      {/* Floating Draggable Toolbar */}
+      <AnimatePresence>
+        {isToolbarOpen && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            drag
+            dragControls={dragControls}
+            dragListener={false}
+            dragMomentum={false}
+            className="fixed bottom-24 left-4 right-4 md:left-auto md:right-24 md:w-auto flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[100] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+          >
+            <div 
+                onPointerDown={(e) => dragControls.start(e)}
+                className="cursor-move flex items-center justify-between pb-2 border-b border-white/10 mb-2"
+            >
+                <span className="text-white/50 text-xs font-medium">Toolbar</span>
+                <div className="flex gap-1">
+                  <div className="w-1 h-1 rounded-full bg-white/20" />
+                  <div className="w-1 h-1 rounded-full bg-white/20" />
+                  <div className="w-1 h-1 rounded-full bg-white/20" />
+                </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
               <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
                 <MousePointer2 className="w-5 h-5" />
               </button>
@@ -1316,6 +1337,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               </button>
               <button onClick={() => setTool('pan')} className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pan & Zoom Tool">
                 <Hand className="w-5 h-5" />
+              </button>
+              <button onClick={() => setShowAIGenerator(true)} className={`p-2 rounded-lg transition-colors ${showAIGenerator ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Object Generator">
+                <Sparkles className="w-5 h-5" />
               </button>
               
               {selectedStrokeIds.length > 0 && (
@@ -1595,6 +1619,28 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             </div>
         </div>
       </motion.div>
+    )}
+    </AnimatePresence>
+    {showAIGenerator && (
+      <AIGeneratorModal 
+        onClose={() => setShowAIGenerator(false)} 
+        onInsert={(content) => {
+          const newStroke: Stroke = {
+            id: Date.now().toString(),
+            tool: 'text',
+            points: [{ x: 100, y: 100 }],
+            color: '#ffffff',
+            lineWidth: 2,
+            type: 'text',
+            text: content,
+            startPos: { x: 100, y: 100 }
+          };
+          const newStrokes = [...strokes, newStroke];
+          setStrokes(newStrokes);
+          saveToHistory(newStrokes);
+        }}
+      />
+    )}
     </>
   );
 }

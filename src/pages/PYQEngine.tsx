@@ -75,16 +75,24 @@ export default function PYQEngine() {
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const { tasks } = useGenerationStore();
+  const isGenerating = tasks.some(t => t.toolId === 'pyq-engine' && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for PYQ Engine
-    const pyqTask = tasks.find(t => t.toolId === 'pyq-engine' && t.status === 'completed');
-    if (pyqTask && results.length === 0) {
-      const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
-      setResults(parsedResults);
-      sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
+    const pyqTask = tasks.find(t => t.toolId === 'pyq-engine');
+    if (pyqTask) {
+      if (pyqTask.status === 'completed' && results.length === 0) {
+        try {
+          const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
+          setResults(parsedResults);
+          sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
+          if (pyqTask.query) setUserPrompt(pyqTask.query);
+        } catch (e) {
+          console.error("Failed to parse background PYQ results", e);
+        }
+      }
     }
-  }, [tasks, results]);
+  }, [tasks, results, setUserPrompt]);
 
   useEffect(() => {
     const savedResults = sessionStorage.getItem('pyq_generated_results');
@@ -753,11 +761,11 @@ export default function PYQEngine() {
           <div className="mt-6 flex justify-end">
             <button 
               type="submit"
-              disabled={isSearching || isExtracting}
+              disabled={isSearching || isExtracting || isGenerating}
               className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              {isSearching || isExtracting ? (
-                <><PenPaperAnimation size={20} /> Processing...</>
+              {isSearching || isExtracting || isGenerating ? (
+                <><PenPaperAnimation size={20} /> {isGenerating ? 'Background Generating...' : 'Processing...'}</>
               ) : (
                 <><Search className="w-5 h-5" /> Discover PYQs</>
               )}
@@ -766,16 +774,16 @@ export default function PYQEngine() {
         </motion.form>
 
         {/* Pipeline Status */}
-        {(isSearching || isExtracting || searchQueries.length > 0) && (
+        {(isSearching || isExtracting || isGenerating || searchQueries.length > 0) && (
           <motion.div 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             className="max-w-4xl mx-auto space-y-4"
           >
             <div className="flex items-center gap-4 text-sm">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
-                {isSearching ? <PenPaperAnimation /> : <CheckCircle className="w-4 h-4" />}
-                Generating Queries
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching || isGenerating ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
+                {isSearching || isGenerating ? <PenPaperAnimation /> : <CheckCircle className="w-4 h-4" />}
+                {isGenerating ? 'AI Background Generation' : 'Generating Queries'}
               </div>
               <ArrowRight className="w-4 h-4 text-gray-600" />
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isExtracting ? 'bg-[#B026FF]/10 text-[#B026FF] border-[#B026FF]/30' : results.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
