@@ -37,16 +37,20 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
     setIsExporting(true);
     try {
       if (!exportRef.current) return;
-      const doc = new jsPDF('p', 'mm', 'a4');
-      await doc.html(exportRef.current, {
-        callback: (doc) => {
-          doc.save(`${title.replace(/\s+/g, '_')}_Questions.pdf`);
-        },
-        x: 10,
-        y: 10,
-        width: 190,
-        windowWidth: 1000
+      
+      const canvas = await html2canvas(exportRef.current, {
+        scale: 2,
+        useCORS: true,
       });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const imgProps = doc.getImageProperties(imgData);
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      doc.save(`${title.replace(/\s+/g, '_')}_Questions.pdf`);
     } catch (error) {
       console.error('Export failed:', error);
     } finally {

@@ -47,6 +47,17 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [lineWidth, setLineWidth] = useState(3);
   
   const [strokes, setStrokes] = useState<Stroke[]>([]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const hasExpired = strokes.some(s => s.tool === 'highlighter' && s.startTime && (now - s.startTime > 7000));
+      if (hasExpired) {
+        setStrokes(prev => prev.filter(s => !(s.tool === 'highlighter' && s.startTime && (now - s.startTime > 7000))));
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [strokes]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [history, setHistory] = useState<Stroke[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);

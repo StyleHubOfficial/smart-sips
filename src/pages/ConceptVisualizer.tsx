@@ -89,12 +89,12 @@ export default function ConceptVisualizer() {
   };
 
   const templates = [
-    { title: 'UML Class Diagram', query: 'Create a UML class diagram for an e-commerce system with User, Product, Order, and Payment classes.' },
-    { title: 'ER Diagram', query: 'Generate an ER diagram for a library management system database.' },
-    { title: 'Network Topology', query: 'Visualize a secure corporate network topology with DMZ, Internal LAN, and Cloud integration.' },
-    { title: 'System Architecture', query: 'Show a microservices architecture for a video streaming platform with Load Balancer, API Gateway, and Auth service.' },
-    { title: 'Data Flow Diagram', query: 'Create a DFD for a customer onboarding process.' },
-    { title: 'Flowchart', query: 'Generate a flowchart for a binary search algorithm.' },
+    { title: 'Cell Structure', query: 'Create a detailed diagram of a plant cell showing all organelles like nucleus, mitochondria, chloroplasts, and cell wall (NCERT Class 9 Biology).' },
+    { title: 'Periodic Table Trends', query: 'Visualize periodic trends like atomic radius, ionization energy, and electronegativity across periods and groups (NCERT Class 11 Chemistry).' },
+    { title: 'Human Circulatory System', query: 'Draw a schematic diagram of the human circulatory system showing heart, lungs, and blood vessels (NCERT Class 10 Biology).' },
+    { title: 'Newton\'s Laws of Motion', query: 'Create a diagram illustrating Newton\'s three laws of motion with examples like a block on an inclined plane (NCERT Class 11 Physics).' },
+    { title: 'Electromagnetic Spectrum', query: 'Visualize the electromagnetic spectrum showing different waves, their frequencies, and wavelengths (NCERT Class 12 Physics).' },
+    { title: 'Photosynthesis Process', query: 'Draw a diagram showing the light-dependent and light-independent reactions of photosynthesis in a chloroplast (NCERT Class 11 Biology).' },
   ];
 
   const handleTemplateSelect = (templateQuery: string) => {

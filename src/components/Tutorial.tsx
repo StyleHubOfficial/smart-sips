@@ -4,39 +4,32 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Smart Sunrise v4.0 Advance",
-    content: "Welcome to the Advance 4.0x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
+    title: "Smart Sunrise v3.0",
+    content: "Welcome to the Smart Sunrise v3.0! Explore our advanced practice arena, interactive whiteboards, and AI-powered tools.",
     icon: Sparkles,
     color: "#00F0FF",
     target: "header"
   },
   {
-    title: "Advanced Practice Arena",
-    content: "Now featuring live question generation, source links, and a powerful similar question generator (AI, PYQ, or Search).",
+    title: "Practice Arena",
+    content: "Generate practice questions with AI, view solutions, and track your progress.",
     icon: BrainCircuit,
     color: "#B026FF",
     target: "practice"
   },
   {
     title: "Interactive Whiteboards",
-    content: "New bottom-aligned toolbar with advanced eraser tools (laser pointer, selection erase) and fullscreen support for immersive teaching.",
+    content: "Use advanced tools like laser pointer, selection erase, and floating toolbar for immersive teaching.",
     icon: MonitorPlay,
     color: "#00F0FF",
     target: "whiteboard"
   },
   {
-    title: "Smart Timer System",
-    content: "Set custom practice durations and track your progress with our new integrated timer controls.",
+    title: "AI Generators",
+    content: "Generate diagrams, flowcharts, and concepts with AI.",
     icon: Zap,
     color: "#10B981",
-    target: "timer"
-  },
-  {
-    title: "Enhanced Dashboard",
-    content: "Redesigned content cards with neon borders and detailed hover information for better resource management.",
-    icon: LayoutGrid,
-    color: "#FACC15",
-    target: "dashboard"
+    target: "generators"
   }
 ];
 
@@ -156,11 +149,6 @@ export default function Tutorial() {
     localStorage.setItem('sunrise_skip_intro', String(newValue));
   };
 
-  const handleSkipForSession = () => {
-    sessionStorage.setItem('sunrise_skip_intro_session', 'true');
-    setIsOpen(false);
-  };
-
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v3_seen');
     const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
@@ -271,7 +259,7 @@ export default function Tutorial() {
                       </button>
                     )}
                     <button 
-                      onClick={handleSkipForSession}
+                      onClick={() => setIsOpen(false)}
                       className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all text-sm"
                     >
                       Skip for Now

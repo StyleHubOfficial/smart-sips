@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
+import { PenPaperAnimation } from '../components/PenPaperAnimation';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -731,7 +732,7 @@ export default function PYQEngine() {
               className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {isSearching || isExtracting ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
+                <><PenPaperAnimation size={20} /> Processing...</>
               ) : (
                 <><Search className="w-5 h-5" /> Discover PYQs</>
               )}
@@ -748,7 +749,7 @@ export default function PYQEngine() {
           >
             <div className="flex items-center gap-4 text-sm">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
-                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                {isSearching ? <PenPaperAnimation /> : <CheckCircle className="w-4 h-4" />}
                 Generating Queries
               </div>
               <ArrowRight className="w-4 h-4 text-gray-600" />

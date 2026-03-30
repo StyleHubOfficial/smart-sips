@@ -6,7 +6,6 @@ import Courses from "./pages/Courses";
 import QuestionsArena from "./pages/QuestionsArena";
 import AIGenerators from "./pages/AIGenerators";
 import Upload from "./pages/Upload";
-import Manage from "./pages/Manage";
 import Analytics from "./pages/Analytics";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
@@ -99,7 +98,6 @@ function AppContent({
               <Route path="/questions" element={<PageTransition><QuestionsArena /></PageTransition>} />
               <Route path="/ai-generators" element={<PageTransition><AIGenerators /></PageTransition>} />
               <Route path="/upload" element={<PageTransition><Upload onOpenLogin={() => setIsLoginModalOpen(true)} /></PageTransition>} />
-              <Route path="/manage" element={<PageTransition><Manage /></PageTransition>} />
               <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
               <Route path="/practice" element={<PageTransition><Practice /></PageTransition>} />
               <Route path="/pyq" element={<PageTransition><PYQEngine /></PageTransition>} />
@@ -186,7 +184,6 @@ export default function App() {
     
     // If skip intro was clicked, only skip for this session
     if (skipped) {
-      localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
       sessionStorage.setItem('sunrise_skip_intro_session', 'true');
     } else {
       setShowDeveloperCredit(true);
