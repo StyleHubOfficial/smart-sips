@@ -140,7 +140,9 @@ function AppContent({
 export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(() => {
-    return localStorage.getItem('sunrise_skip_intro') !== 'true';
+    const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
+    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
+    return !isPermanentlySkipped && !isSessionSkipped;
   });
   const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(() => {
@@ -151,14 +153,11 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { isGlowEnabled } = useAppStore();
   const { theme } = useThemeStore();
-  const [isRevealed, setIsRevealed] = useState(false);
-
-  useEffect(() => {
-    // If skip intro is true, reveal immediately
-    if (localStorage.getItem('sunrise_skip_intro') === 'true') {
-      setIsRevealed(true);
-    }
-  }, []);
+  const [isRevealed, setIsRevealed] = useState(() => {
+    const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
+    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
+    return isPermanentlySkipped || isSessionSkipped;
+  });
 
   useEffect(() => {
     if (theme === 'light') {
@@ -184,10 +183,10 @@ export default function App() {
       setIsRevealed(true);
     }, 400);
     
-    // If skip intro was clicked, also skip tutorial/welcome
+    // If skip intro was clicked, only skip for this session
     if (skipped) {
       localStorage.setItem('sunrise_tutorial_v2_seen', 'true');
-      localStorage.setItem('sunrise_skip_intro', 'true');
+      sessionStorage.setItem('sunrise_skip_intro_session', 'true');
     } else {
       setShowDeveloperCredit(true);
     }

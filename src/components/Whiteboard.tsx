@@ -165,12 +165,29 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       if (selectedStrokeIds.includes(stroke.id)) {
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#00F0FF';
-      } else if (stroke.tool === 'highlighter' && stroke.startTime && (Date.now() - stroke.startTime) < 7000) {
-        // Blinking/Glow effect for highlighter
-        const time = Date.now() / 1000;
-        const glow = Math.sin(time * 2) * 5 + 10;
-        ctx.shadowBlur = glow;
-        ctx.shadowColor = stroke.color;
+      } else if (stroke.tool === 'highlighter' && stroke.startTime) {
+        const elapsed = Date.now() - stroke.startTime;
+        if (elapsed < 7000) {
+          // Blinking/Glow effect for highlighter
+          const time = Date.now() / 1000;
+          const pulse = (Math.sin(time * 3) + 1) / 2; // 0 to 1
+          const glow = pulse * 15 + 5;
+          ctx.shadowBlur = glow;
+          ctx.shadowColor = stroke.color;
+          
+          // Fade out the effect as it nears 7 seconds
+          const fadeStart = 5000;
+          if (elapsed > fadeStart) {
+            const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
+            ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
+            ctx.shadowBlur *= (1 - fadeProgress);
+          } else {
+            ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
+          }
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = stroke.opacity || 0.3;
+        }
       } else {
         ctx.shadowBlur = 0;
       }

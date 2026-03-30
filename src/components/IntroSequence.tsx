@@ -114,8 +114,10 @@ export const IntroSequence: React.FC<{ onComplete: (skipped?: boolean) => void }
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
+        whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.15)", color: "#fff" }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => onComplete(true)}
-        className="absolute top-8 right-8 z-[9999] px-5 py-2 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium backdrop-blur-sm"
+        className="absolute top-8 right-8 z-[9999] px-5 py-2 rounded-full bg-white/5 border border-white/10 text-white/50 transition-all text-xs font-medium backdrop-blur-sm"
       >
         Skip Intro
       </motion.button>

@@ -88,67 +88,6 @@ Key Capabilities:
 • Syllabus completion prediction
 • Adaptive planning before exams
 This feature ensures efficient academic planning while reducing manual workload for administrators and teachers.`
-  },
-  {
-    id: 'slide-whiteboard',
-    title: "Slide Whiteboard Mode (Presentation Solver)",
-    icon: MonitorPlay,
-    color: "#FACC15",
-    description: `🔹 Brief Description
-A presentation-style question solving mode where each question becomes a teaching slide with a fully interactive whiteboard. Teachers can write, draw, highlight, and annotate directly beside or on top of the question while explaining the solution.
-Questions appear one-by-one or two-per-slide, allowing teachers to move through them like a presentation while solving problems step-by-step. This mode transforms Practice Arena into a live classroom solving environment.
-Key Highlights
-• Slide-based question solving
-• Write directly on question
-• Full-screen teaching mode
-• Next / previous slide navigation
-• Multi-layer annotations
-• Smart panel friendly interface
-• Save solved question slides`
-  },
-  {
-    id: 'side-whiteboard',
-    title: "Side Whiteboard Mode (Inline Question Solver)",
-    icon: GitGraph,
-    color: "#EF4444",
-    description: `🔹 Brief Description
-A powerful inline whiteboard mode that allows teachers to solve and explain questions directly while viewing the question list. When activated, a smooth collapsible digital whiteboard appears beside the questions, allowing teachers to write, draw diagrams, or explain concepts in real time while scrolling through questions.
-The whiteboard can be expanded, collapsed, or resized, ensuring flexible teaching during classroom discussions. This feature is optimized for smart panels and classroom teaching, making question solving interactive and visual.
-Key Highlights
-• Collapsible side whiteboard
-• Smooth scrolling question list
-• Diagram drawing tools
-• Math writing support
-• Instant erase and undo
-• Smart panel optimized layout
-• Save explanation as image/PDF`
-  },
-  {
-    id: 'smart-dashboard',
-    title: "🚀 Smart Classroom Dashboard (v3.0)",
-    icon: LayoutGrid,
-    color: "#3B82F6",
-    description: `A completely redesigned Smart Classroom Dashboard that acts as the central control screen for the entire learning platform. This dashboard is designed for public classroom display on smart panels, allowing teachers and students to instantly access educational resources and AI-powered tools.
-The interface is extremely smooth, professional, and visually engaging, making it ideal as the main landing page of the platform.
-Key Highlights
-• Ultra-smooth and professional UI optimized for smart panels
-• Intelligent content discovery with advanced filters
-• AI-generated thumbnails and smart topic formatting
-• Automatic content organization for better readability
-• Smart panel presentation mode for classroom use`
-  },
-  {
-    id: 'copilot-panel',
-    title: "🧠 AI Classroom Copilot Panel",
-    icon: BrainCircuit,
-    color: "#8B5CF6",
-    description: `An advanced AI assistant integrated directly into the dashboard that continuously analyzes uploaded classroom content and automatically suggests useful teaching resources.
-The system intelligently detects topics and recommends tools such as:
-• practice quizzes
-• concept diagrams
-• physics simulations
-• AI lesson plans
-This transforms the platform into a real-time AI teaching assistant, helping teachers instantly generate interactive learning materials.`
   }
 ];
 

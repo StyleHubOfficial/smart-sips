@@ -98,6 +98,19 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     const [displayScore, setDisplayScore] = useState(0);
     const [displayAccuracy, setDisplayAccuracy] = useState(0);
 
+    const getFeedback = (acc: number) => {
+      if (acc >= 95) return { emoji: "🏆", reaction: "Superb", color: "text-yellow-400" };
+      if (acc >= 85) return { emoji: "🌟", reaction: "Outstanding", color: "text-[#00F0FF]" };
+      if (acc >= 75) return { emoji: "✨", reaction: "Perfect", color: "text-[#B026FF]" };
+      if (acc >= 70) return { emoji: "🎯", reaction: "Excellent", color: "text-emerald-400" };
+      if (acc >= 60) return { emoji: "✅", reaction: "Well done", color: "text-green-400" };
+      if (acc >= 50) return { emoji: "😊", reaction: "Good", color: "text-blue-400" };
+      if (acc >= 30) return { emoji: "👍", reaction: "Need improvement", color: "text-orange-400" };
+      return { emoji: "📚", reaction: "Practice more", color: "text-red-400" };
+    };
+
+    const feedback = getFeedback(accuracy);
+
     useEffect(() => {
       let start = 0;
       const duration = 1500; // 1.5 seconds
@@ -126,52 +139,55 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-        className="w-full max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+        className="w-full max-w-4xl mx-auto space-y-6 mb-8"
       >
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Accuracy</div>
-          <div className="relative w-20 h-20 flex items-center justify-center">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
-              <motion.circle 
-                cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" 
-                strokeDasharray={226}
-                initial={{ strokeDashoffset: 226 }}
-                animate={{ strokeDashoffset: 226 - (226 * accuracy) / 100 }}
-                transition={{ duration: 1.5, ease: "easeOut" }}
-                className="text-[#00F0FF]"
-              />
-            </svg>
-            <span className="absolute text-xl font-bold text-white">{displayAccuracy}%</span>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Accuracy</div>
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+                <motion.circle 
+                  cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="4" fill="transparent" 
+                  strokeDasharray={226}
+                  initial={{ strokeDashoffset: 226 }}
+                  animate={{ strokeDashoffset: 226 - (226 * accuracy) / 100 }}
+                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  className="text-[#00F0FF]"
+                />
+              </svg>
+              <span className="absolute text-xl font-bold text-white">{displayAccuracy}%</span>
+            </div>
+            <div className={`text-2xl mt-2 flex flex-col items-center gap-1`}>
+              <span>{feedback.emoji}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-tighter ${feedback.color}`}>{feedback.reaction}</span>
+            </div>
           </div>
-          <div className="text-2xl mt-2">
-            {accuracy >= 90 ? '🏆' : accuracy >= 70 ? '🌟' : accuracy >= 50 ? '👍' : '📚'}
+
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Score</div>
+            <div className="text-3xl font-display font-bold text-[#B026FF]">{displayScore} / {total}</div>
+            <div className="text-[10px] text-gray-500 mt-1">Questions Correct</div>
           </div>
-        </div>
 
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Score</div>
-          <div className="text-3xl font-display font-bold text-[#B026FF]">{displayScore} / {total}</div>
-          <div className="text-[10px] text-gray-500 mt-1">Questions Correct</div>
-        </div>
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Time Taken</div>
+            <div className="text-3xl font-display font-bold text-[#FFD600]">{formatTime(timeTaken)}</div>
+            <div className="text-[10px] text-gray-500 mt-1">Total Duration</div>
+          </div>
 
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Time Taken</div>
-          <div className="text-3xl font-display font-bold text-[#FFD600]">{formatTime(timeTaken)}</div>
-          <div className="text-[10px] text-gray-500 mt-1">Total Duration</div>
-        </div>
-
-        <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Avg. Speed</div>
-          <div className="text-3xl font-display font-bold text-emerald-400">{avgSpeed}s</div>
-          <div className="text-[10px] text-gray-500 mt-1">Per Question</div>
+          <div className="glass-panel p-6 rounded-2xl border border-white/10 flex flex-col items-center justify-center text-center">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Avg. Speed</div>
+            <div className="text-3xl font-display font-bold text-emerald-400">{avgSpeed}s</div>
+            <div className="text-[10px] text-gray-500 mt-1">Per Question</div>
+          </div>
         </div>
 
         {!analysis && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-4 flex justify-center mt-4"
+            className="flex justify-center mt-4"
           >
             <button
               onClick={handleStartAnalysis}
@@ -293,7 +309,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
     const percentage = (score / questions.length) * 100;
 
-    if (percentage >= 80) {
+    if (percentage >= 70) {
       setShowCelebration(true);
       triggerConfetti();
       setTimeout(() => setShowCelebration(false), 5000);
@@ -321,7 +337,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     if (questions.length > 0 && Object.keys(selectedOptions).length === questions.length) {
       const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;
       const percentage = (score / questions.length) * 100;
-      if (percentage >= 90 && !showCelebration) {
+      if (percentage >= 70 && !showCelebration) {
         setShowCelebration(true);
         triggerConfetti();
         setTimeout(() => setShowCelebration(false), 3000);

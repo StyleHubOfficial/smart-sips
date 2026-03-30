@@ -86,7 +86,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
         <div className="relative group cursor-pointer">
           <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
           <div className="relative flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] shadow-[0_0_15px_rgba(0,240,255,0.3)]">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] shadow-[0_0_20px_rgba(0,240,255,0.4)]">
               <div className="w-full h-full bg-[#0E0E12] rounded-full flex items-center justify-center overflow-hidden">
                 {logo ? (
                   <img 
@@ -97,7 +97,7 @@ export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLo
                     onError={() => setLogo(null)}
                   />
                 ) : (
-                  <Monitor className="w-5 h-5 text-[#00F0FF]" />
+                  <Monitor className="w-6 h-6 text-[#00F0FF]" />
                 )}
               </div>
             </div>
