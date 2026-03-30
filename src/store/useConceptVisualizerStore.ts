@@ -23,6 +23,7 @@ interface ConceptVisualizerState {
   setSourceFile: (file: { name: string; data: string; mimeType: string } | null) => void;
   setModel: (model: string) => void;
   setDiagramCount: (count: number) => void;
+  setVisualizerData: (data: VisualizerData | null) => void;
   generateVisualization: (apiKey: string) => Promise<void>;
 }
 
@@ -37,6 +38,7 @@ export const useConceptVisualizerStore = create<ConceptVisualizerState>((set, ge
   setSourceFile: (sourceFile) => set({ sourceFile }),
   setModel: (model) => set({ model }),
   setDiagramCount: (diagramCount) => set({ diagramCount }),
+  setVisualizerData: (visualizerData) => set({ visualizerData }),
   generateVisualization: async (apiKey: string) => {
     set({ loading: true, visualizerData: null });
     try {

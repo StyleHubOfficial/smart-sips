@@ -13,6 +13,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useGenerationStore } from '../store/useGenerationStore';
 import confetti from 'canvas-confetti';
 import { GoogleGenAI } from '@google/genai';
 import { BackButton } from '../components/BackButton';
@@ -64,6 +65,16 @@ export default function Practice() {
   const [practiceFinished, setPracticeFinished] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    // Check if there's a background generation task for Practice
+    const practiceTask = tasks.find(t => t.toolId === 'practice' && t.status === 'completed');
+    if (practiceTask && questions.length === 0) {
+      const parsedQuestions = typeof practiceTask.result === 'string' ? JSON.parse(practiceTask.result) : practiceTask.result;
+      usePracticeStore.getState().setQuestions(parsedQuestions);
+    }
+  }, [tasks, questions]);
 
   const handleUploadReport = () => {
     const score = questions.filter(q => selectedOptions[q.id] === q.correctAnswer).length;

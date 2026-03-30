@@ -70,6 +70,7 @@ interface PracticeState {
   setShowSolution: (questionId: string, show: boolean) => void;
   setShowSourceLinks: (show: boolean) => void;
   setStepReveal: (questionId: string, step: number) => void;
+  setQuestions: (questions: Question[]) => void;
   generateQuestions: (apiKey: string, onChunk?: (questions: Question[]) => void) => Promise<void>;
   generateNextQuestions: (apiKey: string, count: number, onChunk?: (questions: Question[]) => void) => Promise<void>;
   generateSimilarQuestions: (apiKey: string, question: Question, type: 'ai' | 'pyq' | 'search') => Promise<void>;
@@ -150,6 +151,8 @@ export const usePracticeStore = create<PracticeState>()(
         set((state) => ({
           stepReveals: { ...state.stepReveals, [questionId]: step }
         })),
+
+      setQuestions: (questions) => set({ questions }),
 
       clearQuestions: () => set({ questions: [], selectedOptions: {}, showSolutions: {}, showHints: {}, stepReveals: {}, analysis: null }),
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, BrainCircuit, MonitorPlay, GitGraph, FileText, CheckCircle, Loader2, Play, Eye, Zap, List, HelpCircle, FileQuestion, BookOpen } from 'lucide-react';
 import { useCoPilotStore } from '../store/useCoPilotStore';
+import { useGenerationStore } from '../store/useGenerationStore';
 import { analyzeContentForCoPilot, CoPilotSuggestion } from '../services/aiCoPilotService';
 import { useNavigate } from 'react-router-dom';
 
@@ -111,12 +112,39 @@ export default function AutoSuggestModal() {
   };
 
   const handleGenerateAll = async () => {
+    if (!extractedData || !selectedContent) return;
+    
     setGeneratingAll(true);
-    // Simulate background generation
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    let apiKey = '';
+    if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+      apiKey = process.env.GEMINI_API_KEY;
+    }
+    if (!apiKey && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+      apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    }
+
+    if (!apiKey) {
+      console.error("AutoSuggest: Gemini API Key missing.");
+      setGeneratingAll(false);
+      return;
+    }
+
+    const { startGeneration } = useGenerationStore.getState();
+    const contentId = selectedContent.public_id;
+
+    // Trigger all suggestions in background
+    const promises = extractedData.suggestions.map((suggestion: CoPilotSuggestion) => {
+      return startGeneration(contentId, suggestion.toolId, suggestion.autoFillQuery, apiKey);
+    });
+
+    // We don't necessarily need to wait for all of them to finish here, 
+    // but waiting a bit to show progress is fine.
+    // The store will handle the background execution.
+    
     setGeneratingAll(false);
     closeModal();
-    alert("Background generation started! The generated content will be attached to this document.");
+    alert("Background generation started! You can see the results in each section.");
   };
 
   return (

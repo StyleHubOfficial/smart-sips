@@ -10,6 +10,7 @@ import { useSimulatorStore } from '../store/useSimulatorStore';
 import SimLoader from '../components/SimLoader';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 import { useLocation } from 'react-router-dom';
+import { useGenerationStore } from '../store/useGenerationStore';
 import { generateHinglishExplanation } from '../services/aiExplainerService';
 import { pcmToWav } from '../utils/audio';
 import { GoogleGenAI } from '@google/genai';
@@ -61,6 +62,15 @@ export default function Simulator() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    // Check if there's a background generation task for Simulator
+    const simulatorTask = tasks.find(t => t.toolId === 'simulator' && t.status === 'completed');
+    if (simulatorTask && !generatedCode) {
+      setGeneratedCode(simulatorTask.result);
+    }
+  }, [tasks, generatedCode, setGeneratedCode]);
 
   const handleExplain = async () => {
     if (!generatedCode) return;

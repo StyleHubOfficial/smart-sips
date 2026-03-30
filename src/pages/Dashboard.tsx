@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { GrammarTextarea } from "../components/GrammarTextarea";
-import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Presentation, Activity, ArrowUpRight } from "lucide-react";
+import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Presentation, Activity, ArrowUpRight, CheckCircle, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useAppStore } from "../store/useAppStore";
 import { useCoPilotStore } from "../store/useCoPilotStore";
+import { useGenerationStore } from "../store/useGenerationStore";
 import AutoSuggestModal from "../components/AutoSuggestModal";
 import { Link } from "react-router-dom";
 import axios from "axios";
@@ -38,6 +39,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { isAuthenticated } = useAuthStore();
+  const { tasks } = useGenerationStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { notifications: siteNotifications } = useAppStore();
 
@@ -427,6 +429,61 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           </div>
         </div>
       </motion.div>
+
+        {/* Background Tasks Section */}
+        {tasks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-[#00F0FF]/10 text-[#00F0FF]">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-display font-bold text-white">AI Background Tasks</h2>
+                  <p className="text-gray-400 text-sm">Ongoing and completed generations from Co-Pilot</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tasks.map((task) => (
+                <div 
+                  key={task.id}
+                  className="glass-panel p-4 rounded-2xl border border-white/10 flex items-center justify-between group hover:border-[#00F0FF]/30 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl ${
+                      task.status === 'completed' ? 'bg-green-500/10 text-green-400' :
+                      task.status === 'error' ? 'bg-red-500/10 text-red-400' :
+                      'bg-[#00F0FF]/10 text-[#00F0FF] animate-pulse'
+                    }`}>
+                      {task.status === 'completed' ? <CheckCircle className="w-5 h-5" /> :
+                       task.status === 'error' ? <XCircle className="w-5 h-5" /> :
+                       <Loader2 className="w-5 h-5 animate-spin" />}
+                    </div>
+                    <div>
+                      <h4 className="text-white font-bold text-sm capitalize">{task.toolId.replace('-', ' ')}</h4>
+                      <p className="text-xs text-gray-500 truncate max-w-[150px]">{task.query}</p>
+                    </div>
+                  </div>
+                  
+                  {task.status === 'completed' && (
+                    <Link 
+                      to={`/${task.toolId.replace('concept-visualizer', 'visualizer').replace('pyq-engine', 'pyq')}`}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-[#00F0FF]/20 text-gray-400 hover:text-[#00F0FF] transition-all"
+                    >
+                      <ArrowUpRight className="w-4 h-4" />
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
       {/* Content Grid */}
       {loading ? (

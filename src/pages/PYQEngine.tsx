@@ -13,6 +13,7 @@ import Whiteboard from '../components/Whiteboard';
 import { BackButton } from '../components/BackButton';
 import { QuestionExporter } from '../components/QuestionExporter';
 import { useNavigate } from 'react-router-dom';
+import { useGenerationStore } from '../store/useGenerationStore';
 
 interface PYQ {
   question_id: string;
@@ -73,6 +74,17 @@ export default function PYQEngine() {
   const [activeSimilar, setActiveSimilar] = useState<string | null>(null);
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
+  const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    // Check if there's a background generation task for PYQ Engine
+    const pyqTask = tasks.find(t => t.toolId === 'pyq-engine' && t.status === 'completed');
+    if (pyqTask && results.length === 0) {
+      const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
+      setResults(parsedResults);
+      sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
+    }
+  }, [tasks, results]);
 
   useEffect(() => {
     const savedResults = sessionStorage.getItem('pyq_generated_results');

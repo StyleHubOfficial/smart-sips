@@ -9,6 +9,7 @@ import UploadToCoursesModal from '../components/UploadToCoursesModal';
 import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
+import { useGenerationStore } from '../store/useGenerationStore';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -37,6 +38,15 @@ export default function ConceptVisualizer() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    // Check if there's a background generation task for Concept Visualizer
+    const visualizerTask = tasks.find(t => t.toolId === 'concept-visualizer' && t.status === 'completed');
+    if (visualizerTask && !visualizerData) {
+      useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
+    }
+  }, [tasks, visualizerData]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);

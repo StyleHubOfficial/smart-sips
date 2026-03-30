@@ -12,6 +12,7 @@ import { InteractiveTree } from '../components/InteractiveTree';
 import CinematicLoader from '../components/CinematicLoader';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
+import { useGenerationStore } from '../store/useGenerationStore';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 mermaid.initialize({
@@ -43,6 +44,15 @@ export default function FlowChart() {
   const chartRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    // Check if there's a background generation task for FlowChart
+    const flowChartTask = tasks.find(t => t.toolId === 'flowchart' && t.status === 'completed');
+    if (flowChartTask && !generatedCode) {
+      useFlowChartStore.getState().setGeneratedCode(flowChartTask.result);
+    }
+  }, [tasks, generatedCode]);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
