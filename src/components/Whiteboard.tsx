@@ -78,15 +78,48 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
   }, [initialData]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
+
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      
+      // Set display size
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      
+      // Set actual size in memory
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      // Scale context to match dpr
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+        redraw();
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isFullscreen]);
+
   const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+    
+    // Return coordinates relative to the display size (CSS pixels)
+    // The context is already scaled by dpr, so we draw in CSS pixels
     return {
-      x: (clientX - rect.left) * (canvas.width / rect.width),
-      y: (clientY - rect.top) * (canvas.height / rect.height)
+      x: clientX - rect.left,
+      y: clientY - rect.top
     };
   };
 
@@ -202,13 +235,13 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ctx.restore();
     });
 
-    // Draw selection handles if a stroke is selected
-    selectedStrokeIds.forEach(id => {
-      const selected = strokes.find(s => s.id === id);
-      if (selected) {
-        drawSelectionHandles(ctx, selected);
+    // Draw selection handles if strokes are selected
+    if (selectedStrokeIds.length > 0) {
+      const selectedStrokes = strokes.filter(s => selectedStrokeIds.includes(s.id));
+      if (selectedStrokes.length > 0) {
+        drawSelectionHandles(ctx, selectedStrokes);
       }
-    });
+    }
 
     // Draw laser path separately (not stored in strokes)
     if (laserPath.length > 1) {
@@ -226,42 +259,83 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     ctx.globalAlpha = 1;
   };
 
-  const drawSelectionHandles = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
-    const bounds = getStrokeBounds(stroke);
-    const padding = 10;
+  const drawSelectionHandles = (ctx: CanvasRenderingContext2D, selectedStrokes: Stroke[]) => {
+    if (selectedStrokes.length === 0) return;
+
+    // Calculate combined bounds
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    selectedStrokes.forEach(stroke => {
+      const bounds = getStrokeBounds(stroke);
+      minX = Math.min(minX, bounds.minX);
+      minY = Math.min(minY, bounds.minY);
+      maxX = Math.max(maxX, bounds.maxX);
+      maxY = Math.max(maxY, bounds.maxY);
+    });
+
+    const padding = 15;
+    const handleSize = 10;
     
+    ctx.save();
     ctx.strokeStyle = '#00F0FF';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    ctx.strokeRect(bounds.minX - padding, bounds.minY - padding, bounds.maxX - bounds.minX + padding * 2, bounds.maxY - bounds.minY + padding * 2);
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = 'rgba(0, 240, 255, 0.5)';
+    
+    const width = maxX - minX + padding * 2;
+    const height = maxY - minY + padding * 2;
+    const x = minX - padding;
+    const y = minY - padding;
+
+    ctx.strokeRect(x, y, width, height);
     ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
     // Handles
     ctx.fillStyle = '#00F0FF';
-    const handleSize = 8;
     
-    // Resize handles
+    // Resize handles (Corners)
     const handles = [
-      { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
-      { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
-      { x: bounds.minX - padding, y: bounds.maxY + padding, id: 'bl' },
-      { x: bounds.maxX + padding, y: bounds.maxY + padding, id: 'br' },
+      { x: x, y: y, id: 'tl' },
+      { x: x + width, y: y, id: 'tr' },
+      { x: x, y: y + height, id: 'bl' },
+      { x: x + width, y: y + height, id: 'br' },
     ];
 
     handles.forEach(h => {
-      ctx.fillRect(h.x - handleSize/2, h.y - handleSize/2, handleSize, handleSize);
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, handleSize/2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     });
 
     // Rotation handle
-    const rotX = (bounds.minX + bounds.maxX) / 2;
-    const rotY = bounds.minY - padding - 30;
+    const rotX = x + width / 2;
+    const rotY = y - 40;
     ctx.beginPath();
-    ctx.moveTo(rotX, bounds.minY - padding);
+    ctx.moveTo(rotX, y);
     ctx.lineTo(rotX, rotY);
+    ctx.strokeStyle = '#00F0FF';
+    ctx.lineWidth = 2;
     ctx.stroke();
+    
     ctx.beginPath();
-    ctx.arc(rotX, rotY, handleSize/2, 0, Math.PI * 2);
+    ctx.arc(rotX, rotY, handleSize/2 + 2, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Multi-select indicator
+    if (selectedStrokes.length > 1) {
+      ctx.font = '12px Inter, sans-serif';
+      ctx.fillStyle = 'white';
+      ctx.fillText(`${selectedStrokes.length} items selected`, x, y - 10);
+    }
+
+    ctx.restore();
   };
 
   const getStrokeBounds = (stroke: Stroke) => {

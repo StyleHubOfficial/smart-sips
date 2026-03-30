@@ -226,7 +226,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 </h4>
                 <ul className="space-y-2">
                   {data.strengths?.map((s: string, i: number) => (
-                    <li key={`strength-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
+                    <li key={`strength-${s}-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#00F0FF] mt-1.5 shrink-0" />
                       {s}
                     </li>
@@ -240,7 +240,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 </h4>
                 <ul className="space-y-2">
                   {data.weaknesses?.map((w: string, i: number) => (
-                    <li key={`weakness-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
+                    <li key={`weakness-${w}-${i}`} className="flex items-start gap-2 text-gray-300 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
                       {w}
                     </li>
@@ -1717,7 +1717,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 <div className="space-y-6 flex-1">
                   <AnimatePresence mode="popLayout">
                     {questions.map((q, index) => (
-                      <div key={`${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
+                      <div key={`list-item-${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
                         {renderQuestionCard(q, index, true)}
                       </div>
                     ))}

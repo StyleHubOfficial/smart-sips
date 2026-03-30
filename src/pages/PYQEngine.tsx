@@ -548,7 +548,7 @@ export default function PYQEngine() {
                   ) : (
                     searchHistory.map((h, idx) => (
                       <button
-                        key={idx}
+                        key={h.date}
                         type="button"
                         onClick={() => {
                           setShowHistory(false);

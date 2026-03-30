@@ -30,8 +30,20 @@ export default function Home() {
         <div className="relative z-20 text-center px-4 max-w-4xl mx-auto mt-16">
           <motion.h1 
             initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            animate={{ 
+              y: [0, -10, 0],
+              opacity: 1 
+            }}
+            transition={{ 
+              y: {
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut"
+              },
+              opacity: {
+                duration: 0.8
+              }
+            }}
             className="text-5xl sm:text-7xl md:text-8xl font-display font-bold mb-6 tracking-tight drop-shadow-2xl"
           >
             Welcome to <br/>
@@ -66,33 +78,48 @@ export default function Home() {
         {/* Key Features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32">
           {[
-            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500" },
-            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500" },
-            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600" },
-            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600" },
-            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500" },
+            { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500", delay: 0.1 },
+            { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", delay: 0.2 },
+            { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3 },
+            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", delay: 0.4 },
+            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.5 },
           ].map((feature, idx) => (
               <motion.div
                 key={idx}
                 initial={{ y: 50, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                whileHover={{ scale: 1.05, y: -10 }}
-                whileTap={{ scale: 0.95 }}
-                className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-transparent group cursor-pointer relative overflow-hidden h-full"
+                transition={{ 
+                  duration: 0.6,
+                  delay: feature.delay,
+                  type: "spring",
+                  stiffness: 100
+                }}
+                whileHover={{ 
+                  scale: 1.05, 
+                  y: -15,
+                  transition: { duration: 0.2 }
+                }}
+                whileTap={{ scale: 0.98 }}
+                className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-300"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
-                {/* Animated Border */}
-                <div className={`absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50`} style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
                 
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]`}>
+                {/* Animated Glow Effect */}
+                <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.05)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
                   <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
-                    <feature.icon className="w-7 h-7 text-white" />
+                    <feature.icon className="w-7 h-7 text-white group-hover:animate-pulse" />
                   </div>
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-400 transition-colors">{feature.title}</h3>
-                <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{feature.desc}</p>
+                <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#00F0FF] transition-colors duration-300">{feature.title}</h3>
+                <p className="text-gray-400 group-hover:text-gray-200 transition-colors duration-300 leading-relaxed">{feature.desc}</p>
+                
+                <div className="mt-6 flex items-center text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                  <span className="text-sm font-bold uppercase tracking-wider">Explore Now</span>
+                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
               </motion.div>
           ))}
         </div>

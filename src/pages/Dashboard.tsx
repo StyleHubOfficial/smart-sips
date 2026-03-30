@@ -431,7 +431,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
       {loading ? (
         <div className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}>
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className={`glass-panel rounded-2xl animate-pulse border border-white/5 relative overflow-hidden ${viewMode === 'grid' ? 'h-72' : 'h-24'}`}>
+            <div key={`skeleton-${i}`} className={`glass-panel rounded-2xl animate-pulse border border-white/5 relative overflow-hidden ${viewMode === 'grid' ? 'h-72' : 'h-24'}`}>
                <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
             </div>
           ))}
@@ -462,7 +462,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
             {/* Floating particles */}
             {[...Array(5)].map((_, i) => (
               <motion.div
-                key={i}
+                key={`particle-${i}`}
                 animate={{ 
                   y: [0, -20, 0], 
                   opacity: [0, 1, 0],
@@ -543,7 +543,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
                 <div className="absolute right-0 top-full mt-2 bg-black/90 border border-white/10 rounded-xl p-2 z-50 min-w-[100px] shadow-2xl backdrop-blur-md">
                   {[1, 2, 3, 4].map(num => (
                     <button 
-                      key={num}
+                      key={`vls-case-${num}`}
                       onClick={() => {
                         setVlsCases(num);
                         setShowVlsCasesDropdown(false);

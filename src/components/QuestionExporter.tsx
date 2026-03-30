@@ -56,18 +56,49 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
 
   return (
     <>
-      <div ref={exportRef} style={{ display: 'none' }}>
-        {/* Render questions here */}
-        <h1>{title}</h1>
+      <div 
+        ref={exportRef} 
+        style={{ 
+          position: 'absolute', 
+          left: '-9999px', 
+          top: 0, 
+          width: '800px',
+          padding: '40px',
+          background: 'white',
+          color: 'black',
+          fontFamily: 'serif'
+        }}
+      >
+        <h1 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid black', paddingBottom: '10px' }}>{title}</h1>
         {questions.map((q, i) => (
-          <div key={i}>
-            <p>Q{i + 1}. {q.question || q.question_text}</p>
-            {q.options?.map((opt, idx) => (
-              <p key={idx}>{String.fromCharCode(65 + idx)}) {opt}</p>
-            ))}
-            <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-              {q.solution || q.explanation || ''}
-            </ReactMarkdown>
+          <div key={i} style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
+              Q{i + 1}. {q.question || q.question_text}
+            </div>
+            {q.options && q.options.length > 0 && (
+              <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
+                {q.options.map((opt, idx) => (
+                  <div key={idx} style={{ marginBottom: '5px' }}>
+                    {String.fromCharCode(65 + idx)}) {opt}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(q.solution || q.explanation) && (
+              <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9f9f9', borderLeft: '4px solid #00F0FF' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '12px', color: '#666', marginBottom: '5px' }}>SOLUTION & EXPLANATION:</div>
+                <div className="markdown-body">
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                    {q.solution || q.explanation || ''}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+            {(q.year || q.pyqYear || q.exam) && (
+              <div style={{ fontSize: '10px', color: '#888', marginTop: '5px', textAlign: 'right' }}>
+                Source: {q.exam || ''} {q.year || q.pyqYear || ''}
+              </div>
+            )}
           </div>
         ))}
       </div>

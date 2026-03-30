@@ -88,6 +88,20 @@ export default function ConceptVisualizer() {
     }
   };
 
+  const templates = [
+    { title: 'UML Class Diagram', query: 'Create a UML class diagram for an e-commerce system with User, Product, Order, and Payment classes.' },
+    { title: 'ER Diagram', query: 'Generate an ER diagram for a library management system database.' },
+    { title: 'Network Topology', query: 'Visualize a secure corporate network topology with DMZ, Internal LAN, and Cloud integration.' },
+    { title: 'System Architecture', query: 'Show a microservices architecture for a video streaming platform with Load Balancer, API Gateway, and Auth service.' },
+    { title: 'Data Flow Diagram', query: 'Create a DFD for a customer onboarding process.' },
+    { title: 'Flowchart', query: 'Generate a flowchart for a binary search algorithm.' },
+  ];
+
+  const handleTemplateSelect = (templateQuery: string) => {
+    setQuery(templateQuery);
+    addNotification('info', 'Template loaded. Click Visualize to generate.');
+  };
+
   const handlePromptBuild = async () => {
     if (!query.trim()) {
       addNotification('info', 'Please enter a simple topic first');
@@ -304,6 +318,34 @@ export default function ConceptVisualizer() {
           </div>
         </div>
       </div>
+
+      {/* Templates Section */}
+      {!loading && !visualizerData && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Database className="w-5 h-5 text-[#00F0FF]" />
+            <h2 className="text-xl font-bold">Pre-built Diagram Templates</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map((template, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleTemplateSelect(template.query)}
+                className="glass-panel p-4 rounded-xl border border-white/10 hover:border-[#00F0FF]/50 transition-all text-left group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-200 group-hover:text-[#00F0FF] transition-colors">{template.title}</span>
+                  <ChevronRight className="w-4 h-4 text-gray-500 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Controls */}
