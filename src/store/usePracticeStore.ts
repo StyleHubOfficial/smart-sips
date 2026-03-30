@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 export interface Question {
   id: string;
@@ -71,6 +71,7 @@ interface PracticeState {
   setShowSourceLinks: (show: boolean) => void;
   setStepReveal: (questionId: string, step: number) => void;
   generateQuestions: (apiKey: string, onChunk?: (questions: Question[]) => void) => Promise<void>;
+  generateNextQuestions: (apiKey: string, count: number, onChunk?: (questions: Question[]) => void) => Promise<void>;
   generateSimilarQuestions: (apiKey: string, question: Question, type: 'ai' | 'pyq' | 'search') => Promise<void>;
   analyzeScore: (apiKey: string) => Promise<void>;
   clearQuestions: () => void;
@@ -324,6 +325,151 @@ export const usePracticeStore = create<PracticeState>()(
           }
         } catch (error) {
           console.error('Error fetching questions:', error);
+          set({ loading: false });
+          throw error;
+        }
+      },
+
+      generateNextQuestions: async (apiKey, count, onChunk) => {
+        const { query, subject, examType, classLevel, model, difficulty, isPYQ, pyqYear, questionType, examFormat, sourceFiles, isSourceConverterMode, mixUp, sequenceWise, dppMode, questions } = get();
+        if (!query.trim() && sourceFiles.length === 0) return;
+
+        // We don't clear questions, we append to them
+        set({ loading: true });
+
+        let selectedModel = model;
+        const validModels = ['gemini-3.1-flash-lite-preview', 'gemini-2.5-flash', 'gemini-3-flash-preview'];
+        if (!validModels.includes(selectedModel)) {
+          selectedModel = 'gemini-2.5-flash';
+          set({ model: selectedModel });
+        }
+
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          
+          let prompt = "";
+          
+          if (isSourceConverterMode && sourceFiles.length > 0) {
+            prompt = `You are an expert educational content analyzer and question generator.
+            [TASK]
+            1. ANALYZE the provided source material(s) (PDF/Image/Text).
+            2. GENERATE exactly ${count} MORE questions based ONLY on the content of these sources.
+            3. Ensure these new questions are DIFFERENT from the previous ones.
+            4. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the sources.' : 'MIX UP the order of concepts for a more challenging set.'}
+            5. Question Type: ${questionType}
+            6. Difficulty Level: ${difficulty}
+            
+            [CONSTRAINTS]
+            - DO NOT include any information not present in the sources.
+            - If the sources contain notes, convert them into conceptual and application-based questions.
+            - Ensure questions are authentic and pedagogically sound.`;
+          } else {
+            prompt = `Generate ${count} MORE questions based on this request: "${query}". 
+            Subject: ${subject}
+            Exam Type: ${examType}
+            Class Level: ${classLevel}
+            Difficulty Level: ${difficulty}
+            Question Type: ${questionType}
+            Exam Format: ${examFormat}
+            ${isPYQ ? `THIS IS A PYQ REQUEST. Generate authentic Previous Year Questions from the year ${pyqYear}.` : ''}
+            ${!isPYQ && !isSourceConverterMode && dppMode === 'sheet' ? 'THIS IS FOR A PRINTABLE PRACTICE SHEET. Ensure questions are formatted well for reading on paper.' : ''}
+            
+            The questions must be authentic and well-balanced.
+            Ensure these new questions are DIFFERENT from the previous ones you generated for this topic.
+            Ensure the questions are searched well and are from correct, authentic sources.`;
+          }
+
+          const contents = [];
+          
+          if (isSourceConverterMode && sourceFiles.length > 0) {
+            for (const file of sourceFiles) {
+              contents.push({
+                inlineData: {
+                  data: file.data,
+                  mimeType: file.mimeType || 'application/pdf'
+                }
+              });
+            }
+          }
+          
+          contents.push({ text: prompt });
+
+          const responseStream = await ai.models.generateContentStream({
+            model: selectedModel,
+            contents: { parts: contents },
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    question: { type: Type.STRING },
+                    options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    correctAnswer: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                    difficulty: { type: Type.STRING },
+                    topic: { type: Type.STRING },
+                    hints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    sourceLinks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    solutionSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  },
+                  required: ["id", "question", "options", "correctAnswer", "explanation", "difficulty", "topic"]
+                }
+              }
+            }
+          });
+
+          let fullText = '';
+          let lastParsedCount = 0;
+          const currentQuestions = [...questions];
+
+          for await (const chunk of responseStream) {
+            const c = chunk as any;
+            if (c.text) {
+              fullText += c.text;
+              try {
+                const partialJson = fullText.trim();
+                let objects = [];
+                
+                if (partialJson.startsWith('[')) {
+                  if (partialJson.endsWith(']')) {
+                    objects = JSON.parse(partialJson);
+                  } else {
+                    const lastValidBracket = partialJson.lastIndexOf('}');
+                    if (lastValidBracket > 0) {
+                      const validJsonString = partialJson.substring(0, lastValidBracket + 1) + ']';
+                      objects = JSON.parse(validJsonString);
+                    }
+                  }
+                }
+
+                if (objects.length > lastParsedCount) {
+                  lastParsedCount = objects.length;
+                  const newQuestions = [...currentQuestions, ...objects];
+                  set({ questions: newQuestions });
+                  if (onChunk) onChunk(newQuestions);
+                }
+              } catch (e) {
+                // Ignore parse errors during streaming
+              }
+            }
+          }
+
+          if (fullText) {
+            let parsedQuestions = [];
+            try {
+               parsedQuestions = JSON.parse(fullText.trim());
+            } catch (parseError) {
+               console.error("JSON Parse Error:", parseError, fullText);
+               throw new Error("Failed to parse questions from AI response.");
+            }
+            
+            set({ questions: [...currentQuestions, ...parsedQuestions], loading: false });
+          }
+        } catch (error) {
+          console.error('Error fetching next questions:', error);
           set({ loading: false });
           throw error;
         }

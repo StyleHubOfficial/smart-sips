@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, BookOpen, CheckCircle, XCircle, HelpCircle, Loader2, Save, BrainCircuit, LayoutGrid, List, Square, Sparkles, Plus, FileText, X, Activity, Timer, Presentation, LayoutPanelLeft, ChevronLeft, ChevronRight, Maximize2, History, Upload, Database, Pause, Play, ExternalLink, Link2, Clock, Trash2, RotateCcw, Copy, ChevronDown, Award, Wand2, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -23,7 +24,7 @@ export default function Practice() {
   const { 
     query, questionCount, subject, examType, classLevel, model, viewMode, difficulty, isPYQ, pyqYear, questionType, examFormat, isSmartPanelMode, sourceFiles, questions, loading, selectedOptions, showSolutions, showHints, showSourceLinks, stepReveals, analysis, analyzing, whiteboardMode,
     isSourceConverterMode, dppMode, mixUp, sequenceWise,
-    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFiles, setSelectedOption, setShowHint, setShowSolution, setShowSourceLinks, setStepReveal, generateQuestions, generateSimilarQuestions, analyzeScore, setWhiteboardMode,
+    setQuery, setQuestionCount, setSubject, setExamType, setClassLevel, setModel, setViewMode, setDifficulty, setIsPYQ, setPyqYear, setQuestionType, setExamFormat, setIsSmartPanelMode, setSourceFiles, setSelectedOption, setShowHint, setShowSolution, setShowSourceLinks, setStepReveal, generateQuestions, generateNextQuestions, generateSimilarQuestions, analyzeScore, setWhiteboardMode,
     setIsSourceConverterMode, setDppMode, setMixUp, setSequenceWise
   } = usePracticeStore();
   
@@ -57,6 +58,8 @@ export default function Practice() {
   const [generationMode, setGenerationMode] = useState<'live' | 'last'>('live');
   const [showSimilarModal, setShowSimilarModal] = useState<{questionId: string, type: 'ai' | 'pyq' | 'search'} | null>(null);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
+  const [nextQuestionCount, setNextQuestionCount] = useState(10);
+  const [isGeneratingNext, setIsGeneratingNext] = useState(false);
   const [version] = useState("Advance 2.5x");
   const [practiceFinished, setPracticeFinished] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -558,6 +561,26 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     const updatedFiles = [...sourceFiles];
     updatedFiles.splice(index, 1);
     setSourceFiles(updatedFiles);
+  };
+
+  const handleGenerateNext = async () => {
+    let apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      addNotification('error', 'API Key missing. Please set VITE_GEMINI_API_KEY in your environment variables.');
+      return;
+    }
+
+    setIsGeneratingNext(true);
+    try {
+      await generateNextQuestions(apiKey, nextQuestionCount, (qs) => {
+        console.log(`Streamed ${qs.length} total questions`);
+      });
+    } catch (error) {
+      console.error("Next Generation Error:", error);
+      addNotification('error', 'Failed to generate next questions. Please try again.');
+    } finally {
+      setIsGeneratingNext(false);
+    }
   };
 
   const handleSearch = async () => {
@@ -1454,7 +1477,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
             accept=".pdf,.txt,.csv,.json,.md"
           />
       <div className="relative w-full">
-        <textarea 
+        <GrammarTextarea 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -1990,6 +2013,36 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
           )}
         </AnimatePresence>
         
+        {questions.length > 0 && !loading && !practiceFinished && (
+          <div className="mt-8 flex justify-center items-center gap-4">
+            <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-4 py-2">
+              <span className="text-sm text-gray-400">Add:</span>
+              <select
+                value={nextQuestionCount}
+                onChange={(e) => setNextQuestionCount(Number(e.target.value))}
+                className="bg-transparent text-white outline-none text-sm font-medium"
+              >
+                <option value={5}>5 Qs</option>
+                <option value={10}>10 Qs</option>
+                <option value={15}>15 Qs</option>
+                <option value={20}>20 Qs</option>
+              </select>
+            </div>
+            <button
+              onClick={handleGenerateNext}
+              disabled={isGeneratingNext}
+              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium flex items-center gap-2 transition-all disabled:opacity-50"
+            >
+              {isGeneratingNext ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              Next
+            </button>
+          </div>
+        )}
+
         {questions.length > 0 && !loading && dppMode !== 'sheet' && !practiceFinished && (
           <div className="mt-8 mb-32 flex flex-col items-center">
             <div className="w-full max-w-2xl bg-white/5 rounded-full h-2 mb-8 overflow-hidden border border-white/10">

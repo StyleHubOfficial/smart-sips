@@ -140,8 +140,7 @@ export default function App() {
   const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(() => {
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
-    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
-    return !isPermanentlySkipped && !isSessionSkipped;
+    return !isPermanentlySkipped;
   });
   const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(() => {
@@ -154,8 +153,7 @@ export default function App() {
   const { theme } = useThemeStore();
   const [isRevealed, setIsRevealed] = useState(() => {
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
-    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
-    return isPermanentlySkipped || isSessionSkipped;
+    return isPermanentlySkipped;
   });
 
   useEffect(() => {
@@ -182,10 +180,7 @@ export default function App() {
       setIsRevealed(true);
     }, 400);
     
-    // If skip intro was clicked, only skip for this session
-    if (skipped) {
-      sessionStorage.setItem('sunrise_skip_intro_session', 'true');
-    } else {
+    if (!skipped) {
       setShowDeveloperCredit(true);
     }
   };

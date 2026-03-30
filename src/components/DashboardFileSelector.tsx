@@ -65,8 +65,8 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<DashboardFile[]>([]);
   const { isAuthenticated } = useAuthStore();
 
-  const CLASSES = ["Class 9", "Class 10", "Class 11", "Class 12"];
-  const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "Computer Science"];
+  const CLASSES = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12"];
+  const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "English", "Hindi", "History", "Geography", "Economics", "Accountancy", "Business Studies"];
 
   useEffect(() => {
     if (isOpen) {
@@ -138,13 +138,18 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
       const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
       
       if (selectedCategory === 'AI Generated') {
-        if (!meta.isAI) return false;
+        const isAI = meta.teacher === 'AI Assistant' || 
+                     meta.description?.toLowerCase().includes('ai-generated') ||
+                     meta.tags?.toLowerCase().includes('ai') ||
+                     meta.title?.toLowerCase().includes('ai') ||
+                     meta.isAI;
+        if (!isAI) return false;
       } else if (selectedCategory && selectedCategory !== 'All Content') {
-        if (meta.class !== selectedCategory) return false;
+        if (meta.class?.trim() !== selectedCategory) return false;
       }
 
       if (selectedSubject) {
-        if (meta.subject !== selectedSubject) return false;
+        if (meta.subject?.trim() !== selectedSubject) return false;
       }
 
       return matchesSearch;

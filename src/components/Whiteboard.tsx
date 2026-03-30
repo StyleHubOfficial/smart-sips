@@ -842,10 +842,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     <>
       <div 
         ref={containerRef}
-        className={`flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
+        className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
       >
         {/* Canvas Area */}
-        <div className={`flex-1 relative ${tool === 'select' ? '' : 'cursor-none touch-none'} ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
+        <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
           <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}
@@ -858,21 +858,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             className="absolute inset-0 w-full h-full"
           />
 
-          {/* Custom Cursor for Eraser/Pen feedback */}
-          {!isWiping && tool !== 'select' && (
-            <div 
-              className="absolute pointer-events-none z-40 rounded-full border border-white/30 bg-white/10"
-              style={{
-                left: cursorPos.x,
-                top: cursorPos.y,
-                width: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
-                height: tool === 'eraser' ? (eraserMode === 'stroke' ? lineWidth * 15 : lineWidth * 8) : lineWidth,
-                transform: 'translate(-50%, -50%)',
-                display: cursorPos.x < 0 ? 'none' : 'block'
-              }}
-            />
-          )}
-          
           {isWiping && (
             <div 
               className="absolute top-0 bottom-0 left-0 border-r-2 border-[#00F0FF] shadow-[5px_0_15px_rgba(0,240,255,0.5)] z-50 pointer-events-none"
@@ -901,7 +886,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         dragControls={dragControls}
         dragListener={false}
         dragMomentum={false}
-        className="fixed bottom-28 left-4 right-4 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+        className="absolute bottom-4 left-4 right-4 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
       >
         <div 
             onPointerDown={(e) => dragControls.start(e)}

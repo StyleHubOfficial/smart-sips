@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload, Settings } from 'lucide-react';
 import UploadToCoursesModal from '../components/UploadToCoursesModal';
 import { useUploadStore } from '../store/useUploadStore';
@@ -501,7 +502,7 @@ export default function Simulator() {
             </div>
 
             <div className="relative group">
-              <textarea 
+              <GrammarTextarea 
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={sourceFile ? `Generating based on ${sourceFile.name}...` : "e.g., 'Projectile motion with air resistance', 'Chemical bonding of NaCl'..."}

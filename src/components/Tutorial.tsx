@@ -135,6 +135,7 @@ export default function Tutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<typeof upcomingFeatures[0] | null>(null);
   const [accessCode, setAccessCode] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(true);
@@ -151,10 +152,9 @@ export default function Tutorial() {
 
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem('sunrise_tutorial_v3_seen');
-    const isSessionSkipped = sessionStorage.getItem('sunrise_skip_intro_session') === 'true';
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
 
-    if (!hasSeenTutorial && !isSessionSkipped && !isPermanentlySkipped) {
+    if (!hasSeenTutorial && !isPermanentlySkipped) {
       const timer = setTimeout(() => setIsOpen(true), 3000);
       return () => clearTimeout(timer);
     }
@@ -259,7 +259,7 @@ export default function Tutorial() {
                       </button>
                     )}
                     <button 
-                      onClick={() => setIsOpen(false)}
+                      onClick={handleClose}
                       className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white transition-all text-sm"
                     >
                       Skip for Now
@@ -292,6 +292,45 @@ export default function Tutorial() {
                   >
                     <Rocket className="w-4 h-4" />
                     View Upcoming Features
+                  </button>
+                  <button 
+                    onClick={() => setShowAllFeatures(true)}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    View All Features
+                  </button>
+                </div>
+              </div>
+            ) : showAllFeatures ? (
+              <div className="relative z-10 space-y-6">
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  <div className="text-center mb-6">
+                    <h3 className="text-2xl font-display font-bold text-white mb-2">All Features</h3>
+                    <p className="text-gray-400 text-sm">Everything Smart Sunrise has to offer</p>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      { title: "AI Generators", desc: "Create diagrams, simulators, and flowcharts." },
+                      { title: "Practice Arena", desc: "Dynamic DPPs and interactive practice." },
+                      { title: "PYQ System", desc: "Previous year question engine." },
+                      { title: "Whiteboard", desc: "Digital canvas for live teaching." },
+                      { title: "Classroom Dashboard", desc: "Content delivery and management." },
+                      { title: "AI Simulator", desc: "Interactive simulations." },
+                      { title: "Concept Visualizer", desc: "Visualize abstract concepts." },
+                      { title: "Grammar Assistant", desc: "Real-time grammar correction." },
+                    ].map((f, i) => (
+                      <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                        <h4 className="text-white font-bold">{f.title}</h4>
+                        <p className="text-gray-400 text-sm">{f.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setShowAllFeatures(false)}
+                    className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all mt-4"
+                  >
+                    Close All Features
                   </button>
                 </div>
               </div>

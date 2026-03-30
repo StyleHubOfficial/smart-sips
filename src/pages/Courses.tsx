@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { GrammarTextarea } from "../components/GrammarTextarea";
 import { BookOpen, ChevronLeft, ChevronRight, FileText, PlayCircle, Sparkles, BrainCircuit, Loader2, ArrowLeft } from "lucide-react";
 import { ContentCard, ContentItem, getFileIcon } from "../components/ContentCard";
 import { useAuthStore } from "../store/useAuthStore";
@@ -9,7 +10,7 @@ import axios from "axios";
 
 // Mock Data for classes and subjects
 const CLASSES = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12"];
-const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "English"];
+const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "English", "Hindi", "History", "Geography", "Economics", "Accountancy", "Business Studies"];
 
 export default function Courses() {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
@@ -162,8 +163,8 @@ export default function Courses() {
                    meta.title?.toLowerCase().includes('ai');
       if (!isAI) return false;
     } else if (!showAllContent) {
-      const matchesClass = selectedClass ? meta.class === selectedClass : true;
-      const matchesSubject = selectedSubject ? meta.subject === selectedSubject : true;
+      const matchesClass = selectedClass ? meta.class?.trim() === selectedClass : true;
+      const matchesSubject = selectedSubject ? meta.subject?.trim() === selectedSubject : true;
       if (selectedClass && !matchesClass) return false;
       if (selectedSubject && !matchesSubject) return false;
       if (!selectedClass && !selectedSubject) return false; // Don't show anything in initial view if not "All Content"
@@ -395,7 +396,7 @@ export default function Courses() {
                 {SUBJECTS.map((sub, idx) => {
                   const subjectContent = content.filter(item => {
                     const meta: any = item.context?.custom || item.context || {};
-                    return meta.class === selectedClass && meta.subject === sub;
+                    return meta.class?.trim() === selectedClass && meta.subject?.trim() === sub;
                   });
                   const count = subjectContent.length;
                   
@@ -538,11 +539,13 @@ export default function Courses() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
-                  <textarea
-                    value={editFormData.description}
-                    onChange={e => setEditFormData({...editFormData, description: e.target.value})}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00F0FF]/50 outline-none h-24 resize-none"
-                  />
+                  <div className="relative h-24">
+                    <GrammarTextarea
+                      value={editFormData.description}
+                      onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+                      className="w-full h-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-[#00F0FF]/50 outline-none resize-none"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Tags (comma separated)</label>

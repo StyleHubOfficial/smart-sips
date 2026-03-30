@@ -67,7 +67,12 @@ export const ContentCard = React.memo(({
     }
 
     if (fileName && !isHash(fileName)) {
-      const cleanName = fileName.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\.[^/.]+$/, "");
+      const cleanName = fileName
+        .replace(/_/g, ' ')
+        .replace(/-/g, ' ')
+        .replace(/\.[^/.]+$/, "")
+        .replace(/\d{10,}/g, '')
+        .trim();
       if (cleanName.length > 2) {
         return cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
       }

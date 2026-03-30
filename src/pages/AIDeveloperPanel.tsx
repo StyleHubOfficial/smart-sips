@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import { Terminal, Code2, GitPullRequest, Settings, Loader2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
@@ -126,13 +127,15 @@ export default function AIDeveloperPanel() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1">Instruction</label>
-                    <textarea 
-                      value={instruction}
-                      onChange={(e) => setInstruction(e.target.value)}
-                      placeholder="e.g., Add dark mode toggle to the physics simulator component"
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors h-32 resize-none"
-                      required
-                    />
+                    <div className="relative h-32">
+                      <GrammarTextarea 
+                        value={instruction}
+                        onChange={(e) => setInstruction(e.target.value)}
+                        placeholder="e.g., Add dark mode toggle to the physics simulator component"
+                        className="w-full h-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors resize-none"
+                        required
+                      />
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-2">

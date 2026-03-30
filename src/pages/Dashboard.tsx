@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { GrammarTextarea } from "../components/GrammarTextarea";
 import { Search, Filter, FileText, Video, Image as ImageIcon, Download, Eye, File, MoreVertical, Edit2, Trash2, Loader2, X, Save, Bell, LayoutGrid, List, BrainCircuit, MonitorPlay, GitGraph, Sparkles, Presentation, Activity, ArrowUpRight } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "../store/useAuthStore";
@@ -164,9 +165,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
     const meta: any = item.context?.custom || item.context || {};
     const title = meta.title || item.public_id || "";
     const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesClass = selectedClass === "All" || meta.class === selectedClass;
-    const matchesSubject = selectedSubject === "All" || meta.subject === selectedSubject;
-    const matchesType = selectedType === "All" || meta.fileType === selectedType;
+    const matchesClass = selectedClass === "All" || meta.class?.trim() === selectedClass;
+    const matchesSubject = selectedSubject === "All" || meta.subject?.trim() === selectedSubject;
+    const matchesType = selectedType === "All" || meta.fileType?.trim() === selectedType;
     
     return matchesSearch && matchesClass && matchesSubject && matchesType;
   }).sort((a, b) => {
@@ -685,11 +686,13 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Description</label>
-                  <textarea 
-                    value={editFormData.description}
-                    onChange={e => setEditFormData({...editFormData, description: e.target.value})}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all resize-none h-24"
-                  />
+                  <div className="relative h-24">
+                    <GrammarTextarea 
+                      value={editFormData.description}
+                      onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+                      className="w-full h-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all resize-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">

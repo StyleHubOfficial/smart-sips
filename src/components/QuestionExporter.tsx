@@ -38,6 +38,9 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
     try {
       if (!exportRef.current) return;
       
+      await document.fonts.ready;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const canvas = await html2canvas(exportRef.current, {
         scale: 2,
         useCORS: true,
@@ -79,14 +82,18 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
         <h1 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', borderBottom: '2px solid black', paddingBottom: '10px' }}>{title}</h1>
         {questions.map((q, i) => (
           <div key={i} style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-              Q{i + 1}. {q.question || q.question_text}
+            <div style={{ fontWeight: 'bold', marginBottom: '10px' }} className="markdown-body">
+              <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                {`**Q${i + 1}.** ${q.question || q.question_text || ''}`}
+              </ReactMarkdown>
             </div>
             {q.options && q.options.length > 0 && (
               <div style={{ marginLeft: '20px', marginBottom: '10px' }}>
                 {q.options.map((opt, idx) => (
-                  <div key={idx} style={{ marginBottom: '5px' }}>
-                    {String.fromCharCode(65 + idx)}) {opt}
+                  <div key={idx} style={{ marginBottom: '5px' }} className="markdown-body">
+                    <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                      {`**${String.fromCharCode(65 + idx)})** ${opt}`}
+                    </ReactMarkdown>
                   </div>
                 ))}
               </div>

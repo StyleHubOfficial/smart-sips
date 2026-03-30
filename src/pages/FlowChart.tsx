@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit, Wand2, Database, Upload } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -349,7 +350,7 @@ export default function FlowChart() {
                  )}
               </div>
               <div className="relative">
-                <textarea
+                <GrammarTextarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."

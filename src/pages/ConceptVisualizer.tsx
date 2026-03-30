@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Sparkles, Loader2, Maximize2, Minimize2, FileText, X, Plus, Share2, Wand2, Image as ImageIcon, Upload, Database, ChevronRight } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useConceptVisualizerStore } from '../store/useConceptVisualizerStore';
@@ -392,7 +393,7 @@ export default function ConceptVisualizer() {
                 )}
               </div>
               <div className="relative">
-                <textarea
+                <GrammarTextarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Quantum Entanglement, Mitosis, Black Holes..."

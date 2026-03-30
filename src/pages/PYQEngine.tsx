@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
 import { PenPaperAnimation } from '../components/PenPaperAnimation';
 import Markdown from 'react-markdown';
@@ -531,7 +532,10 @@ export default function PYQEngine() {
                   const newHistory = [newHistoryItem, ...filteredHistory].slice(0, 10);
                   setSearchHistory(newHistory);
                   localStorage.setItem('pyq_search_history', JSON.stringify(newHistory));
-                  alert("Search parameters saved to history!");
+                  if (results.length > 0) {
+                    localStorage.setItem('pyq_generated_results', JSON.stringify(results));
+                  }
+                  alert("Search parameters and generated PYQs saved!");
                 }}
                 className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm flex items-center gap-2 transition-colors border border-emerald-500/20"
               >
@@ -701,7 +705,7 @@ export default function PYQEngine() {
                 <Sparkles className="w-3 h-3 text-[#B026FF]" /> Custom Prompt (Optional)
               </label>
               <div className="relative">
-                <textarea 
+                <GrammarTextarea 
                   value={userPrompt}
                   onChange={(e) => setUserPrompt(e.target.value)}
                   placeholder="e.g. Focus on questions involving calculus and trigonometry..."

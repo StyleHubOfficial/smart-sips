@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { GrammarTextarea } from "../components/GrammarTextarea";
 import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2, PlayCircle, Eye, Lock } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useAuthStore } from "../store/useAuthStore";
@@ -67,7 +68,8 @@ export default function Upload({ onOpenLogin }: UploadProps) {
     e.preventDefault();
     if (!file) return;
 
-    const contextStr = `title=${formData.title}|subject=${formData.subject}|class=${formData.className}|description=${formData.description}|fileType=${formData.fileType}`;
+    const sanitize = (str: string) => str.replace(/[|=]/g, ' ').trim();
+    const contextStr = `title=${sanitize(formData.title)}|subject=${sanitize(formData.subject)}|class=${sanitize(formData.className)}|description=${sanitize(formData.description)}|fileType=${sanitize(formData.fileType)}`;
     
     // Start background upload
     addUpload(file, contextStr);
@@ -186,12 +188,14 @@ export default function Upload({ onOpenLogin }: UploadProps) {
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-300 uppercase tracking-wider">Description (Optional)</label>
-            <textarea 
-              value={formData.description}
-              onChange={e => setFormData({...formData, description: e.target.value})}
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all resize-none h-24"
-              placeholder="Brief description of the content..."
-            />
+            <div className="relative h-24">
+              <GrammarTextarea 
+                value={formData.description}
+                onChange={e => setFormData({...formData, description: e.target.value})}
+                className="w-full h-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 focus:ring-1 focus:ring-[#00F0FF]/50 transition-all resize-none"
+                placeholder="Brief description of the content..."
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { PlayCircle, BrainCircuit, FileSearch, MonitorPlay, ChevronRight, BookOpen, Sparkles, Mail } from "lucide-react";
+import { PlayCircle, BrainCircuit, FileSearch, MonitorPlay, ChevronRight, BookOpen, Sparkles, Mail, Bot, Zap, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Home() {
@@ -113,6 +113,9 @@ export default function Home() {
             { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3, link: "/pyq" },
             { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", delay: 0.4, link: "/flowchart" },
             { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.5, link: "/courses" },
+            { icon: Bot, title: "AI Simulator", desc: "Interactive AI-powered simulations for complex concepts.", color: "from-blue-400 to-indigo-600", delay: 0.6, link: "/simulator" },
+            { icon: Zap, title: "Concept Visualizer", desc: "Visualize abstract concepts with interactive AI tools.", color: "from-orange-400 to-red-600", delay: 0.7, link: "/visualizer" },
+            { icon: CheckCircle2, title: "Grammar Assistant", desc: "Real-time grammatical error suggestion and correction.", color: "from-green-400 to-teal-600", delay: 0.8, link: "/grammar" },
           ].map((feature, idx) => (
               <Link to={feature.link} key={idx} className="block h-full">
                 <motion.div
