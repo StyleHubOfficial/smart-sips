@@ -13,6 +13,8 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 export default function Teacher() {
   const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processProgress, setProcessProgress] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [importSettings, setImportSettings] = useState({
     quality: 2, // Scale factor
@@ -24,17 +26,24 @@ export default function Teacher() {
     if (!file) return;
 
     setIsProcessing(true);
+    setProcessProgress(0);
     try {
       if (file.type === 'application/pdf') {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         const newSlides = [];
+        setTotalItems(pdf.numPages);
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
+          
+          // Calculate scale to fit a standard HD resolution if needed, 
+          // but we use the quality setting as base scale.
           const viewport = page.getViewport({ scale: importSettings.quality });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
+          
+          // We want to ensure the canvas is large enough for high quality
           canvas.height = viewport.height;
           canvas.width = viewport.width;
 
@@ -51,9 +60,11 @@ export default function Teacher() {
               whiteboardData: '',
             });
           }
+          setProcessProgress(i);
         }
         setSlides(newSlides);
       } else if (file.type.startsWith('image/')) {
+        setTotalItems(1);
         const reader = new FileReader();
         reader.onload = (e) => {
           setSlides([{
@@ -61,6 +72,7 @@ export default function Teacher() {
             imageUrl: e.target?.result as string,
             whiteboardData: '',
           }]);
+          setProcessProgress(1);
         };
         reader.readAsDataURL(file);
       }
@@ -208,12 +220,16 @@ export default function Teacher() {
 
                 {isProcessing && (
                   <div className="absolute inset-x-0 bottom-0 p-8">
-                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Processing Pages</span>
+                      <span className="text-xs font-mono text-indigo-400">{processProgress} / {totalItems}</span>
+                    </div>
+                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
                       <motion.div 
-                        className="h-full bg-indigo-500"
+                        className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
                         initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 2, repeat: Infinity }}
+                        animate={{ width: `${(processProgress / totalItems) * 100}%` }}
+                        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
                       />
                     </div>
                   </div>

@@ -6,7 +6,8 @@ import {
   Layers, Palette, Settings, Share2, Save, MoreVertical, ChevronUp, ChevronDown,
   Monitor, Smartphone, Tablet, Layout, Grid, Image as ImageIcon, FileText,
   MousePointer, Lasso, Square as RectIcon, Circle as CircleIcon, Type as TextIcon,
-  Eraser as EraserIcon, Highlighter as HighlighterIcon, ArrowRight, MousePointerClick
+  Eraser as EraserIcon, Highlighter as HighlighterIcon, ArrowRight, MousePointerClick,
+  Hand, ZoomIn, ZoomOut, Search
 } from 'lucide-react';
 
 interface Point {
@@ -44,8 +45,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr'>('pen');
+  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan'>('pen');
   const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel'>('pixel');
+  
+  // Pan and Zoom state
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPos, setLastPanPos] = useState({ x: 0, y: 0 });
+
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
@@ -139,11 +147,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
     
-    // Return coordinates relative to the display size (CSS pixels)
-    // The context is already scaled by dpr, so we draw in CSS pixels
+    // Coordinates relative to the canvas element
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    // Adjust for scale and offset to get "world" coordinates
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (x - offset.x) / scale,
+      y: (y - offset.y) / scale
     };
   };
 
@@ -167,19 +178,29 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    ctx.save();
+    // Apply pan and zoom transformations
+    ctx.translate(offset.x, offset.y);
+    ctx.scale(scale, scale);
+
     // Render background patterns
-    renderBackground(ctx, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    renderBackground(ctx, (canvas.width / (window.devicePixelRatio || 1)) / scale, (canvas.height / (window.devicePixelRatio || 1)) / scale);
 
     // Draw background image if exists
     if (backgroundImage) {
       const img = new Image();
       img.src = backgroundImage;
       if (img.complete) {
-        // Center and scale image to fit
-        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-        const x = (canvas.width - img.width * scale) / 2;
-        const y = (canvas.height - img.height * scale) / 2;
-        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        // Center and scale image to fit/fill properly
+        const canvasW = canvas.width / (window.devicePixelRatio || 1);
+        const canvasH = canvas.height / (window.devicePixelRatio || 1);
+        
+        // Calculate scale to fit the image while maintaining aspect ratio
+        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
+        const x = (canvasW - img.width * imgScale) / 2;
+        const y = (canvasH - img.height * imgScale) / 2;
+        
+        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
       } else {
         img.onload = () => redraw();
       }
@@ -293,6 +314,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       
       ctx.restore();
     });
+
+    ctx.restore(); // Restore from pan/zoom save
 
     // Draw selection handles if strokes are selected
     if (selectedStrokeIds.length > 0) {
@@ -445,7 +468,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
   useEffect(() => {
     redraw();
-  }, [strokes, currentStroke, laserPath, selectedStrokeIds]);
+  }, [strokes, currentStroke, laserPath, selectedStrokeIds, scale, offset]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
@@ -496,6 +519,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       unit: 'px',
       format: [canvas.width, canvas.height]
     });
+
+    // If theme is dark, we should probably add a dark background to the PDF too
+    if (theme === 'dark') {
+      pdf.setFillColor(14, 14, 18); // #0E0E12
+      pdf.rect(0, 0, canvas.width, canvas.height, 'F');
+    }
 
     pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(`whiteboard-${Date.now()}.pdf`);
@@ -797,6 +826,22 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if ('touches' in e) {
+      // Prevent scrolling while drawing
+      e.preventDefault();
+    }
+
+    if (tool === 'pan') {
+      setIsPanning(true);
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        setLastPanPos({ x: clientX, y: clientY });
+      }
+      return;
+    }
+
     const pos = getPos(e);
     setStartPos(pos);
     setCursorPos(pos);
@@ -926,6 +971,22 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+
+    if (isPanning) {
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+      
+      const dx = clientX - lastPanPos.x;
+      const dy = clientY - lastPanPos.y;
+      
+      setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setLastPanPos({ x: clientX, y: clientY });
+      return;
+    }
+
     if (!isDrawing) return;
     const pos = getPos(e);
     setCursorPos(pos);
@@ -1039,6 +1100,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const stopDrawing = () => {
+    setIsPanning(false);
     if (!isDrawing) return;
     setIsDrawing(false);
     setIsDragging(false);
@@ -1122,7 +1184,46 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+
+    if (!isFullscreen) {
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
     setIsFullscreen(!isFullscreen);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const zoomSpeed = 0.001;
+      const delta = -e.deltaY;
+      const newScale = Math.max(0.1, Math.min(5, scale + delta * zoomSpeed));
+      
+      // Zoom towards cursor
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const worldX = (mouseX - offset.x) / scale;
+        const worldY = (mouseY - offset.y) / scale;
+        
+        const newOffsetX = mouseX - worldX * newScale;
+        const newOffsetY = mouseY - worldY * newScale;
+        
+        setScale(newScale);
+        setOffset({ x: newOffsetX, y: newOffsetY });
+      }
+    } else {
+      // Normal scroll translates
+      setOffset(prev => ({ x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
+    }
   };
 
   const gridBg = `bg-[#1a1b26] bg-[url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L0 0 0 20' fill='none' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.1'/%3E%3C/svg%3E")]`;
@@ -1131,7 +1232,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     <>
       <div 
         ref={containerRef}
+        onWheel={handleWheel}
         className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
+        style={{ touchAction: 'none' }}
       >
         {/* Canvas Area */}
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
@@ -1210,6 +1313,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               </button>
               <button onClick={() => setTool('ai-ocr')} className={`p-2 rounded-lg transition-colors ${tool === 'ai-ocr' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Text Recognition (Lasso)">
                 <ScanText className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('pan')} className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pan & Zoom Tool">
+                <Hand className="w-5 h-5" />
               </button>
               
               {selectedStrokeIds.length > 0 && (
@@ -1456,6 +1562,35 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
+
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
+                <button 
+                  onClick={() => { setScale(Math.max(0.1, scale - 0.1)); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-[10px] font-mono text-white/40 w-10 text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <button 
+                  onClick={() => { setScale(Math.min(5, scale + 0.1)); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => { setScale(1); setOffset({x: 0, y: 0}); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors border-l border-white/10 ml-1"
+                  title="Reset View"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
               </div>
             </div>
         </div>
