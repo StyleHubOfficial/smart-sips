@@ -22,6 +22,7 @@ import Simulator from "./pages/Simulator";
 import FlowChart from "./pages/FlowChart";
 import ConceptVisualizer from "./pages/ConceptVisualizer";
 import AIDeveloperPanel from "./pages/AIDeveloperPanel";
+import Teacher from "./pages/Teacher";
 import PYQEngine from "./pages/PYQEngine";
 import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
@@ -105,6 +106,7 @@ function AppContent({
               <Route path="/flowchart" element={<PageTransition><FlowChart /></PageTransition>} />
               <Route path="/visualizer" element={<PageTransition><ConceptVisualizer /></PageTransition>} />
               <Route path="/ai-developer" element={<PageTransition><AIDeveloperPanel /></PageTransition>} />
+              <Route path="/teacher" element={<PageTransition><Teacher /></PageTransition>} />
             </Routes>
           </AnimatePresence>
         </main>

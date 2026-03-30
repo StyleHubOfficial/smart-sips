@@ -1,6 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
-import { Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2 } from 'lucide-react';
+import { 
+  Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, 
+  ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2, Wand2, ScanText, Scissors,
+  Layers, Palette, Settings, Share2, Save, MoreVertical, ChevronUp, ChevronDown,
+  Monitor, Smartphone, Tablet, Layout, Grid, Image as ImageIcon, FileText,
+  MousePointer, Lasso, Square as RectIcon, Circle as CircleIcon, Type as TextIcon,
+  Eraser as EraserIcon, Highlighter as HighlighterIcon, ArrowRight, MousePointerClick
+} from 'lucide-react';
 
 interface Point {
   x: number;
@@ -30,14 +37,15 @@ interface WhiteboardProps {
   initialData?: string; // Changed to string (base64 or JSON)
   onSave?: (data: string) => void;
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
+  backgroundImage?: string;
 }
 
-export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark' }: WhiteboardProps) {
+export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso'>('pen');
-  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso'>('pixel');
+  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr'>('pen');
+  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel'>('pixel');
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
@@ -45,6 +53,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
+  const [isOCRProcessing, setIsOCRProcessing] = useState(false);
   
   const [strokes, setStrokes] = useState<Stroke[]>([]);
 
@@ -73,6 +82,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+  const [backgroundType, setBackgroundType] = useState<'none' | 'grid' | 'dots' | 'lines'>('none');
   const dragControls = useDragControls();
 
   useEffect(() => {
@@ -154,6 +166,24 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render background patterns
+    renderBackground(ctx, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+
+    // Draw background image if exists
+    if (backgroundImage) {
+      const img = new Image();
+      img.src = backgroundImage;
+      if (img.complete) {
+        // Center and scale image to fit
+        const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+        const x = (canvas.width - img.width * scale) / 2;
+        const y = (canvas.height - img.height * scale) / 2;
+        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+      } else {
+        img.onload = () => redraw();
+      }
+    }
 
     const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
 
@@ -417,6 +447,103 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     redraw();
   }, [strokes, currentStroke, laserPath, selectedStrokeIds]);
 
+  const downloadAsImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    // Create a temporary canvas to include the background
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    // Fill background
+    tempCtx.fillStyle = theme === 'dark' ? '#0E0E12' : '#FFFFFF';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw background image if exists
+    if (backgroundImage) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = backgroundImage;
+      img.onload = () => {
+        tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(canvas, 0, 0);
+        const link = document.createElement('a');
+        link.download = `whiteboard-${Date.now()}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+      };
+      return;
+    }
+
+    tempCtx.drawImage(canvas, 0, 0);
+    const link = document.createElement('a');
+    link.download = `whiteboard-${Date.now()}.png`;
+    link.href = tempCanvas.toDataURL('image/png');
+    link.click();
+  };
+
+  const downloadAsPDF = async () => {
+    const { jsPDF } = await import('jspdf');
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    });
+
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.save(`whiteboard-${Date.now()}.pdf`);
+  };
+
+  const renderBackground = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    if (backgroundType === 'none') return;
+
+    ctx.save();
+    ctx.strokeStyle = theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+    ctx.lineWidth = 1;
+
+    if (backgroundType === 'grid') {
+      const size = 40;
+      for (let x = 0; x <= width; x += size) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= height; y += size) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    } else if (backgroundType === 'dots') {
+      const size = 30;
+      ctx.fillStyle = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      for (let x = 0; x <= width; x += size) {
+        for (let y = 0; y <= height; y += size) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    } else if (backgroundType === 'lines') {
+      const size = 30;
+      for (let y = 0; y <= height; y += size) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  };
+
   const saveToHistory = (newStrokes: Stroke[]) => {
     const newHistory = history.slice(0, historyStep + 1);
     newHistory.push(newStrokes);
@@ -525,6 +652,150 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     return false;
   };
 
+  const recognizeShape = (points: Point[]): Stroke | null => {
+    if (points.length < 5) return null;
+
+    // Calculate bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    points.forEach(p => {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    });
+
+    const width = maxX - minX;
+    const height = maxY - minY;
+    const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    const start = points[0];
+    const end = points[points.length - 1];
+    const distStartEnd = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+
+    // Heuristic for Circle
+    const isClosed = distStartEnd < Math.max(width, height) * 0.2;
+    if (isClosed) {
+      const radius = (width + height) / 4;
+      // Check if points are roughly at radius distance from center
+      let avgDist = 0;
+      points.forEach(p => {
+        avgDist += Math.sqrt(Math.pow(p.x - center.x, 2) + Math.pow(p.y - center.y, 2));
+      });
+      avgDist /= points.length;
+      
+      if (Math.abs(avgDist - radius) < radius * 0.3) {
+        return {
+          id: Date.now().toString(),
+          tool: 'circle',
+          type: 'circle',
+          points: [],
+          color,
+          lineWidth,
+          startPos: center,
+          endPos: { x: center.x + radius, y: center.y }
+        };
+      }
+    }
+
+    // Heuristic for Rectangle
+    if (isClosed && width > 20 && height > 20) {
+      return {
+        id: Date.now().toString(),
+        tool: 'rect',
+        type: 'rect',
+        points: [],
+        color,
+        lineWidth,
+        startPos: { x: minX, y: minY },
+        endPos: { x: maxX, y: maxY }
+      };
+    }
+
+    // Heuristic for Arrow
+    if (!isClosed && distStartEnd > 30) {
+      // Check if it's a line or arrow
+      // For now, let's just make it an arrow if it's long enough
+      return {
+        id: Date.now().toString(),
+        tool: 'arrow',
+        type: 'arrow',
+        points: [],
+        color,
+        lineWidth,
+        startPos: start,
+        endPos: end
+      };
+    }
+
+    return null;
+  };
+
+  const performOCR = async (lassoPoints: Point[]) => {
+    const canvas = canvasRef.current;
+    if (!canvas || lassoPoints.length < 3) return;
+
+    setIsOCRProcessing(true);
+    try {
+      // Calculate bounding box of lasso
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      lassoPoints.forEach(p => {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+      if (width < 10 || height < 10) return;
+
+      // Create a temporary canvas to capture the area
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (!tempCtx) return;
+
+      // Draw the main canvas onto the temp canvas, offset by minX, minY
+      tempCtx.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
+      const base64Image = tempCanvas.toDataURL('image/png').split(',')[1];
+
+      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) throw new Error("Missing API Key");
+      
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite-preview",
+        contents: [
+          { text: "Extract all text from this image. Return ONLY the text found, nothing else. If no text is found, return an empty string." },
+          { inlineData: { data: base64Image, mimeType: "image/png" } }
+        ]
+      });
+
+      const extractedText = response.text?.trim();
+      if (extractedText) {
+        const newStroke: Stroke = {
+          id: 'ocr-' + Date.now(),
+          tool: 'text',
+          type: 'text',
+          points: [],
+          color,
+          lineWidth: 4,
+          startPos: { x: minX, y: minY + 20 },
+          text: extractedText
+        };
+        const newStrokes = [...strokes, newStroke];
+        setStrokes(newStrokes);
+        saveToHistory(newStrokes);
+      }
+    } catch (error) {
+      console.error("OCR failed:", error);
+    } finally {
+      setIsOCRProcessing(false);
+    }
+  };
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const pos = getPos(e);
     setStartPos(pos);
@@ -592,7 +863,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
-    if (tool === 'eraser' && eraserMode === 'lasso') {
+    if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
       const newStroke: Stroke = {
         id: 'lasso-eraser-' + Date.now(),
         tool: 'eraser',
@@ -729,7 +1000,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
-    if (tool === 'lasso' || (tool === 'eraser' && eraserMode === 'lasso')) {
+    if (tool === 'lasso' || tool === 'ai-ocr' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
       if (currentStroke) {
         setCurrentStroke({
           ...currentStroke,
@@ -786,7 +1057,16 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
-    if (tool === 'eraser' && eraserMode === 'lasso') {
+    if (tool === 'ai-ocr') {
+      if (currentStroke && currentStroke.points.length > 3) {
+        performOCR(currentStroke.points);
+      }
+      setCurrentStroke(null);
+      setTool('select');
+      return;
+    }
+
+    if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
       if (currentStroke && currentStroke.points.length > 3) {
         const newStrokes = strokes.filter(s => !isStrokeInLasso(s, currentStroke.points));
         setStrokes(newStrokes);
@@ -803,7 +1083,16 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (currentStroke) {
-      const newStrokes = [...strokes, currentStroke];
+      let strokeToSave = currentStroke;
+      
+      if (tool === 'smart-pen') {
+        const recognized = recognizeShape(currentStroke.points);
+        if (recognized) {
+          strokeToSave = recognized;
+        }
+      }
+
+      const newStrokes = [...strokes, strokeToSave];
       setStrokes(newStrokes);
       saveToHistory(newStrokes);
       setCurrentStroke(null);
@@ -870,7 +1159,18 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             </div>
           )}
           
-          {isFullscreen && (
+            {isOCRProcessing && (
+              <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center">
+                <div className="relative">
+                    <div className="w-16 h-16 border-4 border-[#00F0FF]/20 border-t-[#00F0FF] rounded-full animate-spin" />
+                    <ScanText className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-[#00F0FF] animate-pulse" />
+                </div>
+                <p className="mt-4 text-[#00F0FF] font-medium animate-pulse">AI Extracting Text...</p>
+                <p className="text-white/40 text-xs mt-1">Using Gemini 2.5 Flash Lite</p>
+              </div>
+            )}
+            
+            {isFullscreen && (
             <div className="absolute top-4 right-4 pointer-events-none">
               <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs text-white/60">
                 Smart Panel Mode Active • High Precision Drawing
@@ -901,6 +1201,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               </button>
               <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
                 <Sparkles className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <button onClick={() => setTool('smart-pen')} className={`p-2 rounded-lg transition-colors ${tool === 'smart-pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Smart Shape Pen">
+                <Wand2 className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('ai-ocr')} className={`p-2 rounded-lg transition-colors ${tool === 'ai-ocr' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Text Recognition (Lasso)">
+                <ScanText className="w-5 h-5" />
               </button>
               
               {selectedStrokeIds.length > 0 && (
@@ -988,16 +1297,23 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[160px]"
+                      className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a]/95 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[180px] p-1"
                     >
-                      <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
+                      <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Eraser className="w-3.5 h-3.5" /> Pixel Eraser
                       </button>
-                      <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                        <Minus className="w-3 h-3" /> Stroke Eraser
+                      <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Minus className="w-3.5 h-3.5" /> Stroke Eraser
                       </button>
-                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
-                        <Sparkles className="w-3 h-3" /> Lasso Pixel Eraser
+                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Scissors className="w-3.5 h-3.5" /> Lasso Stroke Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Sparkles className="w-3.5 h-3.5" /> Lasso Pixel Eraser
+                      </button>
+                      <div className="h-px bg-white/10 my-1 mx-2" />
+                      <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5" /> Clear All
                       </button>
                     </motion.div>
                   )}
@@ -1069,6 +1385,78 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   <X className="w-5 h-5" />
                 </button>
               )}
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <div className="relative">
+                <button 
+                  onClick={() => setShowBackgroundMenu(!showBackgroundMenu)} 
+                  className={`p-2 rounded-lg transition-colors ${backgroundType !== 'none' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
+                  title="Background Pattern"
+                >
+                  <Layout className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showBackgroundMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[120px] shadow-2xl"
+                    >
+                      {[
+                        { id: 'none', label: 'None', icon: X },
+                        { id: 'grid', label: 'Grid', icon: Grid },
+                        { id: 'dots', label: 'Dots', icon: MoreVertical },
+                        { id: 'lines', label: 'Lines', icon: Layers },
+                      ].map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => { setBackgroundType(bg.id as any); setShowBackgroundMenu(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${backgroundType === bg.id ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`}
+                        >
+                          <bg.icon className="w-3 h-3" />
+                          {bg.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative">
+                <button 
+                  onClick={() => setShowExportMenu(!showExportMenu)} 
+                  className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors" 
+                  title="Export Options"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[150px] shadow-2xl"
+                    >
+                      <button
+                        onClick={() => { downloadAsImage(); setShowExportMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        Download PNG
+                      </button>
+                      <button
+                        onClick={() => { downloadAsPDF(); setShowExportMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Download PDF
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
         </div>
       </motion.div>

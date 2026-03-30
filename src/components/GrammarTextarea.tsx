@@ -34,13 +34,13 @@ export const GrammarTextarea: React.FC<GrammarTextareaProps> = ({ value, onChang
 
     setIsChecking(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error("Missing API Key");
       
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite-preview",
         contents: `Analyze the following text for grammatical errors, awkward phrasing, or typos. 
         Return a JSON array of errors. If there are no errors, return an empty array [].
         Text: "${text}"`,
@@ -152,6 +152,7 @@ export const GrammarTextarea: React.FC<GrammarTextareaProps> = ({ value, onChang
           <span 
             key={`error-${idx}`} 
             className="border-b-2 border-blue-400 bg-blue-500/20 text-transparent rounded-sm"
+            style={{ color: 'transparent', WebkitTextFillColor: 'transparent' }}
           >
             {value.substring(error.startIndex, error.endIndex)}
           </span>
@@ -172,11 +173,25 @@ export const GrammarTextarea: React.FC<GrammarTextareaProps> = ({ value, onChang
     return elements;
   };
 
+  const sharedStyles: React.CSSProperties = {
+    fontFamily: 'inherit',
+    fontSize: 'inherit',
+    lineHeight: 'inherit',
+    padding: 'inherit',
+    border: 'inherit',
+    letterSpacing: 'inherit',
+    wordSpacing: 'inherit',
+    textAlign: 'inherit',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: '0.75rem',
+  };
+
   return (
     <div className="relative w-full h-full group">
       <div 
         ref={backdropRef}
-        className={`absolute inset-0 pointer-events-none overflow-hidden whitespace-pre-wrap break-words text-transparent ${className}`}
+        className={`absolute inset-0 pointer-events-none overflow-hidden whitespace-pre-wrap break-words ${className}`}
+        style={{ ...sharedStyles, color: 'transparent', WebkitTextFillColor: 'transparent' }}
         aria-hidden="true"
       >
         {renderHighlightedText()}
@@ -191,7 +206,8 @@ export const GrammarTextarea: React.FC<GrammarTextareaProps> = ({ value, onChang
         }}
         onScroll={handleScroll}
         onClick={handleTextareaClick}
-        className={`relative z-10 w-full h-full bg-transparent text-white resize-none outline-none ${className}`}
+        className={`relative z-10 w-full h-full bg-transparent text-white resize-none outline-none transition-all duration-300 ${className}`}
+        style={sharedStyles}
         spellCheck={false}
         {...props}
       />

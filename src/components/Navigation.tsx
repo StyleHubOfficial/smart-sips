@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, BookOpen, BrainCircuit, Sparkles, Settings, BarChart3, Terminal } from "lucide-react";
+import { Home, BookOpen, BrainCircuit, Sparkles, Settings, BarChart3, Terminal, Presentation } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -56,12 +56,31 @@ export default function Navigation() {
         <NavLink 
           to="/ai-generators" 
           className={({ isActive }) => 
-            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'text-gray-400 hover:text-white'}`
+            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-emerald-400 scale-110 drop-shadow-[0_0_8_px_rgba(52,211,153,0.8)]' : 'text-gray-400 hover:text-white'}`
           }
           title="AI Generators"
         >
           <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
           <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">AI Gen</span>
+        </NavLink>
+
+        <div className="w-[1px] h-6 sm:h-8 bg-white/10 shrink-0"></div>
+
+        <NavLink 
+          to="/teacher" 
+          className={({ isActive }) => 
+            `flex flex-col items-center gap-1 transition-all duration-300 min-w-[40px] ${isActive ? 'text-indigo-400 scale-110 drop-shadow-[0_0_8px_rgba(129,140,248,0.8)]' : 'text-gray-400 hover:text-white'}`
+          }
+          title="Teacher Mode"
+        >
+          <div className="relative">
+            <Presentation className="w-5 h-5 sm:w-6 sm:h-6" />
+            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+            </span>
+          </div>
+          <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider">Teacher</span>
         </NavLink>
 
         {(role === 'admin' || role === 'developer' || role === 'teacher') && (

@@ -111,11 +111,12 @@ export default function Home() {
             { icon: Sparkles, title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts.", color: "from-[#00F0FF] to-blue-500", delay: 0.1, link: "/ai-generators" },
             { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", delay: 0.2, link: "/practice" },
             { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3, link: "/pyq" },
-            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas for live teaching.", color: "from-[#B026FF] to-purple-600", delay: 0.4, link: "/flowchart" },
-            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.5, link: "/courses" },
+            { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas with Smart Pen & AI OCR.", color: "from-[#B026FF] to-purple-600", delay: 0.4, link: "/flowchart" },
+            { icon: BookOpen, title: "Teacher Mode", desc: "Convert PDFs/PPTs into interactive slides (Beta).", color: "from-indigo-500 to-blue-700", delay: 0.5, link: "/teacher" },
             { icon: Bot, title: "AI Simulator", desc: "Interactive AI-powered simulations for complex concepts.", color: "from-blue-400 to-indigo-600", delay: 0.6, link: "/simulator" },
             { icon: Zap, title: "Concept Visualizer", desc: "Visualize abstract concepts with interactive AI tools.", color: "from-orange-400 to-red-600", delay: 0.7, link: "/visualizer" },
             { icon: CheckCircle2, title: "Grammar Assistant", desc: "Real-time grammatical error suggestion and correction.", color: "from-green-400 to-teal-600", delay: 0.8, link: "/grammar" },
+            { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.9, link: "/courses" },
           ].map((feature, idx) => (
               <Link to={feature.link} key={idx} className="block h-full">
                 <motion.div

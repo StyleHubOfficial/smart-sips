@@ -131,6 +131,44 @@ Key Capabilities:
   }
 ];
 
+const allFeatures = [
+  {
+    category: "Core AI Tools",
+    features: [
+      { title: "AI Generators", desc: "Instantly create diagrams, simulators, and flowcharts from text." },
+      { title: "AI Simulator", desc: "Interactive AI-powered simulations for complex scientific concepts." },
+      { title: "Concept Visualizer", desc: "Visualize abstract concepts with interactive AI tools." },
+      { title: "Grammar Assistant", desc: "Real-time grammatical error detection and one-click correction." },
+    ]
+  },
+  {
+    category: "Interactive Whiteboard",
+    features: [
+      { title: "Smart Pen", desc: "Recognizes rough shapes and converts them into perfect geometry." },
+      { title: "AI OCR", desc: "Select any area to convert handwritten or image text into editable text." },
+      { title: "Lasso Eraser", desc: "Advanced pixel and stroke-based lasso erasing tools." },
+      { title: "Laser Pointer", desc: "Temporary laser trail for highlighting during live teaching." },
+      { title: "Multi-Tool Toolbar", desc: "Floating, draggable toolbar with all essential drawing tools." },
+    ]
+  },
+  {
+    category: "Teacher Mode (Beta)",
+    features: [
+      { title: "PDF to Slides", desc: "Convert PDF documents into interactive whiteboard slides." },
+      { title: "Import Settings", desc: "Customize render quality and annotation settings for imports." },
+      { title: "Slide Navigation", desc: "Seamlessly switch between slides while teaching." },
+    ]
+  },
+  {
+    category: "Practice & Analysis",
+    features: [
+      { title: "Practice Arena", desc: "Dynamic DPP (Daily Practice Paper) generation with AI solutions." },
+      { title: "PYQ System", desc: "Smart Previous Year Question engine with AI-driven analysis." },
+      { title: "Performance Tracking", desc: "Monitor your learning progress across different subjects." },
+    ]
+  }
+];
+
 export default function Tutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -164,6 +202,7 @@ export default function Tutorial() {
     setIsOpen(false);
     localStorage.setItem('sunrise_tutorial_v3_seen', 'true');
     setShowUpcoming(false);
+    setShowAllFeatures(false);
     setAccessCode("");
   };
 
@@ -205,7 +244,7 @@ export default function Tutorial() {
             {/* Background Glow */}
             <div 
               className="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[80px] opacity-20"
-              style={{ backgroundColor: showUpcoming ? "#B026FF" : steps[currentStep].color }}
+              style={{ backgroundColor: showUpcoming ? "#B026FF" : showAllFeatures ? "#00F0FF" : steps[currentStep].color }}
             ></div>
 
             <button 
@@ -215,7 +254,7 @@ export default function Tutorial() {
               <X className="w-5 h-5" />
             </button>
 
-            {!showUpcoming ? (
+            {!showUpcoming && !showAllFeatures ? (
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-4">
                   <div 
@@ -287,50 +326,52 @@ export default function Tutorial() {
                   </label>
 
                   <button 
-                    onClick={() => setShowUpcoming(true)}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B026FF]/10 to-[#00F0FF]/10 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm flex items-center justify-center gap-2"
-                  >
-                    <Rocket className="w-4 h-4" />
-                    View Upcoming Features
-                  </button>
-                  <button 
                     onClick={() => setShowAllFeatures(true)}
                     className="w-full py-3 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm flex items-center justify-center gap-2"
                   >
                     <Sparkles className="w-4 h-4" />
                     View All Features
                   </button>
+                  <button 
+                    onClick={() => setShowUpcoming(true)}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B026FF]/10 to-[#00F0FF]/10 border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    View Upcoming Features
+                  </button>
                 </div>
               </div>
             ) : showAllFeatures ? (
               <div className="relative z-10 space-y-6">
-                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                   <div className="text-center mb-6">
                     <h3 className="text-2xl font-display font-bold text-white mb-2">All Features</h3>
                     <p className="text-gray-400 text-sm">Everything Smart Sunrise has to offer</p>
                   </div>
-                  <div className="space-y-4">
-                    {[
-                      { title: "AI Generators", desc: "Create diagrams, simulators, and flowcharts." },
-                      { title: "Practice Arena", desc: "Dynamic DPPs and interactive practice." },
-                      { title: "PYQ System", desc: "Previous year question engine." },
-                      { title: "Whiteboard", desc: "Digital canvas for live teaching." },
-                      { title: "Classroom Dashboard", desc: "Content delivery and management." },
-                      { title: "AI Simulator", desc: "Interactive simulations." },
-                      { title: "Concept Visualizer", desc: "Visualize abstract concepts." },
-                      { title: "Grammar Assistant", desc: "Real-time grammar correction." },
-                    ].map((f, i) => (
-                      <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                        <h4 className="text-white font-bold">{f.title}</h4>
-                        <p className="text-gray-400 text-sm">{f.desc}</p>
+                  
+                  <div className="space-y-8">
+                    {allFeatures.map((category, idx) => (
+                      <div key={idx} className="space-y-3">
+                        <h4 className="text-[#00F0FF] text-xs font-bold uppercase tracking-widest border-l-2 border-[#00F0FF] pl-3">
+                          {category.category}
+                        </h4>
+                        <div className="grid gap-3">
+                          {category.features.map((feature, fIdx) => (
+                            <div key={fIdx} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all">
+                              <h5 className="text-white font-bold text-sm mb-1">{feature.title}</h5>
+                              <p className="text-gray-400 text-xs leading-relaxed">{feature.desc}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
+
                   <button 
                     onClick={() => setShowAllFeatures(false)}
-                    className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all mt-4"
+                    className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all mt-6"
                   >
-                    Close All Features
+                    Back to Tutorial
                   </button>
                 </div>
               </div>
