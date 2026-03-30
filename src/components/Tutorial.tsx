@@ -4,8 +4,8 @@ import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap,
 
 const steps = [
   {
-    title: "Smart Sunrise v3.0 Advance",
-    content: "Welcome to the Advance 3.0x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
+    title: "Smart Sunrise v4.0 Advance",
+    content: "Welcome to the Advance 4.0x Edition! We've upgraded the Practice Arena with advanced whiteboards, smart timers, and AI-powered similar question generation.",
     icon: Sparkles,
     color: "#00F0FF",
     target: "header"
@@ -42,6 +42,56 @@ const steps = [
 
 const upcomingFeatures = [
   {
+    id: 'v4-roadmap',
+    title: "V4.0 Roadmap: The Next Frontier",
+    icon: Rocket,
+    color: "#00F0FF",
+    description: `We are constantly evolving to provide the best AI-powered educational experience. Here's what's coming in the next major update (V4.0).
+Key Focus Areas:
+• AI Voice Teaching Assistant
+• 3D Virtual Science Lab
+• Global Collaborative Learning Network
+• AI Teaching Target Management System
+• Advanced Admin Dashboard
+• AI Timetable & Lesson Planning Automation`
+  },
+  {
+    id: 'ai-voice-assistant',
+    title: "AI Voice Teaching Assistant",
+    icon: BrainCircuit,
+    color: "#00F0FF",
+    description: `A real-time voice-activated teaching assistant that helps teachers navigate the platform and answer student queries instantly.
+Key Capabilities:
+• Voice-controlled navigation
+• Real-time Q&A for students
+• Automated attendance via voice recognition
+• Smart lesson summaries via voice command`
+  },
+  {
+    id: '3d-virtual-lab',
+    title: "3D Virtual Science Lab",
+    icon: Zap,
+    color: "#B026FF",
+    description: `An immersive 3D environment where students can perform complex science experiments safely and interactively.
+Key Capabilities:
+• Interactive 3D physics and chemistry simulations
+• Virtual reality (VR) support for classrooms
+• Step-by-step guided experiments
+• Real-time data visualization of experiment results`
+  },
+  {
+    id: 'global-network',
+    title: "Global Collaborative Learning Network",
+    icon: LayoutGrid,
+    color: "#10B981",
+    description: `Connect with classrooms around the world for collaborative projects and shared learning experiences.
+Key Capabilities:
+• Real-time classroom-to-classroom video collaboration
+• Shared global project workspaces
+• Peer-to-peer tutoring across borders
+• Global student leaderboards and challenges`
+  },
+  {
     id: 'target-management',
     title: "AI Teaching Target Management System",
     icon: BrainCircuit,
@@ -54,8 +104,7 @@ Key Capabilities:
 • AI-based syllabus completion analysis
 • Smart alerts for delayed chapters
 • Performance monitoring for teachers
-• Intelligent reminders and guidance notifications
-This system transforms the platform into an AI-powered academic management system for smart classrooms.`
+• Intelligent reminders and guidance notifications`
   },
   {
     id: 'admin-dashboard',
@@ -70,8 +119,7 @@ Key Capabilities:
 • Teaching performance analytics
 • AI-generated insights and recommendations
 • Interactive progress graphs and charts
-• Notification broadcasting system
-The dashboard is designed with a premium interface optimized for large displays and administrative control.`
+• Notification broadcasting system`
   },
   {
     id: 'timetable-automation',
@@ -86,8 +134,7 @@ Key Capabilities:
 • AI-generated lesson plans for each topic
 • Smart integration with simulations and diagrams
 • Syllabus completion prediction
-• Adaptive planning before exams
-This feature ensures efficient academic planning while reducing manual workload for administrators and teachers.`
+• Adaptive planning before exams`
   }
 ];
 
@@ -262,92 +309,57 @@ export default function Tutorial() {
               </div>
             ) : (
               <div className="relative z-10 space-y-6">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-[#B026FF]/20 rounded-2xl flex items-center justify-center mb-4 border border-[#B026FF]/30">
-                    <Lock className="w-8 h-8 text-[#B026FF]" />
-                  </div>
-                  <h3 className="text-2xl font-display font-bold text-white mb-2">Restricted Access</h3>
-                  <p className="text-gray-400 text-sm">Enter the developer access code to view upcoming features roadmap.</p>
-                </div>
-
-                {false && !isUnlocked ? (
-                  <form onSubmit={handleUnlock} className="space-y-4">
-                    <div className="relative">
-                      <input 
-                        type={showPassword ? "text" : "password"}
-                        value={accessCode}
-                        onChange={(e) => setAccessCode(e.target.value)}
-                        placeholder="Enter Access Code"
-                        className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-white text-center focus:outline-none focus:border-[#B026FF]/50"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-white transition-colors"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <button 
-                      type="submit"
-                      className="w-full py-3 rounded-xl bg-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all"
-                    >
-                      Unlock Roadmap
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setShowUpcoming(false)}
-                      className="w-full text-gray-500 hover:text-white text-sm transition-colors"
-                    >
-                      Back to Tutorial
-                    </button>
-                  </form>
-                ) : (
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                    {!selectedFeature ? (
-                      <>
-                        <h4 className="text-white font-bold text-lg">🚀 Smart Sunrise v2.5</h4>
-                        {upcomingFeatures.map((feature) => (
-                          <button
-                            key={feature.id}
-                            onClick={() => setSelectedFeature(feature)}
-                            className="w-full p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left group"
-                          >
-                            <div className="flex items-center gap-3 font-bold" style={{ color: feature.color }}>
-                              <feature.icon className="w-5 h-5" />
-                              {feature.title}
-                            </div>
-                          </button>
-                        ))}
-                        <p className="text-xs text-gray-500 pt-2 italic">Result: AI Smart School Operating System</p>
-                      </>
-                    ) : (
-                      <div className="space-y-4">
-                        <button 
-                          onClick={() => setSelectedFeature(null)}
-                          className="text-gray-500 hover:text-white text-sm flex items-center gap-1"
-                        >
-                          <ChevronLeft className="w-4 h-4" /> Back to Roadmap
-                        </button>
-                        <h4 className="text-xl font-bold" style={{ color: selectedFeature.color }}>{selectedFeature.title}</h4>
-                        <div className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
-                          {selectedFeature.description}
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                  {!selectedFeature ? (
+                    <>
+                      <div className="text-center mb-6">
+                        <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 rounded-2xl flex items-center justify-center mb-4 border border-white/10">
+                          <Rocket className="w-8 h-8 text-[#00F0FF]" />
                         </div>
+                        <h3 className="text-2xl font-display font-bold text-white mb-2">Upcoming Features</h3>
+                        <p className="text-gray-400 text-sm">Explore the future of Smart Sunrise v4.0</p>
                       </div>
-                    )}
 
-                    <button 
-                      onClick={() => {
-                        setIsUnlocked(false);
-                        setShowUpcoming(false);
-                        setSelectedFeature(null);
-                      }}
-                      className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all"
-                    >
-                      Close Roadmap
-                    </button>
-                  </div>
-                )}
+                      <h4 className="text-white font-bold text-lg">🚀 Smart Sunrise v4.0 Roadmap</h4>
+                      {upcomingFeatures.map((feature) => (
+                        <button
+                          key={feature.id}
+                          onClick={() => setSelectedFeature(feature)}
+                          className="w-full p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left group"
+                        >
+                          <div className="flex items-center gap-3 font-bold" style={{ color: feature.color }}>
+                            <feature.icon className="w-5 h-5" />
+                            {feature.title}
+                          </div>
+                        </button>
+                      ))}
+                      <p className="text-xs text-gray-500 pt-2 italic">Vision: The Ultimate AI Smart School Operating System</p>
+                    </>
+                  ) : (
+                    <div className="space-y-4">
+                      <button 
+                        onClick={() => setSelectedFeature(null)}
+                        className="text-gray-500 hover:text-white text-sm flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" /> Back to Roadmap
+                      </button>
+                      <h4 className="text-xl font-bold" style={{ color: selectedFeature.color }}>{selectedFeature.title}</h4>
+                      <div className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
+                        {selectedFeature.description}
+                      </div>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={() => {
+                      setShowUpcoming(false);
+                      setSelectedFeature(null);
+                    }}
+                    className="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-white/20 transition-all mt-4"
+                  >
+                    Close Roadmap
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>

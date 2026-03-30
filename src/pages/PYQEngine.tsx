@@ -1043,12 +1043,27 @@ export default function PYQEngine() {
         <AnimatePresence>
           {activeWhiteboard && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] bg-black/90 p-4 flex flex-col"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              drag
+              dragMomentum={false}
+              className="fixed top-20 right-10 z-[100] w-[400px] h-[400px] md:w-[600px] md:h-[600px] bg-white rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10 flex flex-col"
+              style={{ resize: 'both', overflow: 'hidden', minWidth: '300px', minHeight: '300px' }}
             >
-              <div className="flex-1 bg-white rounded-xl overflow-hidden shadow-2xl relative">
+              <div className="flex items-center justify-between p-3 bg-gray-100 border-b border-gray-200 cursor-move">
+                <div className="flex items-center gap-2">
+                  <PenTool className="w-4 h-4 text-gray-600" />
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-widest">Floating Whiteboard</span>
+                </div>
+                <button 
+                  onClick={() => setActiveWhiteboard(null)}
+                  className="p-1 hover:bg-gray-200 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 relative">
                 <Whiteboard onClose={() => setActiveWhiteboard(null)} />
               </div>
             </motion.div>

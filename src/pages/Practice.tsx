@@ -37,7 +37,10 @@ export default function Practice() {
   const [slideWhiteboardData, setSlideWhiteboardData] = useState<Record<number, string>>({});
   const [sideWhiteboardData, setSideWhiteboardData] = useState<string | undefined>(undefined);
   const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(66); // percentage
+  const [sideWhiteboardWidth, setSideWhiteboardWidth] = useState(() => {
+    const saved = localStorage.getItem('sunrise_side_whiteboard_width');
+    return saved ? Number(saved) : 50;
+  }); // percentage
   const [isResizing, setIsResizing] = useState(false);
   const [showDashboardSelector, setShowDashboardSelector] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
@@ -400,6 +403,10 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     setIsResizing(true);
     e.preventDefault();
   };
+
+  useEffect(() => {
+    localStorage.setItem('sunrise_side_whiteboard_width', sideWhiteboardWidth.toString());
+  }, [sideWhiteboardWidth]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

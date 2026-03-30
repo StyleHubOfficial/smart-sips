@@ -389,6 +389,19 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   useEffect(() => {
+    let animationFrame: number;
+    const animate = () => {
+      const hasActiveHighlighter = strokes.some(s => s.tool === 'highlighter' && s.startTime && (Date.now() - s.startTime < 7000));
+      if (hasActiveHighlighter || currentStroke?.tool === 'highlighter') {
+        redraw();
+      }
+      animationFrame = requestAnimationFrame(animate);
+    };
+    animate();
+    return () => cancelAnimationFrame(animationFrame);
+  }, [strokes, currentStroke]);
+
+  useEffect(() => {
     redraw();
   }, [strokes, currentStroke, laserPath, selectedStrokeIds]);
 
@@ -868,25 +881,78 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         )}
       </div>
 
-      {/* Toolbar (Shifted to Bottom, higher to avoid nav bar) */}
-      <div className="absolute bottom-28 left-4 right-4 flex items-center justify-between p-3 bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl z-10 pointer-events-auto">
+      {/* Floating Draggable Toolbar */}
+      <motion.div 
+        drag
+        dragMomentum={false}
+        className="absolute bottom-28 left-4 right-4 flex items-center justify-between p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] cursor-move group"
+      >
         <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
+          <div className="p-2 text-white/20 group-hover:text-white/40 transition-colors">
+            <MousePointer2 className="w-4 h-4" />
+          </div>
           <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
             <MousePointer2 className="w-5 h-5" />
           </button>
           <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
             <Sparkles className="w-5 h-5" />
           </button>
+          
           {selectedStrokeIds.length > 0 && (
-            <button onClick={() => {
-              const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
-              setStrokes(newStrokes);
-              saveToHistory(newStrokes);
-              setSelectedStrokeIds([]);
-            }} className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
-              <Trash2 className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
+              <button onClick={() => {
+                const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
+                setStrokes(newStrokes);
+                saveToHistory(newStrokes);
+                setSelectedStrokeIds([]);
+              }} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <input 
+                type="color" 
+                onChange={(e) => {
+                  const newStrokes = strokes.map(s => 
+                    selectedStrokeIds.includes(s.id) ? { ...s, color: e.target.value } : s
+                  );
+                  setStrokes(newStrokes);
+                  saveToHistory(newStrokes);
+                }}
+                className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
+                title="Change Color of Selected"
+              />
+              <div className="flex flex-col gap-0.5">
+                <button 
+                  onClick={() => {
+                    const newStrokes = strokes.map(s => {
+                      if (!selectedStrokeIds.includes(s.id)) return s;
+                      const scale = (s.scale?.x || 1) * 1.1;
+                      return { ...s, scale: { x: scale, y: scale } };
+                    });
+                    setStrokes(newStrokes);
+                    saveToHistory(newStrokes);
+                  }}
+                  className="p-0.5 text-white/60 hover:text-white"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                </button>
+                <button 
+                  onClick={() => {
+                    const newStrokes = strokes.map(s => {
+                      if (!selectedStrokeIds.includes(s.id)) return s;
+                      const scale = (s.scale?.x || 1) * 0.9;
+                      return { ...s, scale: { x: scale, y: scale } };
+                    });
+                    setStrokes(newStrokes);
+                    saveToHistory(newStrokes);
+                  }}
+                  className="p-0.5 text-white/60 hover:text-white"
+                >
+                  <Minimize2 className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
           )}
+
           <div className="w-px h-6 bg-white/10 mx-1"></div>
           <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
             <Pen className="w-5 h-5" />
@@ -922,7 +988,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden z-50 min-w-[160px]"
+                  className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a] border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[160px]"
                 >
                   <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div> Pixel Eraser
@@ -930,11 +996,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                   <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
                     <Minus className="w-3 h-3" /> Stroke Eraser
                   </button>
-                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-gray-300 hover:bg-white/5 hover:text-white text-left whitespace-nowrap flex items-center gap-2">
-                    <Sparkles className="w-3 h-3" /> Lasso Eraser
-                  </button>
-                  <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
-                    <Trash2 className="w-3 h-3" /> Slide to Erase All
+                  <button onClick={() => { setTool('eraser'); setEraserMode('lasso'); setShowEraserMenu(false); }} className="px-4 py-2 text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap border-t border-white/5 flex items-center gap-2">
+                    <Sparkles className="w-3 h-3" /> Lasso Pixel Eraser
                   </button>
                 </motion.div>
               )}
@@ -1007,7 +1070,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             </button>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

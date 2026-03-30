@@ -14,16 +14,27 @@ interface HeaderProps {
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
   isRevealing?: boolean;
+  containerRef?: React.RefObject<HTMLElement>;
 }
 
-export default function Header({ isSmartPanelMode, setIsSmartPanelMode, onOpenLogin, isNotificationsOpen, setIsNotificationsOpen, isRevealing }: HeaderProps) {
+export default function Header({ 
+  isSmartPanelMode, 
+  setIsSmartPanelMode, 
+  onOpenLogin, 
+  isNotificationsOpen, 
+  setIsNotificationsOpen, 
+  isRevealing,
+  containerRef
+}: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isAuthenticated, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useThemeStore();
   const { isGlowEnabled, toggleGlow, notifications } = useAppStore();
-  const { scrollYProgress } = useScroll();
+  const { scrollYProgress } = useScroll({
+    container: containerRef
+  });
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,

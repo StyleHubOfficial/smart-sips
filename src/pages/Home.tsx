@@ -1,8 +1,20 @@
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { PlayCircle, BrainCircuit, FileSearch, MonitorPlay, ChevronRight, BookOpen, Sparkles, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Home() {
+  const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.logoUrl) setLogo(data.logoUrl);
+      })
+      .catch(err => console.error('Failed to load settings:', err));
+  }, []);
+
   return (
     <div className="min-h-screen pb-32">
       {/* Top Section - Video Animation */}
@@ -28,6 +40,24 @@ export default function Home() {
         </video>
 
         <div className="relative z-20 text-center px-4 max-w-4xl mx-auto mt-16">
+          {logo && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="mb-8 flex justify-center"
+            >
+              <div className="relative group">
+                <div className="absolute -inset-4 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                <img 
+                  src={logo} 
+                  alt="Logo" 
+                  className="w-32 h-32 sm:w-48 sm:h-48 object-contain relative z-10 drop-shadow-[0_0_30px_rgba(0,240,255,0.3)]"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </motion.div>
+          )}
           <motion.h1 
             initial={{ y: 30, opacity: 0 }}
             animate={{ 
