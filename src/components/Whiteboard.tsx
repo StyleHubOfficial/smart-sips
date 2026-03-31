@@ -87,19 +87,36 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  const [initialSelectedStrokes, setInitialSelectedStrokes] = useState<Stroke[]>([]);
+  const [initialBounds, setInitialBounds] = useState<{ minX: number, minY: number, maxX: number, maxY: number } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [backgroundType, setBackgroundType] = useState<'none' | 'grid' | 'dots' | 'lines'>('none');
   const dragControls = useDragControls();
+  const bgImageRef = useRef<HTMLImageElement | null>(null);
 
   const laserPathRef = useRef<Point[]>([]);
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        bgImageRef.current = img;
+        redrawBackground();
+      };
+      img.src = backgroundImage;
+    } else {
+      bgImageRef.current = null;
+      redrawBackground();
+    }
+  }, [backgroundImage]);
 
   useEffect(() => {
     if (initialData) {
@@ -127,13 +144,16 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       const dpr = window.devicePixelRatio || 1;
       
       [canvas, bgCanvas].forEach(c => {
-        c.style.width = `${rect.width}px`;
-        c.style.height = `${rect.height}px`;
-        c.width = rect.width * dpr;
-        c.height = rect.height * dpr;
+        // We use a fixed internal resolution of 1920x1080 for consistent coordinates across devices
+        c.width = 1920;
+        c.height = 1080;
+        c.style.width = '100%';
+        c.style.height = '100%';
+        c.style.objectFit = 'contain';
         const ctx = c.getContext('2d');
         if (ctx) {
-          ctx.scale(dpr, dpr);
+          // Reset transform
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
       });
       
@@ -151,9 +171,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
+    const w = 1920;
+    const h = 1080;
 
     ctx.clearRect(0, 0, w, h);
     ctx.save();
@@ -162,19 +181,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     renderBackground(ctx, w / scale, h / scale);
 
-    if (backgroundImage) {
-      const img = new Image();
-      img.src = backgroundImage;
-      if (img.complete) {
-        const canvasW = w;
-        const canvasH = h;
-        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
-        const x = (canvasW - img.width * imgScale) / 2;
-        const y = (canvasH - img.height * imgScale) / 2;
-        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
-      } else {
-        img.onload = () => redrawBackground();
-      }
+    if (bgImageRef.current) {
+      const img = bgImageRef.current;
+      const canvasW = w;
+      const canvasH = h;
+      const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
+      const x = (canvasW - img.width * imgScale) / 2;
+      const y = (canvasH - img.height * imgScale) / 2;
+      ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
     }
 
     strokes.forEach(stroke => {
@@ -237,14 +251,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         ctx.lineWidth = 1;
       }
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length - 2; i++) {
-        const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
-        const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
-        ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
-      }
-      if (stroke.points.length > 2) {
-        const last = stroke.points.length - 1;
-        ctx.quadraticCurveTo(stroke.points[last - 1].x, stroke.points[last - 1].y, stroke.points[last].x, stroke.points[last].y);
+      for (let i = 1; i < stroke.points.length; i++) {
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
       }
       ctx.stroke();
       if (stroke.type === 'lasso') ctx.setLineDash([]);
@@ -273,9 +281,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.width / dpr;
-    const h = canvas.height / dpr;
+    const w = 1920;
+    const h = 1080;
 
     ctx.clearRect(0, 0, w, h);
     ctx.save();
@@ -428,17 +435,24 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
   useEffect(() => {
     redrawBackground();
+    redraw(); // Ensure main canvas is cleared/updated when strokes change
   }, [strokes, offset, scale, selectedStrokeIds]);
 
   useEffect(() => {
     let animationFrame: number;
-    const animate = () => {
-      redraw();
+    let lastDrawTime = 0;
+    const animate = (time: number) => {
+      // Only redraw if we are actively drawing, panning, or have something dynamic (like highlighter pulse)
+      // For a smart panel, we want to minimize unnecessary redraws to save CPU/GPU.
+      // Since we clear the canvas every frame, we only need to redraw if there's an active stroke, laser, or selection.
+      if (isDrawing || isPanning || currentStroke || laserPathRef.current.length > 0 || selectedStrokeIds.length > 0) {
+        redraw();
+      }
       animationFrame = requestAnimationFrame(animate);
     };
-    animate();
+    animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [currentStroke, selectedStrokeIds, scale, offset]);
+  }, [currentStroke, selectedStrokeIds, scale, offset, isDrawing, isPanning]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
@@ -810,9 +824,28 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
     
+    // Calculate scale and offset due to object-fit: contain
+    const canvasRatio = 1920 / 1080;
+    const rectRatio = rect.width / rect.height;
+    let drawWidth = rect.width;
+    let drawHeight = rect.height;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (rectRatio > canvasRatio) {
+      drawWidth = rect.height * canvasRatio;
+      offsetX = (rect.width - drawWidth) / 2;
+    } else {
+      drawHeight = rect.width / canvasRatio;
+      offsetY = (rect.height - drawHeight) / 2;
+    }
+
+    const scaleX = 1920 / drawWidth;
+    const scaleY = 1080 / drawHeight;
+
     return {
-      x: (clientX - rect.left - offset.x) / scale,
-      y: (clientY - rect.top - offset.y) / scale
+      x: ((clientX - rect.left - offsetX) * scaleX - offset.x) / scale,
+      y: ((clientY - rect.top - offsetY) * scaleY - offset.y) / scale
     };
   };
 
@@ -844,23 +877,31 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     const pos = getPos(e);
     setStartPos(pos);
-    setCursorPos(pos);
     setIsDrawing(true);
     currentPointsRef.current = [pos];
 
     if (tool === 'select') {
       if (selectedStrokeIds.length > 0) {
-        const selected = strokes.find(s => s.id === selectedStrokeIds[0]);
-        if (selected) {
-          const bounds = getStrokeBounds(selected);
-          const padding = 10;
-          const handleSize = 10;
+        const selectedStrokes = strokes.filter(s => selectedStrokeIds.includes(s.id));
+        if (selectedStrokes.length > 0) {
+          // Calculate combined bounds
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          selectedStrokes.forEach(stroke => {
+            const bounds = getStrokeBounds(stroke);
+            minX = Math.min(minX, bounds.minX);
+            minY = Math.min(minY, bounds.minY);
+            maxX = Math.max(maxX, bounds.maxX);
+            maxY = Math.max(maxY, bounds.maxY);
+          });
+
+          const padding = 15;
+          const handleSize = 12;
           
           const handles = [
-            { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
-            { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
-            { x: bounds.minX - padding, y: bounds.maxY + padding, id: 'bl' },
-            { x: bounds.maxX + padding, y: bounds.maxY + padding, id: 'br' },
+            { x: minX - padding, y: minY - padding, id: 'tl' },
+            { x: maxX + padding, y: minY - padding, id: 'tr' },
+            { x: minX - padding, y: maxY + padding, id: 'bl' },
+            { x: maxX + padding, y: maxY + padding, id: 'br' },
           ];
           
           const clickedHandle = handles.find(h => 
@@ -870,21 +911,28 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           if (clickedHandle) {
             setIsResizing(true);
             setResizeHandle(clickedHandle.id);
+            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
+            setInitialBounds({ minX, minY, maxX, maxY });
             return;
           }
           
-          const rotX = (bounds.minX + bounds.maxX) / 2;
-          const rotY = bounds.minY - padding - 30;
+          const rotX = (minX + maxX) / 2;
+          const rotY = minY - padding - 40;
           if (Math.abs(pos.x - rotX) < handleSize && Math.abs(pos.y - rotY) < handleSize) {
             setIsRotating(true);
+            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
+            setInitialBounds({ minX, minY, maxX, maxY });
             return;
           }
 
           // Check if click is inside the bounds of the selected strokes
-          const isInsideSelection = pos.x >= bounds.minX && pos.x <= bounds.maxX && pos.y >= bounds.minY && pos.y <= bounds.maxY;
+          const isInsideSelection = pos.x >= minX - padding && pos.x <= maxX + padding && pos.y >= minY - padding && pos.y <= maxY + padding;
           if (isInsideSelection) {
             setIsDragging(true);
-            const center = getStrokeCenter(selected);
+            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
+            setInitialBounds({ minX, minY, maxX, maxY });
+            // Use the first selected stroke's center as reference for dragging offset
+            const center = getStrokeCenter(selectedStrokes[0]);
             setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
             return;
           }
@@ -983,7 +1031,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     const pos = getPos(e);
-    setCursorPos(pos);
 
     if (isPanning) {
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
@@ -1012,53 +1059,72 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (tool === 'select' && selectedStrokeIds.length > 0) {
-      if (isDragging) {
+      if (isDragging && initialBounds) {
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+
         setStrokes(prev => prev.map(s => {
-          if (selectedStrokeIds.includes(s.id)) {
-            const dx = pos.x - cursorPos.x;
-            const dy = pos.y - cursorPos.y;
-            
+          const initial = initialSelectedStrokes.find(is => is.id === s.id);
+          if (initial) {
             return {
-              ...s,
-              points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
-              startPos: s.startPos ? { x: s.startPos.x + dx, y: s.startPos.y + dy } : undefined,
-              endPos: s.endPos ? { x: s.endPos.x + dx, y: s.endPos.y + dy } : undefined,
-              center: s.center ? { x: s.center.x + dx, y: s.center.y + dy } : undefined
+              ...initial,
+              points: initial.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+              startPos: initial.startPos ? { x: initial.startPos.x + dx, y: initial.startPos.y + dy } : undefined,
+              endPos: initial.endPos ? { x: initial.endPos.x + dx, y: initial.endPos.y + dy } : undefined,
+              center: initial.center ? { x: initial.center.x + dx, y: initial.center.y + dy } : undefined
             };
           }
           return s;
         }));
-      } else if (isResizing && resizeHandle) {
+      } else if (isResizing && resizeHandle && initialBounds) {
+        const dx = pos.x - startPos.x;
+        const dy = pos.y - startPos.y;
+        
+        const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
+        const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
+        
+        let scaleX = 1;
+        let scaleY = 1;
+        
+        if (resizeHandle.includes('r')) scaleX = (initialWidth + dx) / initialWidth;
+        if (resizeHandle.includes('l')) scaleX = (initialWidth - dx) / initialWidth;
+        if (resizeHandle.includes('b')) scaleY = (initialHeight + dy) / initialHeight;
+        if (resizeHandle.includes('t')) scaleY = (initialHeight - dy) / initialHeight;
+        
+        // Keep aspect ratio if shift is pressed (simulated here)
+        // scaleX = scaleY = Math.max(scaleX, scaleY);
+
         setStrokes(prev => prev.map(s => {
-          if (selectedStrokeIds.includes(s.id)) {
-            const center = s.center || getStrokeCenter(s);
-            const dx = pos.x - center.x;
-            const dy = pos.y - center.y;
-            
-            const initialBounds = getStrokeBounds(s);
-            const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
-            const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
-            
-            const scaleX = Math.abs(dx * 2) / initialWidth;
-            const scaleY = Math.abs(dy * 2) / initialHeight;
-            
+          const initial = initialSelectedStrokes.find(is => is.id === s.id);
+          if (initial) {
+            const center = initial.center || getStrokeCenter(initial);
             return {
-              ...s,
-              scale: { x: scaleX, y: scaleY },
+              ...initial,
+              scale: { 
+                x: (initial.scale?.x || 1) * scaleX, 
+                y: (initial.scale?.y || 1) * scaleY 
+              },
               center
             };
           }
           return s;
         }));
-      } else if (isRotating) {
+      } else if (isRotating && initialBounds) {
+        const center = {
+          x: (initialBounds.minX + initialBounds.maxX) / 2,
+          y: (initialBounds.minY + initialBounds.maxY) / 2
+        };
+        const initialAngle = Math.atan2(startPos.y - center.y, startPos.x - center.x);
+        const currentAngle = Math.atan2(pos.y - center.y, pos.x - center.x);
+        const deltaAngle = currentAngle - initialAngle;
+
         setStrokes(prev => prev.map(s => {
-          if (selectedStrokeIds.includes(s.id)) {
-            const center = s.center || getStrokeCenter(s);
-            const angle = Math.atan2(pos.y - center.y, pos.x - center.x) + Math.PI / 2;
+          const initial = initialSelectedStrokes.find(is => is.id === s.id);
+          if (initial) {
             return {
-              ...s,
-              rotation: angle,
-              center
+              ...initial,
+              rotation: (initial.rotation || 0) + deltaAngle,
+              center: initial.center || getStrokeCenter(initial)
             };
           }
           return s;
@@ -1232,8 +1298,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       <div 
         ref={containerRef}
         onWheel={handleWheel}
-        className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
-        style={{ touchAction: 'none' }}
+        className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
+        style={{ touchAction: 'none', transform: 'translateZ(0)' }}
       >
         {/* Canvas Area */}
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
@@ -1246,7 +1312,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
-            onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
+            onMouseOut={() => { stopDrawing(); }}
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
@@ -1305,66 +1371,89 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             dragControls={dragControls}
             dragListener={false}
             dragMomentum={false}
-            className="fixed bottom-24 left-4 right-4 md:left-auto md:right-24 md:w-auto flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[100] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+            className="fixed bottom-24 left-4 right-4 md:left-auto md:right-24 md:w-auto flex flex-col p-4 bg-black/40 border border-white/10 backdrop-blur-2xl rounded-3xl z-[100] pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5 group"
           >
             <div 
                 onPointerDown={(e) => dragControls.start(e)}
-                className="cursor-move flex items-center justify-between pb-2 border-b border-white/10 mb-2"
+                className="cursor-move flex items-center justify-between pb-3 border-b border-white/10 mb-3"
             >
-                <span className="text-white/50 text-xs font-medium">Toolbar</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
+                  <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Premium Toolbar</span>
+                </div>
                 <div className="flex gap-1">
                   <div className="w-1 h-1 rounded-full bg-white/20" />
                   <div className="w-1 h-1 rounded-full bg-white/20" />
                   <div className="w-1 h-1 rounded-full bg-white/20" />
                 </div>
             </div>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
-              <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
-                <MousePointer2 className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
-                <Sparkles className="w-5 h-5" />
-              </button>
-              
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-              <button onClick={() => setTool('smart-pen')} className={`p-2 rounded-lg transition-colors ${tool === 'smart-pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Smart Shape Pen">
-                <Wand2 className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('ai-ocr')} className={`p-2 rounded-lg transition-colors ${tool === 'ai-ocr' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Text Recognition (Lasso)">
-                <ScanText className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('pan')} className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pan & Zoom Tool">
-                <Hand className="w-5 h-5" />
-              </button>
-              <button onClick={() => setShowAIGenerator(true)} className={`p-2 rounded-lg transition-colors ${showAIGenerator ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Object Generator">
-                <Sparkles className="w-5 h-5" />
-              </button>
-              
-              {selectedStrokeIds.length > 0 && (
-                <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
-                  <button onClick={() => {
-                    const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
-                    setStrokes(newStrokes);
-                    saveToHistory(newStrokes);
-                    setSelectedStrokeIds([]);
-                  }} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
-                    <Trash2 className="w-4 h-4" />
+            
+            <div className="flex flex-col gap-4">
+              {/* Tool Selection */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { id: 'select', icon: MousePointer2, label: 'Select' },
+                  { id: 'lasso', icon: Lasso, label: 'Lasso' },
+                  { id: 'smart-pen', icon: Wand2, label: 'Smart Pen' },
+                  { id: 'ai-ocr', icon: ScanText, label: 'AI OCR' },
+                  { id: 'pan', icon: Hand, label: 'Pan' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTool(t.id as any)}
+                    className={`p-2.5 rounded-xl transition-all duration-300 relative group ${
+                      tool === t.id 
+                        ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' 
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                    title={t.label}
+                  >
+                    <t.icon className="w-5 h-5" />
+                    {tool === t.id && (
+                      <motion.div
+                        layoutId="activeTool"
+                        className="absolute inset-0 bg-[#00F0FF] rounded-xl -z-10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
                   </button>
-                  <input 
-                    type="color" 
-                    onChange={(e) => {
-                      const newStrokes = strokes.map(s => 
-                        selectedStrokeIds.includes(s.id) ? { ...s, color: e.target.value } : s
-                      );
+                ))}
+                
+                <div className="w-px h-6 bg-white/10 mx-1" />
+                
+                <button
+                  onClick={() => setShowAIGenerator(true)}
+                  className={`p-2.5 rounded-xl transition-all duration-300 ${
+                    showAIGenerator ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'text-indigo-400 hover:bg-indigo-500/10'
+                  }`}
+                  title="AI Object Generator"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Selection Actions */}
+              {selectedStrokeIds.length > 0 && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="flex items-center gap-3 bg-white/5 rounded-2xl p-2 border border-white/10"
+                >
+                  <button 
+                    onClick={() => {
+                      const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
                       setStrokes(newStrokes);
                       saveToHistory(newStrokes);
+                      setSelectedStrokeIds([]);
                     }}
-                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
-                    title="Change Color of Selected"
-                  />
-                  <div className="flex flex-col gap-0.5">
+                    className="p-2 rounded-xl text-red-400 hover:bg-red-500/20 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  
+                  <div className="w-px h-4 bg-white/10" />
+                  
+                  <div className="flex items-center gap-1">
                     <button 
                       onClick={() => {
                         const newStrokes = strokes.map(s => {
@@ -1375,9 +1464,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                         setStrokes(newStrokes);
                         saveToHistory(newStrokes);
                       }}
-                      className="p-0.5 text-white/60 hover:text-white"
+                      className="p-1.5 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                     >
-                      <Maximize2 className="w-3 h-3" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => {
@@ -1389,239 +1478,38 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                         setStrokes(newStrokes);
                         saveToHistory(newStrokes);
                       }}
-                      className="p-0.5 text-white/60 hover:text-white"
+                      className="p-1.5 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                     >
-                      <Minimize2 className="w-3 h-3" />
+                      <Minimize2 className="w-4 h-4" />
                     </button>
                   </div>
+                </motion.div>
+              )}
+
+              {/* Utility Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                <div className="flex items-center gap-1">
+                  <button onClick={undo} className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Undo">
+                    <Undo className="w-4 h-4" />
+                  </button>
+                  <button onClick={redo} className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Redo">
+                    <Redo className="w-4 h-4" />
+                  </button>
                 </div>
-              )}
-
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-              <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
-                <Pen className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
-                <Highlighter className="w-5 h-5" />
-              </button>
-              
-              {/* Advanced Eraser */}
-              <div className="relative flex items-center">
-                <button 
-                  onClick={() => {
-                    if (tool === 'eraser') {
-                      setShowEraserMenu(!showEraserMenu);
-                    } else {
-                      setTool('eraser');
-                      setShowEraserMenu(false);
-                    }
-                  }} 
-                  className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
-                  title="Eraser (Click again for options)"
-                >
-                  <Eraser className="w-5 h-5" />
-                </button>
-                <AnimatePresence>
-                  {showEraserMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a]/95 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[180px] p-1"
-                    >
-                      <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
-                        <Eraser className="w-3.5 h-3.5" /> Pixel Eraser
-                      </button>
-                      <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
-                        <Minus className="w-3.5 h-3.5" /> Stroke Eraser
-                      </button>
-                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
-                        <Scissors className="w-3.5 h-3.5" /> Lasso Stroke Eraser
-                      </button>
-                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
-                        <Sparkles className="w-3.5 h-3.5" /> Lasso Pixel Eraser
-                      </button>
-                      <div className="h-px bg-white/10 my-1 mx-2" />
-                      <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap flex items-center gap-2">
-                        <Trash2 className="w-3.5 h-3.5" /> Clear All
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">
-                <Type className="w-5 h-5" />
-              </button>
-              
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-              <button onClick={() => setTool('rect')} className={`p-2 rounded-lg transition-colors ${tool === 'rect' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Rectangle">
-                <Square className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('circle')} className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Circle">
-                <Circle className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('line')} className={`p-2 rounded-lg transition-colors ${tool === 'line' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Line">
-                <Minus className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('arrow')} className={`p-2 rounded-lg transition-colors ${tool === 'arrow' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Arrow">
-                <ArrowUpRight className="w-5 h-5" />
-              </button>
-              
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-              
-              <div className="flex items-center gap-2 px-2">
-                <input 
-                  type="color" 
-                  value={color} 
-                  onChange={(e) => setColor(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-                  title="Color"
-                />
-                <input 
-                  type="range" 
-                  min="1" 
-                  max="20" 
-                  value={lineWidth} 
-                  onChange={(e) => setLineWidth(parseInt(e.target.value))}
-                  className="w-20 accent-[#00F0FF]"
-                  title="Stroke Thickness"
-                />
-              </div>
-              
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-              
-              <button onClick={undo} disabled={historyStep <= 0} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Undo">
-                <Undo className="w-5 h-5" />
-              </button>
-              <button onClick={redo} disabled={historyStep >= history.length - 1} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Redo">
-                <Redo className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <button onClick={toggleFullscreen} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Toggle Fullscreen">
-                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-              </button>
-              <button onClick={clear} className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Clear All">
-                <Trash2 className="w-5 h-5" />
-              </button>
-              <button onClick={download} className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors" title="Download">
-                <Download className="w-5 h-5" />
-              </button>
-              {onClose && (
-                <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-1" title="Close Whiteboard">
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-              <div className="relative">
-                <button 
-                  onClick={() => setShowBackgroundMenu(!showBackgroundMenu)} 
-                  className={`p-2 rounded-lg transition-colors ${backgroundType !== 'none' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
-                  title="Background Pattern"
-                >
-                  <Layout className="w-5 h-5" />
-                </button>
-                <AnimatePresence>
-                  {showBackgroundMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[120px] shadow-2xl"
-                    >
-                      {[
-                        { id: 'none', label: 'None', icon: X },
-                        { id: 'grid', label: 'Grid', icon: Grid },
-                        { id: 'dots', label: 'Dots', icon: MoreVertical },
-                        { id: 'lines', label: 'Lines', icon: Layers },
-                      ].map((bg) => (
-                        <button
-                          key={bg.id}
-                          onClick={() => { setBackgroundType(bg.id as any); setShowBackgroundMenu(false); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${backgroundType === bg.id ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`}
-                        >
-                          <bg.icon className="w-3 h-3" />
-                          {bg.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="relative">
-                <button 
-                  onClick={() => setShowExportMenu(!showExportMenu)} 
-                  className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors" 
-                  title="Export Options"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-                <AnimatePresence>
-                  {showExportMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[150px] shadow-2xl"
-                    >
-                      <button
-                        onClick={() => { downloadAsImage(); setShowExportMenu(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
-                      >
-                        <ImageIcon className="w-4 h-4" />
-                        Download PNG
-                      </button>
-                      <button
-                        onClick={() => { downloadAsPDF(); setShowExportMenu(false); }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
-                      >
-                        <FileText className="w-4 h-4" />
-                        Download PDF
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div className="w-px h-6 bg-white/10 mx-1"></div>
-
-              <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
-                <button 
-                  onClick={() => { setScale(Math.max(0.1, scale - 0.1)); redraw(); }}
-                  className="p-1 text-white/60 hover:text-white transition-colors"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-4 h-4" />
-                </button>
-                <span className="text-[10px] font-mono text-white/40 w-10 text-center">
-                  {Math.round(scale * 100)}%
-                </span>
-                <button 
-                  onClick={() => { setScale(Math.min(5, scale + 0.1)); redraw(); }}
-                  className="p-1 text-white/60 hover:text-white transition-colors"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => { setScale(1); setOffset({x: 0, y: 0}); redraw(); }}
-                  className="p-1 text-white/60 hover:text-white transition-colors border-l border-white/10 ml-1"
-                  title="Reset View"
-                >
-                  <Search className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button onClick={clear} className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all" title="Clear All">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={downloadAsPDF} className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded-xl transition-all" title="Download PDF">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-        </div>
-      </motion.div>
-    )}
-    </AnimatePresence>
-    {showAIGenerator && (
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {showAIGenerator && (
       <AIGeneratorModal 
         onClose={() => setShowAIGenerator(false)} 
         onInsert={(content) => {

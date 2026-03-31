@@ -24,6 +24,7 @@ interface DashboardFile {
   public_id: string;
   format?: string;
   resource_type?: string;
+  meta?: any;
   context?: {
     custom?: {
       title?: string;
@@ -80,11 +81,13 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
       const response = await fetch('/api/content');
       const data = await response.json();
       const resources = (data.resources || []).map((file: any) => {
-        const meta = file.context?.custom || {};
+        // Cloudinary context can be directly in context or under context.custom
+        const meta = file.context?.custom || file.context || {};
         
         // Derive a better name if title is missing
         const deriveName = () => {
-          if (meta.title && meta.title.length > 2) return meta.title;
+          const title = meta.title || meta.Title;
+          if (title && title.length > 1) return title;
           
           // Try to get name from public_id or filename
           const rawName = file.filename || file.public_id.split('/').pop() || "";
@@ -92,7 +95,6 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
           // Check if it's likely a hash (long string of random chars)
           const isHash = (text: string) => {
             if (text.length < 15) return false;
-            // If it has no spaces, underscores, or hyphens and is long, it's likely a hash
             return !/[_\-\s]/.test(text) && /[a-z]/.test(text) && /[0-9]/.test(text);
           };
           
@@ -121,7 +123,9 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
           name: deriveName(),
           type: meta.fileType || file.format?.toUpperCase() || "Document",
           url: file.secure_url,
-          createdAt: file.created_at
+          createdAt: file.created_at,
+          // Store meta directly for easier access in filtering
+          meta: meta
         };
       });
       setFiles(resources);
@@ -134,7 +138,7 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
 
   const getFilteredFiles = () => {
     return files.filter(file => {
-      const meta = file.context?.custom || {};
+      const meta = file.meta || {};
       const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
       
       if (selectedCategory === 'AI Generated') {
@@ -142,14 +146,21 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
                      meta.description?.toLowerCase().includes('ai-generated') ||
                      meta.tags?.toLowerCase().includes('ai') ||
                      meta.title?.toLowerCase().includes('ai') ||
-                     meta.isAI;
+                     meta.isAI === 'true' || meta.isAI === true;
         if (!isAI) return false;
       } else if (selectedCategory && selectedCategory !== 'All Content') {
-        if (meta.class?.trim() !== selectedCategory) return false;
+        // Handle potential case sensitivity or extra spaces
+        const fileClass = (meta.class || meta.className || meta.Class || "").toString().trim().toLowerCase();
+        const targetClass = selectedCategory.toString().trim().toLowerCase();
+        
+        // Also check if the category name is part of the class string (e.g. "Class 10" in "Class 10 - Science")
+        if (!fileClass.includes(targetClass) && !targetClass.includes(fileClass)) return false;
       }
 
       if (selectedSubject) {
-        if (meta.subject?.trim() !== selectedSubject) return false;
+        const fileSubject = (meta.subject || meta.Subject || "").toString().trim().toLowerCase();
+        const targetSubject = selectedSubject.toString().trim().toLowerCase();
+        if (!fileSubject.includes(targetSubject) && !targetSubject.includes(fileSubject)) return false;
       }
 
       return matchesSearch;

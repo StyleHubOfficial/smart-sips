@@ -358,9 +358,10 @@ export const usePracticeStore = create<PracticeState>()(
             1. ANALYZE the provided source material(s) (PDF/Image/Text).
             2. GENERATE exactly ${count} MORE questions based ONLY on the content of these sources.
             3. Ensure these new questions are DIFFERENT from the previous ones.
-            4. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the sources.' : 'MIX UP the order of concepts for a more challenging set.'}
-            5. Question Type: ${questionType}
-            6. Difficulty Level: ${difficulty}
+            4. Previous questions (DO NOT REPEAT THESE): ${questions.map(q => q.question).join(' | ')}
+            5. ${sequenceWise ? 'Maintain the SEQUENCE of the content as it appears in the sources.' : 'MIX UP the order of concepts for a more challenging set.'}
+            6. Question Type: ${questionType}
+            7. Difficulty Level: ${difficulty}
             
             [CONSTRAINTS]
             - DO NOT include any information not present in the sources.
@@ -379,6 +380,7 @@ export const usePracticeStore = create<PracticeState>()(
             
             The questions must be authentic and well-balanced.
             Ensure these new questions are DIFFERENT from the previous ones you generated for this topic.
+            Previous questions (DO NOT REPEAT THESE): ${questions.map(q => q.question).join(' | ')}
             Ensure the questions are searched well and are from correct, authentic sources.`;
           }
 
@@ -411,14 +413,15 @@ export const usePracticeStore = create<PracticeState>()(
                     question: { type: Type.STRING },
                     options: { type: Type.ARRAY, items: { type: Type.STRING } },
                     correctAnswer: { type: Type.STRING },
-                    explanation: { type: Type.STRING },
-                    difficulty: { type: Type.STRING },
-                    topic: { type: Type.STRING },
-                    hints: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    sourceLinks: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    solutionSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    solution: { type: Type.STRING },
+                    difficultyBadge: { type: Type.STRING },
+                    topicTag: { type: Type.STRING },
+                    hint: { type: Type.STRING },
+                    sourceLink: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    pyqYear: { type: Type.STRING }
                   },
-                  required: ["id", "question", "options", "correctAnswer", "explanation", "difficulty", "topic"]
+                  required: ["id", "question", "options", "correctAnswer", "solution", "difficultyBadge", "topicTag"]
                 }
               }
             }

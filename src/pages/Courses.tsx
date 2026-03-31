@@ -13,8 +13,12 @@ const CLASSES = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 
 const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "English", "Hindi", "History", "Geography", "Economics", "Accountancy", "Business Studies"];
 
 export default function Courses() {
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string | null>(() => {
+    return localStorage.getItem('sunrise_last_class');
+  });
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(() => {
+    return localStorage.getItem('sunrise_last_subject');
+  });
   const [showAllContent, setShowAllContent] = useState(false);
   const [showAIGenerated, setShowAIGenerated] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,11 +145,22 @@ export default function Courses() {
     }
   };
 
+  const handleSelectClass = (cls: string) => {
+    setSelectedClass(cls);
+    localStorage.setItem('sunrise_last_class', cls);
+  };
+
+  const handleSelectSubject = (sub: string) => {
+    setSelectedSubject(sub);
+    localStorage.setItem('sunrise_last_subject', sub);
+  };
+
   const handleBack = () => {
     if (selectedSubject) {
       setSelectedSubject(null);
     } else if (selectedClass) {
       setSelectedClass(null);
+      localStorage.removeItem('sunrise_last_class');
     } else if (showAllContent) {
       setShowAllContent(false);
     } else if (showAIGenerated) {
@@ -252,7 +267,7 @@ export default function Courses() {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
-                      onClick={() => setSelectedClass(cls)}
+                      onClick={() => handleSelectClass(cls)}
                       className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>

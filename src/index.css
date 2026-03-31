@@ -39,6 +39,13 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  /* Removed transform to avoid breaking fixed positioning */
 }
 
 /* Custom Scrollbar */
@@ -63,10 +70,18 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-glass-border);
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  transform: translateZ(0); /* Hardware acceleration for Smart Panels */
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .glass-solid {
   background: var(--color-glass-solid);
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .glow-border {

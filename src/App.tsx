@@ -116,7 +116,7 @@ function AppContent({
         <AIHelper />
         <GlobalUploadProgress />
         <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-        <Tutorial />
+        {location.pathname === "/" && <Tutorial />}
         <AutoSuggestModal />
 
         <AnimatePresence>

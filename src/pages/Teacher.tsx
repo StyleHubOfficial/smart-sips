@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info } from 'lucide-react';
+import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { jsPDF } from 'jspdf';
 import { useTeacherStore } from '../store/useTeacherStore';
 import Whiteboard from '../components/Whiteboard';
+import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 // Set up PDF.js worker
 import pdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -22,30 +24,35 @@ export default function Teacher() {
   });
 
   const [showSlideGrid, setShowSlideGrid] = useState(false);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
 
-  const onDrop = async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
+  const processFile = async (file: File | { url: string, type: string, name: string }) => {
     setIsProcessing(true);
     setProcessProgress(0);
     try {
-      if (file.type === 'application/pdf') {
-        const arrayBuffer = await file.arrayBuffer();
+      const isDashboardFile = 'url' in file;
+      const fileType = isDashboardFile ? file.type : file.type;
+      const fileName = isDashboardFile ? file.name : file.name;
+
+      if (fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
+        let arrayBuffer: ArrayBuffer;
+        if (isDashboardFile) {
+          const response = await fetch(file.url);
+          arrayBuffer = await response.arrayBuffer();
+        } else {
+          arrayBuffer = await (file as File).arrayBuffer();
+        }
+
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         const newSlides = [];
         setTotalItems(pdf.numPages);
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          
-          // Calculate scale to fit a standard HD resolution if needed, 
-          // but we use the quality setting as base scale.
           const viewport = page.getViewport({ scale: importSettings.quality });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           
-          // We want to ensure the canvas is large enough for high quality
           canvas.height = viewport.height;
           canvas.width = viewport.width;
 
@@ -65,18 +72,27 @@ export default function Teacher() {
           setProcessProgress(i);
         }
         setSlides(newSlides);
-      } else if (file.type.startsWith('image/')) {
+      } else if (fileType.startsWith('image/') || fileName.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/)) {
         setTotalItems(1);
-        const reader = new FileReader();
-        reader.onload = (e) => {
+        if (isDashboardFile) {
           setSlides([{
             id: `slide-${Date.now()}`,
-            imageUrl: e.target?.result as string,
+            imageUrl: file.url,
             whiteboardData: '',
           }]);
           setProcessProgress(1);
-        };
-        reader.readAsDataURL(file);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setSlides([{
+              id: `slide-${Date.now()}`,
+              imageUrl: e.target?.result as string,
+              whiteboardData: '',
+            }]);
+            setProcessProgress(1);
+          };
+          reader.readAsDataURL(file as File);
+        }
       }
     } catch (error) {
       console.error("Error processing file:", error);
@@ -84,6 +100,149 @@ export default function Teacher() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (slides.length === 0) return;
+    setIsExporting(true);
+
+    try {
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [1920, 1080] // Standard HD format for consistency
+      });
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        if (i > 0) pdf.addPage([1920, 1080], 'landscape');
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1920;
+        canvas.height = 1080;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+
+        // 1. Draw background (white)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 1920, 1080);
+
+        // 2. Draw slide image
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = slide.imageUrl;
+        });
+        
+        // Draw image maintaining aspect ratio
+        const imgRatio = img.width / img.height;
+        const canvasRatio = 1920 / 1080;
+        let drawWidth = 1920;
+        let drawHeight = 1080;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (imgRatio > canvasRatio) {
+          drawHeight = 1920 / imgRatio;
+          offsetY = (1080 - drawHeight) / 2;
+        } else {
+          drawWidth = 1080 * imgRatio;
+          offsetX = (1920 - drawWidth) / 2;
+        }
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+        // 3. Draw whiteboard strokes
+        if (slide.whiteboardData) {
+          try {
+            const strokes = JSON.parse(slide.whiteboardData);
+            strokes.forEach((stroke: any) => {
+              ctx.save();
+              
+              // Handle rotation/scale if present
+              if (stroke.center && (stroke.rotation || stroke.scale)) {
+                ctx.translate(stroke.center.x, stroke.center.y);
+                if (stroke.rotation) ctx.rotate(stroke.rotation);
+                if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
+                ctx.translate(-stroke.center.x, -stroke.center.y);
+              }
+
+              ctx.beginPath();
+              ctx.strokeStyle = stroke.color;
+              ctx.lineWidth = stroke.lineWidth || stroke.width || 3;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.globalAlpha = stroke.opacity || 1;
+
+              if ((stroke.type === 'path' || stroke.type === 'lasso') && stroke.points && stroke.points.length > 1) {
+                if (stroke.type === 'lasso') {
+                  ctx.setLineDash([5, 5]);
+                  ctx.strokeStyle = '#00F0FF';
+                  ctx.lineWidth = 1;
+                }
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let j = 1; j < stroke.points.length; j++) {
+                  ctx.lineTo(stroke.points[j].x, stroke.points[j].y);
+                }
+                ctx.stroke();
+                if (stroke.type === 'lasso') ctx.setLineDash([]);
+              } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
+                ctx.strokeRect(stroke.startPos.x, stroke.startPos.y, stroke.endPos.x - stroke.startPos.x, stroke.endPos.y - stroke.startPos.y);
+              } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
+                const radius = Math.sqrt(Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + Math.pow(stroke.endPos.y - stroke.startPos.y, 2));
+                ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+              } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
+                ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
+                ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
+                ctx.stroke();
+              } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
+                // Simple arrow drawing
+                const headlen = 15;
+                const angle = Math.atan2(stroke.endPos.y - stroke.startPos.y, stroke.endPos.x - stroke.startPos.x);
+                ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
+                ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(stroke.endPos.x, stroke.endPos.y);
+                ctx.lineTo(stroke.endPos.x - headlen * Math.cos(angle - Math.PI / 6), stroke.endPos.y - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.moveTo(stroke.endPos.x, stroke.endPos.y);
+                ctx.lineTo(stroke.endPos.x - headlen * Math.cos(angle + Math.PI / 6), stroke.endPos.y - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.stroke();
+              } else if (stroke.type === 'text' && (stroke.startPos || (stroke.points && stroke.points[0])) && stroke.text) {
+                const pos = stroke.startPos || stroke.points[0];
+                const size = (stroke.lineWidth || stroke.width || 3) * 5;
+                ctx.font = `${size}px Inter, sans-serif`;
+                ctx.fillStyle = stroke.color;
+                ctx.fillText(stroke.text, pos.x, pos.y);
+              }
+              ctx.restore();
+            });
+          } catch (e) {
+            console.error("Failed to parse whiteboard data for export:", e);
+          }
+        }
+
+        const slideData = canvas.toDataURL('image/png'); // Use PNG for better quality
+        pdf.addImage(slideData, 'PNG', 0, 0, 1920, 1080, undefined, 'FAST');
+      }
+
+      pdf.save(`lecture-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error("Error exporting PDF:", error);
+      alert("Failed to export PDF. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
+    await processFile(file);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -220,6 +379,14 @@ export default function Teacher() {
           {slides.length > 0 && (
             <div className="flex items-center gap-4">
               <button 
+                onClick={handleExportPDF}
+                disabled={isExporting}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-bold disabled:opacity-50"
+              >
+                <FileText className="w-5 h-5 text-[#00F0FF]" />
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </button>
+              <button 
                 onClick={clearSlides}
                 className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
               >
@@ -297,6 +464,19 @@ export default function Teacher() {
                   <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
                     <Sparkles className="w-4 h-4" /> Images
                   </div>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-white/5 w-full max-w-xs">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDashboardSelector(true);
+                    }}
+                    className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 font-bold"
+                  >
+                    <Database className="w-5 h-5 text-indigo-400" />
+                    Select from Dashboard
+                  </button>
                 </div>
               </div>
             ) : (
@@ -395,6 +575,18 @@ export default function Teacher() {
             </div>
           </div>
         </div>
+        <DashboardFileSelector 
+          isOpen={showDashboardSelector}
+          onClose={() => setShowDashboardSelector(false)}
+          onSelect={(file) => {
+            processFile({
+              url: file.url,
+              type: file.resource_type === 'image' ? 'image/png' : 'application/pdf',
+              name: file.name
+            });
+            setShowDashboardSelector(false);
+          }}
+        />
       </div>
     </div>
   );

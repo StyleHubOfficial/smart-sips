@@ -2037,33 +2037,51 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         </AnimatePresence>
         
         {questions.length > 0 && !loading && !practiceFinished && (
-          <div className="mt-8 flex justify-center items-center gap-4">
-            <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-4 py-2">
-              <span className="text-sm text-gray-400">Add:</span>
-              <select
-                value={nextQuestionCount}
-                onChange={(e) => setNextQuestionCount(Number(e.target.value))}
-                className="bg-transparent text-white outline-none text-sm font-medium"
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-12 flex flex-col items-center gap-6"
+          >
+            <div className="flex items-center gap-6 p-2 pl-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF]">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-gray-300 uppercase tracking-widest">Generate More</span>
+              </div>
+              
+              <div className="h-8 w-[1px] bg-white/10" />
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Count:</span>
+                <select
+                  value={nextQuestionCount}
+                  onChange={(e) => setNextQuestionCount(Number(e.target.value))}
+                  className="bg-transparent text-white outline-none text-sm font-bold cursor-pointer hover:text-[#00F0FF] transition-colors"
+                >
+                  <option value={10} className="bg-[#0a0a0a]">10 Qs</option>
+                  <option value={15} className="bg-[#0a0a0a]">15 Qs</option>
+                  <option value={20} className="bg-[#0a0a0a]">20 Qs</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleGenerateNext}
+                disabled={isGeneratingNext}
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] active:scale-95 disabled:opacity-50"
               >
-                <option value={5}>5 Qs</option>
-                <option value={10}>10 Qs</option>
-                <option value={15}>15 Qs</option>
-                <option value={20}>20 Qs</option>
-              </select>
+                {isGeneratingNext ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Next Questions
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              onClick={handleGenerateNext}
-              disabled={isGeneratingNext}
-              className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium flex items-center gap-2 transition-all disabled:opacity-50"
-            >
-              {isGeneratingNext ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              Next
-            </button>
-          </div>
+            <p className="text-[10px] text-gray-500 uppercase tracking-[0.2em] font-medium">AI will generate unique questions based on your current topic</p>
+          </motion.div>
         )}
 
         {questions.length > 0 && !loading && dppMode !== 'sheet' && !practiceFinished && (
