@@ -27,6 +27,7 @@ export default function Home() {
           loop 
           muted 
           playsInline
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover opacity-50"
         >
           <source src="https://cdn.pixabay.com/video/2020/05/25/40131-424917415_large.mp4" type="video/mp4" />
@@ -52,6 +53,7 @@ export default function Home() {
                 <img 
                   src={logo} 
                   alt="Logo" 
+                  fetchPriority="high"
                   className="w-32 h-32 sm:w-48 sm:h-48 object-contain relative z-10 drop-shadow-[0_0_30px_rgba(0,240,255,0.3)]"
                   referrerPolicy="no-referrer"
                 />
@@ -120,22 +122,15 @@ export default function Home() {
           ].map((feature, idx) => (
               <Link to={feature.link} key={idx} className="block h-full">
                 <motion.div
-                  initial={{ y: 50, opacity: 0 }}
+                  initial={{ y: 30, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, margin: "-50px" }}
                   transition={{ 
-                    duration: 0.6,
-                    delay: feature.delay,
-                    type: "spring",
-                    stiffness: 100
+                    duration: 0.5,
+                    delay: feature.delay * 0.5, // Reduce delay
+                    ease: "easeOut"
                   }}
-                  whileHover={{ 
-                    scale: 1.05, 
-                    y: -15,
-                    transition: { duration: 0.2 }
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-300"
+                  className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-colors transition-shadow duration-300"
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
                   
@@ -150,7 +145,7 @@ export default function Home() {
                   <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#00F0FF] transition-colors duration-300">{feature.title}</h3>
                   <p className="text-gray-400 group-hover:text-gray-200 transition-colors duration-300 leading-relaxed">{feature.desc}</p>
                   
-                  <div className="mt-6 flex items-center text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+                  <div className="mt-6 flex items-center text-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
                     <span className="text-sm font-bold uppercase tracking-wider">Explore Now</span>
                     <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -161,9 +156,9 @@ export default function Home() {
 
         {/* How It Works */}
         <motion.div 
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, margin: "-50px" }}
           className="mb-32"
         >
           <h2 className="text-3xl sm:text-4xl font-display font-bold mb-12 text-center">How It Works</h2>
@@ -183,9 +178,9 @@ export default function Home() {
 
         {/* Call to Action */}
         <motion.div 
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, margin: "-50px" }}
           className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-32"
         >
           <Link to="/courses" className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors text-center flex items-center justify-center gap-2 group">

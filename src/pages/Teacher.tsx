@@ -125,13 +125,15 @@ export default function Teacher() {
         const ctx = canvas.getContext('2d');
         if (!ctx) continue;
 
-        // 1. Draw background (white)
-        ctx.fillStyle = '#ffffff';
+        // 1. Draw background (dark theme to match whiteboard)
+        ctx.fillStyle = '#1a1b26';
         ctx.fillRect(0, 0, 1920, 1080);
 
         // 2. Draw slide image
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        if (!slide.imageUrl.startsWith('data:')) {
+          img.crossOrigin = "anonymous";
+        }
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
@@ -177,18 +179,25 @@ export default function Teacher() {
               ctx.lineJoin = 'round';
               ctx.globalAlpha = stroke.opacity || 1;
 
-              if ((stroke.type === 'path' || stroke.type === 'lasso') && stroke.points && stroke.points.length > 1) {
-                if (stroke.type === 'lasso') {
-                  ctx.setLineDash([5, 5]);
-                  ctx.strokeStyle = '#00F0FF';
-                  ctx.lineWidth = 1;
+              if ((stroke.type === 'path' || stroke.type === 'lasso') && stroke.points && stroke.points.length > 0) {
+                if (stroke.points.length === 1) {
+                  ctx.fillStyle = stroke.color;
+                  ctx.beginPath();
+                  ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.lineWidth || stroke.width || 3) / 2, 0, Math.PI * 2);
+                  ctx.fill();
+                } else {
+                  if (stroke.type === 'lasso') {
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeStyle = '#00F0FF';
+                    ctx.lineWidth = 1;
+                  }
+                  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                  for (let j = 1; j < stroke.points.length; j++) {
+                    ctx.lineTo(stroke.points[j].x, stroke.points[j].y);
+                  }
+                  ctx.stroke();
+                  if (stroke.type === 'lasso') ctx.setLineDash([]);
                 }
-                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-                for (let j = 1; j < stroke.points.length; j++) {
-                  ctx.lineTo(stroke.points[j].x, stroke.points[j].y);
-                }
-                ctx.stroke();
-                if (stroke.type === 'lasso') ctx.setLineDash([]);
               } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
                 ctx.strokeRect(stroke.startPos.x, stroke.startPos.y, stroke.endPos.x - stroke.startPos.x, stroke.endPos.y - stroke.startPos.y);
               } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
@@ -226,8 +235,8 @@ export default function Teacher() {
           }
         }
 
-        const slideData = canvas.toDataURL('image/png'); // Use PNG for better quality
-        pdf.addImage(slideData, 'PNG', 0, 0, 1920, 1080, undefined, 'FAST');
+        const slideData = canvas.toDataURL('image/png', 1.0); // Use PNG with max quality
+        pdf.addImage(slideData, 'PNG', 0, 0, 1920, 1080);
       }
 
       pdf.save(`lecture-${Date.now()}.pdf`);
@@ -564,7 +573,7 @@ export default function Teacher() {
                   "Use 2x or higher quality for 4K writing experience.",
                   "PDFs work best for multi-page slide conversion.",
                   "Your whiteboard annotations are saved per slide.",
-                  "Use the Smart Pen in whiteboard for perfect shapes."
+                  "Use the Pen tool for smooth writing experience."
                 ].map((tip, i) => (
                   <li key={i} className="flex gap-3 text-sm text-gray-400">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />

@@ -785,7 +785,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         className={`
           ${isSheetMode 
             ? 'bg-white text-black p-8 shadow-none print:break-inside-avoid' 
-            : `glass-panel rounded-2xl p-6 border border-white/10 ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'scale-[1.02] shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`
+            : `glass-panel rounded-2xl p-6 border border-white/10 ${viewMode === 'triple' && !compact ? 'h-full' : ''} ${isSmartPanelMode && !compact ? 'shadow-2xl' : ''} ${compact ? 'bg-transparent border-none p-0 shadow-none' : ''}`
           }
           flex flex-col relative
         `}

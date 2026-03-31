@@ -66,7 +66,26 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const currentPointsRef = useRef<Point[]>([]);
+  const canvasRectRef = useRef<DOMRect | null>(null);
   const [isToolbarOpen, setIsToolbarOpen] = useState(true);
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInputPos, setTextInputPos] = useState<Point | null>(null);
+  const [textInputValue, setTextInputValue] = useState('');
+
+  useEffect(() => {
+    const updateRect = () => {
+      if (canvasRef.current) {
+        canvasRectRef.current = canvasRef.current.getBoundingClientRect();
+      }
+    };
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -241,6 +260,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (stroke.type === 'path' || stroke.type === 'lasso') {
+      if (stroke.points.length === 1) {
+        ctx.fillStyle = stroke.color;
+        ctx.beginPath();
+        ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.lineWidth / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
       if (stroke.points.length < 2) {
         ctx.restore();
         return;
@@ -440,19 +467,21 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
   useEffect(() => {
     let animationFrame: number;
-    let lastDrawTime = 0;
     const animate = (time: number) => {
       // Only redraw if we are actively drawing, panning, or have something dynamic (like highlighter pulse)
       // For a smart panel, we want to minimize unnecessary redraws to save CPU/GPU.
-      // Since we clear the canvas every frame, we only need to redraw if there's an active stroke, laser, or selection.
-      if (isDrawing || isPanning || currentStroke || laserPathRef.current.length > 0 || selectedStrokeIds.length > 0) {
+      const hasActiveHighlighter = strokes.some(s => s.tool === 'highlighter' && s.startTime && (Date.now() - s.startTime < 7000));
+      
+      if (isDrawing && currentStroke?.type === 'path' && (currentStroke.tool === 'pen' || currentStroke.tool === 'eraser')) {
+        // Skip redraw to allow direct canvas drawing for zero latency
+      } else if (isDrawing || isPanning || currentStroke || laserPathRef.current.length > 0 || selectedStrokeIds.length > 0 || hasActiveHighlighter) {
         redraw();
       }
       animationFrame = requestAnimationFrame(animate);
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [currentStroke, selectedStrokeIds, scale, offset, isDrawing, isPanning]);
+  }, [currentStroke, selectedStrokeIds, scale, offset, isDrawing, isPanning, strokes]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
@@ -820,7 +849,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRectRef.current || canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
     
@@ -989,22 +1018,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (tool === 'text') {
-      const text = prompt('Enter text:');
-      if (text) {
-        const newStroke: Stroke = {
-          id: Date.now().toString(),
-          tool: 'text',
-          points: [pos],
-          color,
-          lineWidth,
-          type: 'text',
-          text,
-          startPos: pos
-        };
-        const newStrokes = [...strokes, newStroke];
-        setStrokes(newStrokes);
-        saveToHistory(newStrokes);
-      }
+      setTextInputPos(pos);
+      setTextInputValue('');
+      setShowTextInput(true);
       setIsDrawing(false);
       return;
     }
@@ -1021,6 +1037,26 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       opacity: tool === 'highlighter' ? 0.3 : 1,
       startTime: Date.now()
     };
+
+    if (newStroke.type === 'path') {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.save();
+          ctx.translate(offset.x, offset.y);
+          ctx.scale(scale, scale);
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, newStroke.lineWidth / 2, 0, Math.PI * 2);
+          ctx.fillStyle = newStroke.color;
+          if (newStroke.opacity) {
+            ctx.globalAlpha = newStroke.opacity;
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
 
     setCurrentStroke(newStroke);
   };
@@ -1148,7 +1184,31 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     if (!currentStroke) return;
 
     if (currentStroke.type === 'path') {
-      // No need to setCurrentStroke here, redraw uses currentPointsRef
+      // Draw directly to canvas for zero latency
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.save();
+          ctx.translate(offset.x, offset.y);
+          ctx.scale(scale, scale);
+          ctx.beginPath();
+          const prevPos = currentPointsRef.current[currentPointsRef.current.length - 2];
+          if (prevPos) {
+            ctx.moveTo(prevPos.x, prevPos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = currentStroke.color;
+            ctx.lineWidth = currentStroke.lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            if (currentStroke.opacity) {
+              ctx.globalAlpha = currentStroke.opacity;
+            }
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
     } else {
       setCurrentStroke({
         ...currentStroke,
@@ -1210,9 +1270,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     if (currentStroke) {
       let strokeToSave = { ...currentStroke, points: [...currentPointsRef.current] };
-      
-      if (tool === 'smart-pen') {
-        const recognized = recognizeShape(currentPointsRef.current);
+
+      if (tool === 'smart-pen' && strokeToSave.type === 'path') {
+        const recognized = recognizeShape(strokeToSave.points);
         if (recognized) {
           strokeToSave = recognized;
         }
@@ -1393,8 +1453,16 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { id: 'select', icon: MousePointer2, label: 'Select' },
+                  { id: 'pen', icon: Pen, label: 'Pen' },
+                  { id: 'highlighter', icon: Highlighter, label: 'Highlighter' },
+                  { id: 'eraser', icon: Eraser, label: 'Eraser' },
+                  { id: 'rect', icon: RectIcon, label: 'Rectangle' },
+                  { id: 'circle', icon: CircleIcon, label: 'Circle' },
+                  { id: 'line', icon: Minus, label: 'Line' },
+                  { id: 'arrow', icon: ArrowRight, label: 'Arrow' },
+                  { id: 'text', icon: TextIcon, label: 'Text' },
+                  { id: 'laser', icon: Wand2, label: 'Laser' },
                   { id: 'lasso', icon: Lasso, label: 'Lasso' },
-                  { id: 'smart-pen', icon: Wand2, label: 'Smart Pen' },
                   { id: 'ai-ocr', icon: ScanText, label: 'AI OCR' },
                   { id: 'pan', icon: Hand, label: 'Pan' },
                 ].map((t) => (
@@ -1430,6 +1498,40 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                 >
                   <Sparkles className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Color & Size Selection */}
+              <div className="flex items-center justify-between gap-4 py-2 border-y border-white/10">
+                <div className="flex items-center gap-1.5">
+                  {['#00F0FF', '#FF00E5', '#00FF66', '#FFB800', '#FF4D4D', '#FFFFFF'].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setColor(c)}
+                      className={`w-6 h-6 rounded-full border-2 transition-all ${
+                        color === c ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.3)]' : 'border-transparent hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    {[2, 4, 8, 16].map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => setLineWidth(w)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
+                          lineWidth === w ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <div 
+                          className="bg-current rounded-full" 
+                          style={{ width: Math.max(2, w/2), height: Math.max(2, w/2) }} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Selection Actions */}
@@ -1516,18 +1618,79 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           const newStroke: Stroke = {
             id: Date.now().toString(),
             tool: 'text',
-            points: [{ x: 100, y: 100 }],
-            color: '#ffffff',
-            lineWidth: 2,
+            points: [{ x: 960, y: 540 }],
+            color,
+            lineWidth: 4,
             type: 'text',
             text: content,
-            startPos: { x: 100, y: 100 }
+            startPos: { x: 960, y: 540 }
           };
           const newStrokes = [...strokes, newStroke];
           setStrokes(newStrokes);
           saveToHistory(newStrokes);
         }}
       />
+    )}
+
+    {showTextInput && textInputPos && (
+      <div 
+        className="fixed z-[1000] p-2 bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl"
+        style={{ 
+          left: (textInputPos.x * scale + offset.x) / 1920 * (canvasRectRef.current?.width || 0) + (canvasRectRef.current?.left || 0),
+          top: (textInputPos.y * scale + offset.y) / 1080 * (canvasRectRef.current?.height || 0) + (canvasRectRef.current?.top || 0),
+        }}
+      >
+        <input
+          autoFocus
+          value={textInputValue}
+          onChange={(e) => setTextInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              if (textInputValue.trim()) {
+                const newStroke: Stroke = {
+                  id: Date.now().toString(),
+                  tool: 'text',
+                  points: [textInputPos],
+                  color,
+                  lineWidth,
+                  type: 'text',
+                  text: textInputValue,
+                  startPos: textInputPos
+                };
+                const newStrokes = [...strokes, newStroke];
+                setStrokes(newStrokes);
+                saveToHistory(newStrokes);
+              }
+              setShowTextInput(false);
+              setTextInputPos(null);
+            } else if (e.key === 'Escape') {
+              setShowTextInput(false);
+              setTextInputPos(null);
+            }
+          }}
+          onBlur={() => {
+            if (textInputValue.trim()) {
+              const newStroke: Stroke = {
+                id: Date.now().toString(),
+                tool: 'text',
+                points: [textInputPos],
+                color,
+                lineWidth,
+                type: 'text',
+                text: textInputValue,
+                startPos: textInputPos
+              };
+              const newStrokes = [...strokes, newStroke];
+              setStrokes(newStrokes);
+              saveToHistory(newStrokes);
+            }
+            setShowTextInput(false);
+            setTextInputPos(null);
+          }}
+          className="bg-transparent border-none text-white outline-none min-w-[100px] font-sans"
+          placeholder="Type here..."
+        />
+      </div>
     )}
     </>
   );

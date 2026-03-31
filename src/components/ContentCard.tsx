@@ -162,7 +162,7 @@ export const ContentCard = React.memo(({
           show: { opacity: 1, y: 0 }
         }}
         whileHover={{ scale: 1.01 }}
-        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4"
+        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4"
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
@@ -261,7 +261,7 @@ export const ContentCard = React.memo(({
         show: { opacity: 1, y: 0 }
       }}
       whileHover={{ y: -8, scale: 1.02 }}
-      className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col"
+      className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-colors transition-shadow duration-300 relative flex flex-col"
     >
       {/* Animated Neon Border */}
       <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>

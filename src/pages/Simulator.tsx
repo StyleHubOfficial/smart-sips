@@ -471,7 +471,7 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
+      <div className="p-4 md:p-8 space-y-8">
         {/* Controls Section (Input Area) - NOW AT THE TOP */}
         <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
