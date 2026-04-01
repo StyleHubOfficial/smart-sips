@@ -72,33 +72,6 @@ body {
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Smart Panel Mode Optimizations */
-.smart-panel-mode .glass-panel {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: var(--color-glass-solid);
-  box-shadow: none !important;
-}
-
-.smart-panel-mode * {
-  text-shadow: none !important;
-  box-shadow: none !important;
-  animation-duration: 0.1s !important; /* Faster, simpler transitions */
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.smart-panel-mode .animate-pulse,
-.smart-panel-mode .animate-bounce,
-.smart-panel-mode .animate-spin,
-.smart-panel-mode .animate-gradient-xy {
-  animation: none !important;
-}
-
-.smart-panel-mode .glow-enabled .glow-border {
-  box-shadow: none !important;
-}
-
 .glass-solid {
   background: var(--color-glass-solid);
 }

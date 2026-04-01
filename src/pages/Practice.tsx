@@ -11,7 +11,6 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore, Question } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
 import CinematicLoader from '../components/CinematicLoader';
-import { LazySection, SkeletonCard } from '../components/LazySection';
 import Whiteboard from '../components/Whiteboard';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
@@ -1844,7 +1843,6 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   className="flex-1 rounded-none border-0" 
                   initialData={sideWhiteboardData}
                   onSave={(data) => setSideWhiteboardData(data)}
-                  isSmartPanelMode={isSmartPanelMode}
                 />
               </div>
             </motion.div>
@@ -1965,7 +1963,6 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                     theme={slideModeConfig.overlay ? 'transparent' : 'dark'}
                     initialData={slideWhiteboardData[currentSlide]}
                     onSave={(data) => setSlideWhiteboardData(prev => ({ ...prev, [currentSlide]: data }))}
-                    isSmartPanelMode={isSmartPanelMode}
                   />
                   <div className="absolute top-4 right-4 pointer-events-none z-10">
                     <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
@@ -1983,16 +1980,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 'space-y-6'
               }>
                 <AnimatePresence mode="popLayout">
-                  {questions.map((q, index) => (
-                    <LazySection 
-                      key={q.id} 
-                      fallback={<SkeletonCard />}
-                      threshold={0.05}
-                      rootMargin="200px"
-                    >
-                      {renderQuestionCard(q, index)}
-                    </LazySection>
-                  ))}
+                  {questions.map((q, index) => renderQuestionCard(q, index))}
                   {isGeneratingSimilar && (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -2001,7 +1989,20 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                       className="glass-panel rounded-2xl p-6 border border-[#00F0FF]/30 relative overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.1)]"
                     >
                       <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />
-                      <SkeletonCard />
+                      <div className="flex gap-4 mb-6">
+                        <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 shrink-0 flex items-center justify-center">
+                          <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                        </div>
+                        <div className="space-y-3 flex-1">
+                          <div className="h-4 bg-white/10 rounded w-3/4" />
+                          <div className="h-4 bg-white/10 rounded w-1/2" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[1, 2, 3, 4].map((j) => (
+                          <div key={j} className="h-12 bg-white/5 rounded-xl border border-white/10" />
+                        ))}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
