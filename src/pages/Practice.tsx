@@ -159,9 +159,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     
     return (
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.9, y: 20 }}
+        animate={isSmartPanelMode ? undefined : { opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: isSmartPanelMode ? 0 : 0.5, ease: [0.25, 0.1, 0.25, 1] }}
         className="w-full max-w-4xl mx-auto space-y-6 mb-8"
       >
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -175,7 +175,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   strokeDasharray={226}
                   initial={{ strokeDashoffset: 226 }}
                   animate={{ strokeDashoffset: 226 - (226 * accuracy) / 100 }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  transition={{ duration: isSmartPanelMode ? 0 : 1.5, ease: "easeOut" }}
                   className="text-[#00F0FF]"
                 />
               </svg>
@@ -208,23 +208,23 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
         {!analysis && (
           <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={isSmartPanelMode ? false : { opacity: 0, y: 10 }}
+            animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
             className="flex justify-center mt-4"
           >
             <button
               onClick={handleStartAnalysis}
               disabled={analyzing}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(0,240,255,0.5)] transition-all flex items-center gap-3 group"
+              className={`px-8 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold transition-all flex items-center gap-3 group ${isSmartPanelMode ? '' : 'shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(0,240,255,0.5)]'}`}
             >
               {analyzing ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className={`w-5 h-5 ${isSmartPanelMode ? '' : 'animate-spin'}`} />
                   Analyzing Performance...
                 </>
               ) : (
                 <>
-                  <BrainCircuit className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                  <BrainCircuit className={`w-5 h-5 ${isSmartPanelMode ? '' : 'group-hover:rotate-12 transition-transform'}`} />
                   Analyze Performance
                 </>
               )}
@@ -240,8 +240,8 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     
     return (
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+        animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
         className="w-full max-w-4xl mx-auto space-y-6"
       >
         <div className="glass-panel p-8 rounded-3xl border border-[#00F0FF]/20 relative overflow-hidden">
@@ -778,10 +778,10 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
     return (
       <motion.div
         key={`q-card-${q.id}-${index}-${compact ? 'compact' : 'full'}`}
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -50 }}
-        transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: Math.min(index * 0.05, 0.2) }}
+        initial={isSmartPanelMode ? false : { opacity: 0, x: 50 }}
+        animate={isSmartPanelMode ? false : { opacity: 1, x: 0 }}
+        exit={isSmartPanelMode ? undefined : { opacity: 0, x: -50 }}
+        transition={{ duration: isSmartPanelMode ? 0 : 0.4, ease: [0.25, 0.1, 0.25, 1], delay: isSmartPanelMode ? 0 : Math.min(index * 0.05, 0.2) }}
         className={`
           ${isSheetMode 
             ? 'bg-white text-black p-8 shadow-none print:break-inside-avoid' 
@@ -856,9 +856,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
             return (
               <motion.button
-                whileHover={!showResult ? { scale: 1.01, backgroundColor: "rgba(255,255,255,0.1)" } : {}}
-                whileTap={!showResult ? { scale: 0.98 } : {}}
-                animate={showResult && isSelected ? { scale: [1, 1.03, 1] } : {}}
+                whileHover={(!showResult && !isSmartPanelMode) ? { scale: 1.01, backgroundColor: "rgba(255,255,255,0.1)" } : {}}
+                whileTap={(!showResult && !isSmartPanelMode) ? { scale: 0.98 } : {}}
+                animate={(showResult && isSelected && !isSmartPanelMode) ? { scale: [1, 1.03, 1] } : {}}
                 transition={{ duration: 0.3 }}
                 key={`${q.id}-opt-${optIndex}`}
                 onClick={() => handleOptionClick(q.id, option)}
@@ -869,12 +869,12 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{option}</Markdown>
                 </div>
                 {showResult && isCorrect && (
-                  <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                  <motion.div initial={isSmartPanelMode ? false : { scale: 0, opacity: 0 }} animate={isSmartPanelMode ? false : { scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
                     <CheckCircle className="w-5 h-5 text-green-400 shrink-0 ml-2" />
                   </motion.div>
                 )}
                 {showResult && isSelected && !isCorrect && (
-                  <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
+                  <motion.div initial={isSmartPanelMode ? false : { scale: 0, opacity: 0 }} animate={isSmartPanelMode ? false : { scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}>
                     <XCircle className="w-5 h-5 text-red-400 shrink-0 ml-2" />
                   </motion.div>
                 )}
@@ -939,9 +939,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 <AnimatePresence>
                   {showSimilarModal?.questionId === q.id && (
                     <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      initial={isSmartPanelMode ? false : { opacity: 0, y: 10, scale: 0.95 }}
+                      animate={isSmartPanelMode ? false : { opacity: 1, y: 0, scale: 1 }}
+                      exit={isSmartPanelMode ? undefined : { opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute right-0 bottom-full mb-2 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl z-50 min-w-[140px] overflow-hidden"
                     >
                       <button onClick={() => { handleGenerateSimilar(q, 'ai'); setShowSimilarModal(null); }} className="px-4 py-2 text-[10px] text-gray-300 hover:bg-white/5 text-left flex items-center gap-2">
@@ -1004,8 +1004,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
         {!isSheetMode && (showSolutions[q.id] || (stepReveals[q.id] || 0) > 0) && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            initial={isSmartPanelMode ? false : { opacity: 0, height: 0 }}
+            animate={isSmartPanelMode ? false : { opacity: 1, height: 'auto' }}
+            transition={{ duration: isSmartPanelMode ? 0 : 0.3 }}
             className="bg-[#00F0FF]/5 border border-[#00F0FF]/20 rounded-xl p-4 mt-auto"
           >
           <div className="flex items-center gap-2 mb-2 text-[#00F0FF]">
@@ -1077,9 +1078,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+      animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
+      exit={isSmartPanelMode ? undefined : { opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
       <div className="mb-10 flex items-center justify-between">
@@ -1129,8 +1130,8 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
       </div>
 
       {/* Search Section */}
-      <div className="glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#00F0FF]/5 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className={`glass-panel rounded-2xl p-6 mb-8 border border-white/10 space-y-4 relative overflow-hidden ${isSmartPanelMode ? 'shadow-none' : ''}`}>
+        {!isSmartPanelMode && <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#00F0FF]/5 rounded-full blur-[100px] pointer-events-none"></div>}
         
         {/* Mode Specific Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -1520,9 +1521,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
           <button 
             onClick={handleSearch}
             disabled={loading || isGenerating || (isSourceConverterMode ? sourceFiles.length === 0 : !query.trim())}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
+            className={`px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold transition-all disabled:opacity-50 flex items-center gap-2 ${isSmartPanelMode ? '' : 'hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
           >
-            {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+            {loading || isGenerating ? <Loader2 className={`w-5 h-5 ${isSmartPanelMode ? '' : 'animate-spin'}`} /> : <Sparkles className="w-5 h-5" />}
             {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : 'Generate Questions'}
           </button>
         </div>
@@ -1533,20 +1534,20 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         {(loading || isGenerating) && questions.length === 0 && (
           <div className="py-8 space-y-6">
             <div className="flex flex-col items-center justify-center py-10 space-y-4">
-              <Loader2 className="w-12 h-12 text-[#00F0FF] animate-spin" />
-              <p className="text-gray-400 font-mono text-sm animate-pulse">
+              <Loader2 className={`w-12 h-12 text-[#00F0FF] ${isSmartPanelMode ? '' : 'animate-spin'}`} />
+              <p className={`text-gray-400 font-mono text-sm ${isSmartPanelMode ? '' : 'animate-pulse'}`}>
                 {isGenerating ? 'AI is generating your practice set in the background...' : 'Generating your personalized practice set...'}
               </p>
             </div>
             {[1, 2, 3].map((i) => (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
+                initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+                animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
+                transition={{ duration: isSmartPanelMode ? 0 : 0.4, delay: isSmartPanelMode ? 0 : i * 0.1 }}
                 className="glass-panel rounded-2xl p-6 border border-white/10 relative overflow-hidden"
               >
-                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                {!isSmartPanelMode && <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent" />}
                 <div className="flex gap-4 mb-6">
                   <div className="w-8 h-8 rounded-full bg-white/10 shrink-0" />
                   <div className="space-y-3 flex-1">
@@ -1566,9 +1567,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
         {questions.length > 0 && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95 }}
+            animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+            transition={{ duration: isSmartPanelMode ? 0 : 0.5, ease: "easeOut" }}
             className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6"
           >
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -1687,9 +1688,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                       {isSaved ? (
                         <motion.div
                           key="saved"
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
+                          initial={isSmartPanelMode ? false : { scale: 0, opacity: 0 }}
+                          animate={isSmartPanelMode ? false : { scale: 1, opacity: 1 }}
+                          exit={isSmartPanelMode ? undefined : { scale: 0, opacity: 0 }}
                           className="flex items-center gap-2 text-emerald-400"
                         >
                           <CheckCircle className="w-4 h-4" /> Saved Successfully
@@ -1697,9 +1698,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                       ) : (
                         <motion.div
                           key="save"
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0, opacity: 0 }}
+                          initial={isSmartPanelMode ? false : { scale: 0, opacity: 0 }}
+                          animate={isSmartPanelMode ? false : { scale: 1, opacity: 1 }}
+                          exit={isSmartPanelMode ? undefined : { scale: 0, opacity: 0 }}
                           className="flex items-center gap-2"
                         >
                           <Upload className="w-4 h-4" /> Upload to Courses
@@ -1747,10 +1748,10 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         <AnimatePresence mode="wait">
           {showFullscreenPrompt && (
             <motion.div 
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] bg-[#00F0FF] text-black px-6 py-3 rounded-2xl font-bold shadow-[0_0_30px_rgba(0,240,255,0.4)] flex items-center gap-3"
+              initial={isSmartPanelMode ? false : { opacity: 0, y: 50 }}
+              animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
+              exit={isSmartPanelMode ? undefined : { opacity: 0, y: 50 }}
+              className={`fixed bottom-32 left-1/2 -translate-x-1/2 z-[100] bg-[#00F0FF] text-black px-6 py-3 rounded-2xl font-bold flex items-center gap-3 ${isSmartPanelMode ? '' : 'shadow-[0_0_30px_rgba(0,240,255,0.4)]'}`}
             >
               <Maximize2 className="w-5 h-5" />
               Please use Fullscreen mode for the best whiteboard experience
@@ -1762,9 +1763,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
           {whiteboardMode === 'side' ? (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
+              initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.98 }}
+              animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+              exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.98 }}
               className="fixed inset-0 z-50 bg-[#0a0b14] flex overflow-hidden"
             >
               {/* Left side: Questions */}
@@ -1792,15 +1793,15 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                     ))}
                     {isGeneratingSimilar && (
                       <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95 }}
+                        animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+                        exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.95 }}
                         className="glass-panel rounded-2xl p-6 border border-[#00F0FF]/30 relative overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.1)]"
                       >
-                        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />
+                        {!isSmartPanelMode && <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />}
                         <div className="flex gap-4 mb-6">
                           <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 shrink-0 flex items-center justify-center">
-                            <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                            <Sparkles className={`w-4 h-4 text-[#00F0FF] ${isSmartPanelMode ? '' : 'animate-pulse'}`} />
                           </div>
                           <div className="space-y-3 flex-1">
                             <div className="h-4 bg-white/10 rounded w-3/4" />
@@ -1848,10 +1849,10 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
             </motion.div>
           ) : whiteboardMode === 'slide' ? (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              className="flex flex-col h-[85vh] min-h-[700px] bg-[#0f172a] rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative"
+              initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.98 }}
+              animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+              exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.98 }}
+              className={`flex flex-col h-[85vh] min-h-[700px] bg-[#0f172a] rounded-3xl border border-white/10 overflow-hidden relative ${isSmartPanelMode ? '' : 'shadow-2xl'}`}
             >
               {/* Slide Navigation Bar */}
               <div className="flex items-center justify-between p-4 bg-black/60 border-b border-white/10 backdrop-blur-xl z-20">
@@ -1983,15 +1984,15 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   {questions.map((q, index) => renderQuestionCard(q, index))}
                   {isGeneratingSimilar && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
+                      initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95 }}
+                      animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+                      exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.95 }}
                       className="glass-panel rounded-2xl p-6 border border-[#00F0FF]/30 relative overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.1)]"
                     >
-                      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />
+                      {!isSmartPanelMode && <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-[#00F0FF]/10 to-transparent" />}
                       <div className="flex gap-4 mb-6">
                         <div className="w-8 h-8 rounded-full bg-[#00F0FF]/20 shrink-0 flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-[#00F0FF] animate-pulse" />
+                          <Sparkles className={`w-4 h-4 text-[#00F0FF] ${isSmartPanelMode ? '' : 'animate-pulse'}`} />
                         </div>
                         <div className="space-y-3 flex-1">
                           <div className="h-4 bg-white/10 rounded w-3/4" />
@@ -2038,11 +2039,11 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         
         {questions.length > 0 && !loading && !practiceFinished && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+            animate={isSmartPanelMode ? false : { opacity: 1, y: 0 }}
             className="mt-12 flex flex-col items-center gap-6"
           >
-            <div className="flex items-center gap-6 p-2 pl-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl">
+            <div className={`flex items-center gap-6 p-2 pl-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xl ${isSmartPanelMode ? '' : 'shadow-2xl'}`}>
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-[#00F0FF]/10 text-[#00F0FF]">
                   <Plus className="w-4 h-4" />
@@ -2068,10 +2069,10 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
               <button
                 onClick={handleGenerateNext}
                 disabled={isGeneratingNext}
-                className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold flex items-center gap-2 transition-all hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] active:scale-95 disabled:opacity-50"
+                className={`px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold flex items-center gap-2 transition-all disabled:opacity-50 ${isSmartPanelMode ? '' : 'hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] active:scale-95'}`}
               >
                 {isGeneratingNext ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className={`w-5 h-5 ${isSmartPanelMode ? '' : 'animate-spin'}`} />
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
@@ -2088,8 +2089,9 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
           <div className="mt-8 mb-32 flex flex-col items-center">
             <div className="w-full max-w-2xl bg-white/5 rounded-full h-2 mb-8 overflow-hidden border border-white/10">
               <motion.div 
-                initial={{ width: 0 }}
+                initial={isSmartPanelMode ? false : { width: 0 }}
                 animate={{ width: `${(Object.keys(selectedOptions).length / questions.length) * 100}%` }}
+                transition={{ duration: isSmartPanelMode ? 0 : 0.3 }}
                 className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
               />
             </div>
@@ -2097,7 +2099,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
             <button 
               onClick={handleFinishPractice}
               disabled={Object.keys(selectedOptions).length === 0}
-              className="px-12 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold text-lg hover:shadow-[0_0_30px_rgba(0,240,255,0.5)] transition-all disabled:opacity-50 flex items-center gap-3"
+              className={`px-12 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold text-lg transition-all disabled:opacity-50 flex items-center gap-3 ${isSmartPanelMode ? '' : 'hover:shadow-[0_0_30px_rgba(0,240,255,0.5)]'}`}
             >
               <CheckCircle className="w-6 h-6" />
               Check Score
@@ -2116,8 +2118,8 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
 
             {analyzing ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4">
-                <Loader2 className="w-12 h-12 text-[#00F0FF] animate-spin" />
-                <p className="text-gray-400 font-medium animate-pulse">AI is analyzing your performance...</p>
+                <Loader2 className={`w-12 h-12 text-[#00F0FF] ${isSmartPanelMode ? '' : 'animate-spin'}`} />
+                <p className={`text-gray-400 font-medium ${isSmartPanelMode ? '' : 'animate-pulse'}`}>AI is analyzing your performance...</p>
               </div>
             ) : analysis ? (
               <DetailedAnalysis data={analysis} />
@@ -2130,7 +2132,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 </p>
                 <button 
                   onClick={handleStartAnalysis}
-                  className="px-8 py-3 rounded-xl bg-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(176,38,255,0.4)] transition-all flex items-center gap-2"
+                  className={`px-8 py-3 rounded-xl bg-[#B026FF] text-white font-bold transition-all flex items-center gap-2 ${isSmartPanelMode ? '' : 'hover:shadow-[0_0_20px_rgba(176,38,255,0.4)]'}`}
                 >
                   <Sparkles className="w-5 h-5" />
                   Analyze Performance
@@ -2188,16 +2190,16 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
         {showTimerModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={isSmartPanelMode ? false : { opacity: 0 }}
+              animate={isSmartPanelMode ? false : { opacity: 1 }}
+              exit={isSmartPanelMode ? undefined : { opacity: 0 }}
               onClick={() => setShowTimerModal(false)}
               className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95, y: 20 }}
+              animate={isSmartPanelMode ? false : { opacity: 1, scale: 1, y: 0 }}
+              exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-md glass-panel rounded-3xl border border-white/10 overflow-hidden"
             >
               <div className="p-6 border-b border-white/10 flex items-center justify-between">
@@ -2273,7 +2275,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                           addNotification('success', `Timer set for ${val} minutes`);
                         }
                       }}
-                      className="px-6 py-4 rounded-2xl bg-[#00F0FF] text-black font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
+                      className={`px-6 py-4 rounded-2xl bg-[#00F0FF] text-black font-bold transition-all ${isSmartPanelMode ? '' : 'hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
                     >
                       Set
                     </button>
@@ -2360,17 +2362,17 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
       <AnimatePresence>
         {showCelebration && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.2 }}
+            initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.8 }}
+            animate={isSmartPanelMode ? false : { opacity: 1, scale: 1 }}
+            exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 1.2 }}
             className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
           >
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
             <div className="relative z-10 flex flex-col items-center">
               <motion.div 
-                animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                animate={isSmartPanelMode ? false : { rotate: [0, -10, 10, -10, 10, 0] }}
                 transition={{ duration: 1, repeat: Infinity }}
-                className="w-32 h-32 bg-gradient-to-br from-[#FFD600] to-[#FF8A00] rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(255,214,0,0.6)] mb-6 border-4 border-white/20"
+                className={`w-32 h-32 bg-gradient-to-br from-[#FFD600] to-[#FF8A00] rounded-full flex items-center justify-center mb-6 border-4 border-white/20 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(255,214,0,0.6)]'}`}
               >
                 <Award className="w-16 h-16 text-white" />
               </motion.div>

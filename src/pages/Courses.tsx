@@ -5,6 +5,7 @@ import { BookOpen, ChevronLeft, ChevronRight, FileText, PlayCircle, Sparkles, Br
 import { ContentCard, ContentItem, getFileIcon } from "../components/ContentCard";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
+import { usePracticeStore } from "../store/usePracticeStore";
 import { BackButton } from "../components/BackButton";
 import axios from "axios";
 
@@ -43,6 +44,7 @@ export default function Courses() {
 
   const { isAuthenticated } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
+  const isSmartPanelMode = usePracticeStore((state) => state.isSmartPanelMode);
 
   useEffect(() => {
     fetchContent();
@@ -225,7 +227,9 @@ export default function Courses() {
       </div>
 
       <div className="mb-8 relative group">
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200 animate-gradient-xy"></div>
+        {!isSmartPanelMode && (
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200 animate-gradient-xy"></div>
+        )}
         <input
           type="text"
           placeholder="Search content by title or tags..."
@@ -264,22 +268,24 @@ export default function Courses() {
                   return (
                     <motion.button
                       key={cls}
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ delay: isSmartPanelMode ? 0 : idx * 0.05 }}
                       onClick={() => handleSelectClass(cls)}
-                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
+                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      {!isSmartPanelMode && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      )}
                       
                       {/* New Content Badge */}
                       {newCount > 0 && (
-                        <div className="absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#00F0FF] text-black text-[10px] font-bold shadow-[0_0_10px_rgba(0,240,255,0.5)] z-20 animate-pulse">
+                        <div className={`absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#00F0FF] text-black text-[10px] font-bold ${isSmartPanelMode ? '' : 'shadow-[0_0_10px_rgba(0,240,255,0.5)] animate-pulse'} z-20`}>
                           +{newCount} NEW
                         </div>
                       )}
 
-                      <BookOpen className="w-10 h-10 text-gray-400 group-hover:text-[#00F0FF] mb-4 transition-colors relative z-10" />
+                      <BookOpen className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF]'} mb-4 transition-colors relative z-10`} />
                       <h3 className="text-xl font-bold text-white relative z-10">{cls}</h3>
                       <p className="text-xs text-gray-500 mt-2 relative z-10">{count} {count === 1 ? 'Item' : 'Items'}</p>
                     </motion.button>
@@ -288,14 +294,16 @@ export default function Courses() {
                 
                 {/* All Content Card */}
                 <motion.button
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: CLASSES.length * 0.05 }}
+                  transition={{ delay: isSmartPanelMode ? 0 : CLASSES.length * 0.05 }}
                   onClick={() => setShowAllContent(true)}
-                  className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#B026FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
+                  className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#B026FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <FileText className="w-10 h-10 text-gray-400 group-hover:text-[#B026FF] mb-4 transition-colors relative z-10" />
+                  {!isSmartPanelMode && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  )}
+                  <FileText className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-[#B026FF]'} mb-4 transition-colors relative z-10`} />
                   <h3 className="text-xl font-bold text-white relative z-10">All Content</h3>
                   <p className="text-xs text-gray-500 mt-2 relative z-10">{content.length} {content.length === 1 ? 'Item' : 'Items'}</p>
                 </motion.button>
@@ -313,14 +321,16 @@ export default function Courses() {
 
                   return (
                     <motion.button
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: (CLASSES.length + 1) * 0.05 }}
+                      transition={{ delay: isSmartPanelMode ? 0 : (CLASSES.length + 1) * 0.05 }}
                       onClick={() => setShowAIGenerated(true)}
-                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-emerald-400/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(52,211,153,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
+                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-emerald-400/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(52,211,153,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <Sparkles className="w-10 h-10 text-gray-400 group-hover:text-emerald-400 mb-4 transition-colors relative z-10" />
+                      {!isSmartPanelMode && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      )}
+                      <Sparkles className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-emerald-400'} mb-4 transition-colors relative z-10`} />
                       <h3 className="text-xl font-bold text-white relative z-10">AI Generated</h3>
                       <p className="text-xs text-gray-500 mt-2 relative z-10">{aiCount} {aiCount === 1 ? 'Item' : 'Items'}</p>
                     </motion.button>
@@ -425,23 +435,25 @@ export default function Courses() {
                   return (
                     <motion.button
                       key={sub}
-                      initial={{ opacity: 0, scale: 0.9 }}
+                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.05 }}
+                      transition={{ delay: isSmartPanelMode ? 0 : idx * 0.05 }}
                       onClick={() => setSelectedSubject(sub)}
-                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#B026FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)] relative overflow-hidden text-left"
+                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#B026FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)]'} transition-all duration-300 group relative overflow-hidden text-left`}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      {!isSmartPanelMode && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      )}
                       
                       {/* New Content Badge */}
                       {newCount > 0 && (
-                        <div className="absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#B026FF] text-white text-[10px] font-bold shadow-[0_0_10px_rgba(176,38,255,0.5)] z-20 animate-pulse">
+                        <div className={`absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#B026FF] text-white text-[10px] font-bold ${isSmartPanelMode ? '' : 'shadow-[0_0_10px_rgba(176,38,255,0.5)] animate-pulse'} z-20`}>
                           +{newCount} NEW
                         </div>
                       )}
 
                       <h3 className="text-2xl font-bold text-white mb-2 relative z-10">{sub}</h3>
-                      <p className="text-gray-400 text-sm relative z-10 group-hover:text-gray-300 transition-colors">
+                      <p className={`text-gray-400 text-sm relative z-10 ${isSmartPanelMode ? '' : 'group-hover:text-gray-300'} transition-colors`}>
                         {count} {count === 1 ? 'Resource' : 'Resources'} available
                       </p>
                     </motion.button>

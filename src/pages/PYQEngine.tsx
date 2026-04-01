@@ -14,6 +14,7 @@ import { BackButton } from '../components/BackButton';
 import { QuestionExporter } from '../components/QuestionExporter';
 import { useNavigate } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
+import { usePracticeStore } from '../store/usePracticeStore';
 
 interface PYQ {
   question_id: string;
@@ -30,6 +31,7 @@ interface PYQ {
 }
 
 export default function PYQEngine() {
+  const { isSmartPanelMode } = usePracticeStore();
   const [exam, setExam] = useState('');
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
@@ -509,10 +511,10 @@ export default function PYQEngine() {
 
         {/* Search Form */}
         <motion.form 
-          initial={{ opacity: 0, y: 20 }}
+          initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={handleSearch}
-          className="glass-panel p-6 rounded-3xl border border-white/10 max-w-4xl mx-auto relative"
+          className={`glass-panel p-6 rounded-3xl border border-white/10 max-w-4xl mx-auto relative ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.5)]'}`}
         >
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
@@ -568,9 +570,9 @@ export default function PYQEngine() {
           <AnimatePresence>
             {showHistory && (
               <motion.div 
-                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                initial={isSmartPanelMode ? { opacity: 1, height: 'auto', marginBottom: 24 } : { opacity: 0, height: 0, marginBottom: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                exit={isSmartPanelMode ? { opacity: 1, height: 'auto', marginBottom: 24 } : { opacity: 0, height: 0, marginBottom: 0 }}
                 className="overflow-hidden"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
@@ -762,10 +764,10 @@ export default function PYQEngine() {
             <button 
               type="submit"
               disabled={isSearching || isExtracting || isGenerating}
-              className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
+              className={`px-8 py-3 rounded-xl text-white font-bold transition-all disabled:opacity-50 flex items-center gap-2 ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
             >
               {isSearching || isExtracting || isGenerating ? (
-                <><PenPaperAnimation size={20} /> {isGenerating ? 'Background Generating...' : 'Processing...'}</>
+                <>{!isSmartPanelMode && <PenPaperAnimation size={20} />} {isGenerating ? 'Background Generating...' : 'Processing...'}</>
               ) : (
                 <><Search className="w-5 h-5" /> Discover PYQs</>
               )}
@@ -776,13 +778,13 @@ export default function PYQEngine() {
         {/* Pipeline Status */}
         {(isSearching || isExtracting || isGenerating || searchQueries.length > 0) && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
+            initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             className="max-w-4xl mx-auto space-y-4"
           >
             <div className="flex items-center gap-4 text-sm">
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching || isGenerating ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
-                {isSearching || isGenerating ? <PenPaperAnimation /> : <CheckCircle className="w-4 h-4" />}
+                {isSearching || isGenerating ? (!isSmartPanelMode ? <PenPaperAnimation /> : <Loader2 className="w-4 h-4 animate-spin" />) : <CheckCircle className="w-4 h-4" />}
                 {isGenerating ? 'AI Background Generation' : 'Generating Queries'}
               </div>
               <ArrowRight className="w-4 h-4 text-gray-600" />
@@ -871,9 +873,9 @@ export default function PYQEngine() {
                 return (
                 <motion.div 
                   key={uniqueKey}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: isSmartPanelMode ? 0 : index * 0.1 }}
                   className="glass-panel rounded-3xl border border-white/10 overflow-hidden"
                 >
                   {/* Card Header */}
@@ -965,9 +967,9 @@ export default function PYQEngine() {
                   <AnimatePresence>
                     {activeSolution === q.question_id && (
                       <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
+                        initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
+                        exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                         className="border-t border-[#00F0FF]/20 bg-[#00F0FF]/5 p-6"
                       >
                         <h4 className="text-[#00F0FF] font-bold mb-4 flex items-center gap-2">
@@ -988,9 +990,9 @@ export default function PYQEngine() {
 
                     {activeSimilar === q.question_id && (
                       <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
+                        initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
+                        exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                         className="border-t border-[#B026FF]/20 bg-[#B026FF]/5 p-6"
                       >
                         <h4 className="text-[#B026FF] font-bold mb-4 flex items-center gap-2">

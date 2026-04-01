@@ -12,7 +12,10 @@ interface UploadToCoursesModalProps {
 const CLASSES = ['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12', 'College', 'Competitive Exams'];
 const SUBJECTS = ['Physics', 'Chemistry', 'Biology', 'Mathematics', 'Computer Science', 'English', 'History', 'Geography', 'Economics', 'Other'];
 
+import { usePracticeStore } from '../store/usePracticeStore';
+
 export default function UploadToCoursesModal({ isOpen, onClose, onUpload, title = "Upload to Courses" }: UploadToCoursesModalProps) {
+  const { isSmartPanelMode } = usePracticeStore();
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -35,17 +38,17 @@ export default function UploadToCoursesModal({ isOpen, onClose, onUpload, title 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={isSmartPanelMode ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={isSmartPanelMode ? undefined : { opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
           />
           
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            initial={isSmartPanelMode ? false : { scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            exit={isSmartPanelMode ? undefined : { scale: 0.9, opacity: 0, y: 20 }}
             className="relative w-full max-w-lg bg-[#0E0E12] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
           >
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/5">

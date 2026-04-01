@@ -42,7 +42,10 @@ interface WhiteboardProps {
   backgroundImage?: string;
 }
 
+import { usePracticeStore } from '../store/usePracticeStore';
+
 export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
+  const { isSmartPanelMode } = usePracticeStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1424,9 +1427,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       <AnimatePresence>
         {isToolbarOpen && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.9, y: 20 }}
             drag
             dragControls={dragControls}
             dragListener={false}
@@ -1537,7 +1540,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               {/* Selection Actions */}
               {selectedStrokeIds.length > 0 && (
                 <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
+                  initial={isSmartPanelMode ? false : { height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   className="flex items-center gap-3 bg-white/5 rounded-2xl p-2 border border-white/10"
                 >

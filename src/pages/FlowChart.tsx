@@ -14,6 +14,7 @@ import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
+import { usePracticeStore } from '../store/usePracticeStore';
 
 mermaid.initialize({
   startOnLoad: true,
@@ -23,6 +24,7 @@ mermaid.initialize({
 });
 
 export default function FlowChart() {
+  const { isSmartPanelMode } = usePracticeStore();
   const { 
     query, generatedCode, interactiveData, loading, model, chartType, savedCharts, sourceFile,
     setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart, setSourceFile
@@ -282,19 +284,19 @@ export default function FlowChart() {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${isSmartPanelMode ? 'bg-[#00F0FF]/20 border-[#00F0FF]/30' : 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]'}`}>
             <GitGraph className="w-8 h-8 text-[#00F0FF]" />
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              AI Diagram <span className="text-gradient">& Concept Map</span>
+              AI Diagram <span className={isSmartPanelMode ? "text-[#00F0FF]" : "text-gradient"}>& Concept Map</span>
             </h2>
             <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams, mind maps, and interactive concept maps</p>
           </div>
@@ -410,9 +412,9 @@ export default function FlowChart() {
               <button 
                 onClick={handleGenerate}
                 disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`w-full py-4 rounded-xl text-white font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
               >
-                {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {loading || isGenerating ? <Loader2 className={`w-5 h-5 ${isSmartPanelMode ? '' : 'animate-spin'}`} /> : <Sparkles className="w-5 h-5" />}
                 {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : `Generate ${chartType}`}
               </button>
             </div>
@@ -422,9 +424,9 @@ export default function FlowChart() {
           <AnimatePresence>
             {showHistory && (
               <motion.div 
-                initial={{ opacity: 0, height: 0 }}
+                initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
+                exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
                 className="glass-panel rounded-2xl border border-white/10 overflow-hidden"
               >
                 <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
@@ -520,8 +522,8 @@ export default function FlowChart() {
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
-                        transition={{ duration: 10, ease: "linear" }}
-                        className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
+                        transition={{ duration: isSmartPanelMode ? 0 : 10, ease: "linear" }}
+                        className={`h-full ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF]'}`}
                       />
                     </div>
                   </div>

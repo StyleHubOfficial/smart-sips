@@ -16,8 +16,10 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from '@google/genai';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
+import { usePracticeStore } from '../store/usePracticeStore';
 
 export default function ConceptVisualizer() {
+  const { isSmartPanelMode } = usePracticeStore();
   const {
     query,
     sourceFile,
@@ -315,9 +317,9 @@ export default function ConceptVisualizer() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={isSmartPanelMode ? undefined : { opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -337,7 +339,7 @@ export default function ConceptVisualizer() {
       {/* Templates Section */}
       {!loading && !visualizerData && (
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-12"
         >

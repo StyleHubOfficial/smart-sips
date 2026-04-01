@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { FileText, Video, Image as ImageIcon, Download, Eye, File, Edit2, Trash2, Loader2, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { useCoPilotStore } from "../store/useCoPilotStore";
+import { usePracticeStore } from "../store/usePracticeStore";
 
 export interface ContentItem {
   public_id: string;
@@ -86,6 +87,7 @@ export const ContentCard = React.memo(({
   const fileType = meta.fileType || item.format?.toUpperCase() || "Document";
   const date = new Date(item.created_at);
   const openCoPilotModal = useCoPilotStore(state => state.openModal);
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
   
   const isAiGenerated = meta.teacher === 'AI Assistant' || 
                         meta.description?.toLowerCase().includes('ai-generated') ||
@@ -97,20 +99,21 @@ export const ContentCard = React.memo(({
     const isImage = item.resource_type === 'image' && !isPdf;
     const isVideo = item.resource_type === 'video';
     
-    const neonBorderClass = size === 'lg' ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
+    const neonBorderClass = size === 'lg' && !isSmartPanelMode ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
+    const hoverScaleClass = isSmartPanelMode ? '' : 'transition-transform duration-700 group-hover:scale-105';
     
     if (isPdf) {
       const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
     if (isImage) {
-      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
     
     if (isVideo) {
       const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
     const getNeonGradient = (subject?: string) => {
@@ -132,13 +135,13 @@ export const ContentCard = React.memo(({
         {isAiGenerated && (
           <>
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]"></div>
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 animate-pulse"></div>
-            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            <div className={`absolute -top-10 -right-10 w-32 h-32 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 ${isSmartPanelMode ? '' : 'animate-pulse'}`}></div>
+            <div className={`absolute -bottom-10 -left-10 w-32 h-32 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 ${isSmartPanelMode ? '' : 'animate-pulse'}`} style={{ animationDelay: '1s' }}></div>
           </>
         )}
         
         <div className="relative z-10 flex flex-col items-center">
-          <div className="mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+          <div className={`mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}>
             {getFileIcon(fileType)}
           </div>
           <span className="text-xs font-bold text-white uppercase tracking-widest drop-shadow-md">{fileType}</span>
@@ -158,11 +161,11 @@ export const ContentCard = React.memo(({
     return (
       <motion.div 
         variants={{
-          hidden: { opacity: 0, y: 20 },
+          hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
           show: { opacity: 1, y: 0 }
         }}
-        whileHover={{ scale: 1.01 }}
-        className="glass-panel rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4"
+        whileHover={isSmartPanelMode ? {} : { scale: 1.01 }}
+        className={`glass-panel rounded-xl overflow-hidden border border-white/10 group ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)]'} transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4`}
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
@@ -225,7 +228,7 @@ export const ContentCard = React.memo(({
               const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
               window.open(downloadUrl, '_blank');
             }}
-            className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-all duration-300 text-white hover:scale-110 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+            className={`p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-all duration-300 text-white ${isSmartPanelMode ? '' : 'hover:scale-110 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]'}`}
             title="Download"
           >
             <Download className="w-4 h-4" />
@@ -257,14 +260,16 @@ export const ContentCard = React.memo(({
   return (
     <motion.div 
       variants={{
-        hidden: { opacity: 0, y: 20 },
+        hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
         show: { opacity: 1, y: 0 }
       }}
-      whileHover={{ y: -8, scale: 1.02 }}
-      className="glass-panel rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-colors transition-shadow duration-300 relative flex flex-col"
+      whileHover={isSmartPanelMode ? {} : { y: -8, scale: 1.02 }}
+      className={`glass-panel rounded-2xl overflow-hidden border border-white/10 group ${isSmartPanelMode ? '' : 'hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'} transition-colors transition-shadow duration-300 relative flex flex-col`}
     >
       {/* Animated Neon Border */}
-      <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+      {!isSmartPanelMode && (
+        <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+      )}
       
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       
@@ -322,9 +327,9 @@ export const ContentCard = React.memo(({
 
         <button 
           onClick={() => openCoPilotModal(item)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider ${isSmartPanelMode ? '' : 'group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]'}`}
         >
-          <Sparkles className="w-4 h-4 animate-pulse" /> Auto Suggest (AI)
+          <Sparkles className={`w-4 h-4 ${isSmartPanelMode ? '' : 'animate-pulse'}`} /> Auto Suggest (AI)
         </button>
 
         <div className="flex items-center gap-3 pt-4 border-t border-white/10">
@@ -372,7 +377,7 @@ export const ContentCard = React.memo(({
               const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
               window.open(downloadUrl, '_blank');
             }}
-            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white hover:scale-105 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]"
+            className={`flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white ${isSmartPanelMode ? '' : 'hover:scale-105 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]'}`}
             title="Download Content"
           >
             <Download className="w-4 h-4" /> Download

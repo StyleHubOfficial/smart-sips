@@ -48,6 +48,8 @@ interface DashboardFileSelectorProps {
   onSelectMultiple?: (files: any[]) => void;
 }
 
+import { usePracticeStore } from '../store/usePracticeStore';
+
 export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   isOpen,
   onClose,
@@ -57,6 +59,7 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   allowMultiple = false,
   onSelectMultiple
 }) => {
+  const { isSmartPanelMode } = usePracticeStore();
   const [files, setFiles] = useState<DashboardFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,9 +205,9 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
         className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
       >
         {/* Header */}

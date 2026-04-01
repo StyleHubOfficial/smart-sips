@@ -7,6 +7,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
+import { usePracticeStore } from '../store/usePracticeStore';
 import SimLoader from '../components/SimLoader';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 import { useLocation } from 'react-router-dom';
@@ -16,6 +17,7 @@ import { pcmToWav } from '../utils/audio';
 import { GoogleGenAI } from '@google/genai';
 
 export default function Simulator() {
+  const { isSmartPanelMode } = usePracticeStore();
   const { 
     query, generatedCode, loading, model, mode, savedSimulations, subject, sourceFile,
     setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation, setSubject, setSourceFile
@@ -357,9 +359,9 @@ export default function Simulator() {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
       className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
     >
       <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -427,9 +429,9 @@ export default function Simulator() {
       <AnimatePresence>
         {showHistory && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
+            initial={isSmartPanelMode ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            exit={isSmartPanelMode ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
             className="overflow-hidden mb-8"
           >
             <div className="glass-panel rounded-2xl p-6 border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -473,8 +475,8 @@ export default function Simulator() {
 
       <div className="p-4 md:p-8 space-y-8">
         {/* Controls Section (Input Area) - NOW AT THE TOP */}
-        <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
+        <div className={`glass-panel rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.3)]'}`}>
+          {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>}
           
           <div className="flex flex-col gap-6 relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -534,9 +536,9 @@ export default function Simulator() {
 
             {sourceFile && (
               <motion.div 
-                initial={{ opacity: 0, y: -10 }}
+                initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between p-4 rounded-2xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]"
+                className={`flex items-center justify-between p-4 rounded-2xl border ${isSmartPanelMode ? 'bg-[#00F0FF]/10 border-[#00F0FF]/30' : 'bg-[#00F0FF]/10 border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]'}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-lg bg-[#00F0FF]/20">
@@ -643,9 +645,9 @@ export default function Simulator() {
                   <Box className="w-3 h-3" /> Simulation Model
                 </div>
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.98 }}
+                  initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black"
+                  className={`relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 bg-black ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.5)]'}`}
                 >
                   <iframe 
                     ref={iframeRef}
@@ -730,7 +732,7 @@ export default function Simulator() {
                   <Settings className="w-3 h-3" /> Interactive Controls
                 </div>
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1"
                 >
@@ -748,9 +750,9 @@ export default function Simulator() {
                   <FlaskConical className="w-3 h-3" /> Scientific Theory & Explanation
                 </div>
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1 shadow-[0_0_50px_rgba(176,38,255,0.1)]"
+                  className={`relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(176,38,255,0.1)]'}`}
                 >
                   <iframe 
                     srcDoc={generatedCode + `
@@ -806,13 +808,13 @@ export default function Simulator() {
       <AnimatePresence>
         {showExplainer && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             className="w-full mt-6"
           >
-            <div className="glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 shadow-[0_0_50px_rgba(240,0,255,0.15)] relative overflow-hidden bg-black/80 backdrop-blur-xl">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
+            <div className={`glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 relative overflow-hidden bg-black/80 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(240,0,255,0.15)] backdrop-blur-xl'}`}>
+              {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>}
               
               <div className="flex items-center justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-2">

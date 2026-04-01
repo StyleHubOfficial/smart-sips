@@ -7,6 +7,7 @@ import { jsPDF } from 'jspdf';
 import { useTeacherStore } from '../store/useTeacherStore';
 import Whiteboard from '../components/Whiteboard';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
+import { usePracticeStore } from '../store/usePracticeStore';
 
 // Set up PDF.js worker
 import pdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -14,6 +15,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export default function Teacher() {
   const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -338,8 +340,8 @@ export default function Teacher() {
                   {slides.map((slide, idx) => (
                     <motion.div
                       key={slide.id}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={isSmartPanelMode ? {} : { scale: 1.05 }}
+                      whileTap={isSmartPanelMode ? {} : { scale: 0.95 }}
                       onClick={() => {
                         setCurrentSlideIndex(idx);
                         setShowSlideGrid(false);
@@ -493,16 +495,16 @@ export default function Teacher() {
                 {slides.map((slide, index) => (
                   <motion.div 
                     key={slide.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={isSmartPanelMode ? { duration: 0 } : { delay: index * 0.05 }}
                     className={`relative aspect-[16/9] rounded-2xl overflow-hidden border-2 transition-all cursor-pointer group ${
                       currentSlideIndex === index ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-white/10 hover:border-white/20'
                     }`}
                     onClick={() => setCurrentSlideIndex(index)}
                   >
                     <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className={`absolute inset-0 bg-black/40 opacity-0 ${isSmartPanelMode ? '' : 'group-hover:opacity-100'} transition-opacity flex items-center justify-center`}>
                       <Play className="w-8 h-8 text-white" />
                     </div>
                     <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">

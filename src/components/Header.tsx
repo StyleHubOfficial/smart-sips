@@ -84,16 +84,18 @@ export default function Header({
         />
       )}
       <motion.header 
-        initial={{ y: -100, opacity: 0 }}
+        initial={{ y: isSmartPanelMode ? 0 : -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
+        transition={isSmartPanelMode ? { duration: 0.2 } : { duration: 0.8, ease: "easeOut" }}
         className="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-white/5"
       >
       <div className="flex items-center gap-4">
         <div className="relative group cursor-pointer">
-          <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+          {!isSmartPanelMode && (
+            <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+          )}
           <div className="relative flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] shadow-[0_0_20px_rgba(0,240,255,0.4)]">
+            <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] ${isSmartPanelMode ? '' : 'shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}>
               <div className="w-full h-full bg-[#0E0E12] rounded-full flex items-center justify-center overflow-hidden">
                 {logo ? (
                   <img 

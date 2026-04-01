@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { PlayCircle, BrainCircuit, FileSearch, MonitorPlay, ChevronRight, BookOpen, Sparkles, Mail, Bot, Zap, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { usePracticeStore } from "../store/usePracticeStore";
 
 export default function Home() {
   const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
+  const { isSmartPanelMode } = usePracticeStore();
 
   useEffect(() => {
     fetch('/api/settings')
@@ -21,35 +23,39 @@ export default function Home() {
       <section className="relative h-[70vh] sm:h-[80vh] w-full overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[var(--color-background)] z-10"></div>
         
-        {/* Video Background */}
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-        >
-          <source src="https://cdn.pixabay.com/video/2020/05/25/40131-424917415_large.mp4" type="video/mp4" />
-          {/* Fallback CSS Animation if video fails */}
-          <div className="absolute inset-0 bg-[#0E0E12] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse"></div>
-              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        {/* Video Background - Disabled in Smart Panel Mode for performance */}
+        {!isSmartPanelMode ? (
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+            preload="auto"
+            className="absolute inset-0 w-full h-full object-cover opacity-50"
+          >
+            <source src="https://cdn.pixabay.com/video/2020/05/25/40131-424917415_large.mp4" type="video/mp4" />
+            {/* Fallback CSS Animation if video fails */}
+            <div className="absolute inset-0 bg-[#0E0E12] flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+              </div>
             </div>
-          </div>
-        </video>
+          </video>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0E0E12] via-[#1a1a24] to-[#0E0E12] opacity-80"></div>
+        )}
 
         <div className="relative z-20 text-center px-4 max-w-4xl mx-auto mt-16">
           {logo && (
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: isSmartPanelMode ? 1 : 0.8, opacity: isSmartPanelMode ? 1 : 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1, ease: "easeOut" }}
+              transition={{ duration: isSmartPanelMode ? 0 : 1, ease: "easeOut" }}
               className="mb-8 flex justify-center"
             >
               <div className="relative group">
-                <div className="absolute -inset-4 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                {!isSmartPanelMode && <div className="absolute -inset-4 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>}
                 <img 
                   src={logo} 
                   alt="Logo" 
@@ -61,19 +67,19 @@ export default function Home() {
             </motion.div>
           )}
           <motion.h1 
-            initial={{ y: 30, opacity: 0 }}
+            initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
             animate={{ 
-              y: [0, -10, 0],
+              y: isSmartPanelMode ? 0 : [0, -10, 0],
               opacity: 1 
             }}
             transition={{ 
               y: {
-                duration: 4,
-                repeat: Infinity,
+                duration: isSmartPanelMode ? 0 : 4,
+                repeat: isSmartPanelMode ? 0 : Infinity,
                 ease: "easeInOut"
               },
               opacity: {
-                duration: 0.8
+                duration: isSmartPanelMode ? 0 : 0.8
               }
             }}
             className="text-5xl sm:text-7xl md:text-8xl font-display font-bold mb-6 tracking-tight drop-shadow-2xl"
@@ -82,9 +88,9 @@ export default function Home() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF] filter drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]">Smart Sunrise</span>
           </motion.h1>
           <motion.p 
-            initial={{ y: 30, opacity: 0 }}
+            initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: isSmartPanelMode ? 0 : 0.8, delay: isSmartPanelMode ? 0 : 0.2 }}
             className="text-xl sm:text-3xl text-gray-200 font-light drop-shadow-lg"
           >
             AI Powered Classroom Experience
@@ -95,7 +101,7 @@ export default function Home() {
       {/* Platform Introduction */}
       <section className="py-20 px-6 max-w-7xl mx-auto relative z-20">
         <motion.div 
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: isSmartPanelMode ? 0 : 50, opacity: isSmartPanelMode ? 1 : 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           className="text-center max-w-3xl mx-auto mb-20"
@@ -122,24 +128,24 @@ export default function Home() {
           ].map((feature, idx) => (
               <Link to={feature.link} key={idx} className="block h-full">
                 <motion.div
-                  initial={{ y: 30, opacity: 0 }}
+                  initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ 
-                    duration: 0.5,
-                    delay: feature.delay * 0.5, // Reduce delay
+                    duration: isSmartPanelMode ? 0 : 0.5,
+                    delay: isSmartPanelMode ? 0 : feature.delay * 0.5,
                     ease: "easeOut"
                   }}
                   className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/30 group cursor-pointer relative overflow-hidden h-full shadow-lg hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-colors transition-shadow duration-300"
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>
+                  {!isSmartPanelMode && <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}></div>}
                   
                   {/* Animated Glow Effect */}
-                  <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>
+                  {!isSmartPanelMode && <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000"></div>}
 
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.05)] group-hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]`}>
+                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} p-[1px] mb-6 ${!isSmartPanelMode ? 'group-hover:scale-110' : ''} transition-transform duration-500 shadow-[0_0_20px_rgba(255,255,255,0.05)] ${!isSmartPanelMode ? 'group-hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]' : ''}`}>
                     <div className="w-full h-full bg-[#0E0E12] rounded-xl flex items-center justify-center">
-                      <feature.icon className="w-7 h-7 text-white group-hover:animate-pulse" />
+                      <feature.icon className={`w-7 h-7 text-white ${!isSmartPanelMode ? 'group-hover:animate-pulse' : ''}`} />
                     </div>
                   </div>
                   <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#00F0FF] transition-colors duration-300">{feature.title}</h3>
@@ -156,7 +162,7 @@ export default function Home() {
 
         {/* How It Works */}
         <motion.div 
-          initial={{ y: 30, opacity: 0 }}
+          initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           className="mb-32"
@@ -166,7 +172,7 @@ export default function Home() {
             {['Upload', 'Generate', 'Teach', 'Practice'].map((step, idx) => (
               <div key={idx} className="flex items-center gap-4 md:gap-8 flex-col md:flex-row w-full md:w-auto">
                 <div className="glass-panel px-8 py-4 rounded-2xl border border-white/10 text-center relative group overflow-hidden w-full md:w-auto">
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>}
                   <span className="text-xl font-bold text-white relative z-10">{step}</span>
                 </div>
                 {idx < 3 && <ChevronRight className="w-8 h-8 text-gray-600 hidden md:block" />}
@@ -178,28 +184,28 @@ export default function Home() {
 
         {/* Call to Action */}
         <motion.div 
-          initial={{ y: 30, opacity: 0 }}
+          initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true, margin: "-50px" }}
           className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-32"
         >
           <Link to="/courses" className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors text-center flex items-center justify-center gap-2 group">
-            <BookOpen className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <BookOpen className={`w-5 h-5 ${!isSmartPanelMode ? 'group-hover:scale-110' : ''} transition-transform`} />
             Explore Courses
           </Link>
           <Link to="/questions" className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-semibold hover:opacity-90 transition-opacity text-center flex items-center justify-center gap-2 group shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-            <BrainCircuit className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <BrainCircuit className={`w-5 h-5 ${!isSmartPanelMode ? 'group-hover:scale-110' : ''} transition-transform`} />
             Start Practice
           </Link>
           <Link to="/ai-generators" className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold hover:bg-white/10 transition-colors text-center flex items-center justify-center gap-2 group">
-            <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <Sparkles className={`w-5 h-5 ${!isSmartPanelMode ? 'group-hover:scale-110' : ''} transition-transform`} />
             Open AI Tools
           </Link>
         </motion.div>
 
         {/* Developer Details */}
         <motion.div 
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: isSmartPanelMode ? 0 : 50, opacity: isSmartPanelMode ? 1 : 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           className="glass-panel p-8 rounded-3xl border border-white/10 text-center max-w-2xl mx-auto mb-20"
