@@ -434,7 +434,6 @@ export default function Simulator() {
             )}
           </button>
         </div>
-      </div>
 
       <AnimatePresence>
         {showHistory && (
@@ -923,7 +922,7 @@ export default function Simulator() {
         onSelect={handleDashboardFileSelect}
         title="Select Simulation Source"
       />
-      </motion.div>
+    </motion.div>
     </div>
   );
 }

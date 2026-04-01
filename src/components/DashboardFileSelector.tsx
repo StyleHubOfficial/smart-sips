@@ -50,6 +50,33 @@ interface DashboardFileSelectorProps {
 
 import { usePracticeStore } from '../store/usePracticeStore';
 
+const SubjectButton = ({ sub, onClick }: any) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+
+  const handleInteraction = () => {
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(() => {
+        setIsPressed(false);
+        onClick();
+      }, 800);
+    } else {
+      onClick();
+    }
+  };
+
+  return (
+    <button
+      onClick={handleInteraction}
+      className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center ${isPressed ? 'is-pressed border-[#00F0FF]/50 bg-white/10' : ''}`}
+    >
+      <BookOpen className={`w-8 h-8 mx-auto mb-3 transition-colors ${isPressed ? 'text-[#00F0FF]' : 'text-gray-500 group-hover:text-[#00F0FF]'}`} />
+      <span className="font-bold text-white">{sub}</span>
+    </button>
+  );
+};
+
 export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   isOpen,
   onClose,
@@ -329,28 +356,22 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
                   className="grid grid-cols-2 sm:grid-cols-3 gap-4"
                 >
                   {SUBJECTS.map(sub => (
-                    <button
+                    <SubjectButton
                       key={sub}
+                      sub={sub}
                       onClick={() => {
                         setSelectedSubject(sub);
                         setView('files');
                       }}
-                      className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center"
-                    >
-                      <BookOpen className="w-8 h-8 text-gray-500 group-hover:text-[#00F0FF] mx-auto mb-3 transition-colors" />
-                      <span className="font-bold text-white">{sub}</span>
-                    </button>
+                    />
                   ))}
-                  <button
+                  <SubjectButton
+                    sub="All Subjects"
                     onClick={() => {
                       setSelectedSubject(null);
                       setView('files');
                     }}
-                    className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center"
-                  >
-                    <Filter className="w-8 h-8 text-gray-500 group-hover:text-[#00F0FF] mx-auto mb-3 transition-colors" />
-                    <span className="font-bold text-white">All Subjects</span>
-                  </button>
+                  />
                 </motion.div>
               )}
 
@@ -374,49 +395,15 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
                       </button>
                     </div>
                   ) : (
-                    filteredFiles.map((file, index) => {
-                      const isSelected = selectedFiles.find(f => f.id === file.id);
-                      return (
-                        <button
-                          key={file.id || `file-${index}`}
-                          onClick={() => handleFileClick(file)}
-                          className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
-                            isSelected 
-                              ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 shadow-[0_0_15px_rgba(0,240,255,0.1)]' 
-                              : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'
-                          }`}
-                        >
-                          <div className={`p-3 rounded-xl transition-colors ${
-                            isSelected ? 'bg-[#00F0FF] text-black' : 'bg-white/5 text-gray-400 group-hover:text-white'
-                          }`}>
-                            <FileText className="w-6 h-6" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-white truncate">{file.name}</div>
-                            <div className="text-xs text-gray-500 flex items-center gap-2">
-                              <span className="px-1.5 py-0.5 rounded bg-white/5">{file.type || 'Document'}</span>
-                              <span>•</span>
-                              <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-                              {file.context?.custom?.subject && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-[#B026FF]">{file.context.custom.subject}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          {allowMultiple ? (
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected ? 'bg-[#00F0FF] border-[#00F0FF]' : 'border-white/20'
-                            }`}>
-                              {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
-                            </div>
-                          ) : (
-                            <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" />
-                          )}
-                        </button>
-                      );
-                    })
+                    filteredFiles.map((file, index) => (
+                      <FileItem 
+                        key={file.id || `file-${index}`}
+                        file={file}
+                        isSelected={selectedFiles.find(f => f.id === file.id)}
+                        allowMultiple={allowMultiple}
+                        onClick={() => handleFileClick(file)}
+                      />
+                    ))
                   )}
                 </motion.div>
               )}
@@ -428,18 +415,92 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   );
 };
 
-const CategoryCard = ({ title, icon, color, onClick }: any) => (
-  <button
-    onClick={onClick}
-    className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all group text-left relative overflow-hidden`}
-  >
-    <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-100 transition-opacity`} />
-    <div className="relative z-10">
-      <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-white mb-4 w-fit transition-colors">
-        {icon}
+const CategoryCard = ({ title, icon, color, onClick }: any) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+
+  const handleInteraction = () => {
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(() => {
+        setIsPressed(false);
+        onClick();
+      }, 800);
+    } else {
+      onClick();
+    }
+  };
+
+  return (
+    <button
+      onClick={handleInteraction}
+      className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all group text-left relative overflow-hidden ${isPressed ? 'is-pressed border-white/30 bg-white/10' : ''}`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-100 group-[.is-pressed]:opacity-100 transition-opacity`} />
+      <div className="relative z-10">
+        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-white group-[.is-pressed]:text-white mb-4 w-fit transition-colors">
+          {icon}
+        </div>
+        <h4 className="text-lg font-bold text-white">{title}</h4>
+        <p className="text-xs text-gray-500 group-hover:text-gray-400 group-[.is-pressed]:text-gray-400 transition-colors">Browse resources in this category</p>
       </div>
-      <h4 className="text-lg font-bold text-white">{title}</h4>
-      <p className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">Browse resources in this category</p>
-    </div>
-  </button>
-);
+    </button>
+  );
+};
+
+const FileItem = ({ file, isSelected, allowMultiple, onClick }: any) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+
+  const handleInteraction = () => {
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(() => {
+        setIsPressed(false);
+        onClick();
+      }, 800);
+    } else {
+      onClick();
+    }
+  };
+
+  return (
+    <button
+      onClick={handleInteraction}
+      className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
+        isSelected 
+          ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 shadow-[0_0_15px_rgba(0,240,255,0.1)]' 
+          : `bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10 ${isPressed ? 'is-pressed border-white/30 bg-white/10' : ''}`
+      }`}
+    >
+      <div className={`p-3 rounded-xl transition-colors ${
+        isSelected ? 'bg-[#00F0FF] text-black' : `bg-white/5 text-gray-400 group-hover:text-white group-[.is-pressed]:text-white ${isPressed ? 'bg-[#00F0FF] text-black' : ''}`
+      }`}>
+        <FileText className="w-6 h-6" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-white truncate">{file.name}</div>
+        <div className="text-xs text-gray-500 flex items-center gap-2">
+          <span className="px-1.5 py-0.5 rounded bg-white/5">{file.type || 'Document'}</span>
+          <span>•</span>
+          <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+          {file.context?.custom?.subject && (
+            <>
+              <span>•</span>
+              <span className="text-[#B026FF]">{file.context.custom.subject}</span>
+            </>
+          )}
+        </div>
+      </div>
+      {allowMultiple ? (
+        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+          isSelected ? 'bg-[#00F0FF] border-[#00F0FF]' : 'border-white/20'
+        }`}>
+          {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+        </div>
+      ) : (
+        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white group-[.is-pressed]:text-white transition-colors" />
+      )}
+    </button>
+  );
+};

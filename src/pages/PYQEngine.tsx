@@ -32,6 +32,42 @@ interface PYQ {
   importance?: string;
 }
 
+const HistoryItem = ({ h, onClick }: { h: any, onClick: () => void }) => {
+  const [isPressed, setIsPressed] = useState(false);
+  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+
+  const handleInteraction = () => {
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(() => {
+        setIsPressed(false);
+        onClick();
+      }, 800);
+    } else {
+      onClick();
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleInteraction}
+      className={`text-left p-4 rounded-xl bg-black/40 border border-white/5 hover:border-[#00F0FF]/30 transition-all group relative overflow-hidden ${isPressed ? 'is-pressed border-[#00F0FF]/30' : ''}`}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-xs font-bold text-[#00F0FF] truncate max-w-[150px]">{h.exam || 'Custom Search'}</span>
+        <span className="text-[10px] text-gray-500">{new Date(h.date).toLocaleDateString()}</span>
+      </div>
+      <div className="space-y-1">
+        <p className="text-[10px] text-gray-300 font-medium truncate">{h.subject} • {h.topic || 'General'}</p>
+        {h.userPrompt && (
+          <p className="text-[10px] text-gray-500 italic truncate">"{h.userPrompt}"</p>
+        )}
+      </div>
+    </button>
+  );
+};
+
 export default function PYQEngine() {
   const { isSmartPanelMode } = usePracticeStore();
   const [exam, setExam] = useState('');
@@ -591,26 +627,14 @@ export default function PYQEngine() {
                     </div>
                   ) : (
                     searchHistory.map((h, idx) => (
-                      <button
-                        key={h.date}
-                        type="button"
+                      <HistoryItem 
+                        key={h.date} 
+                        h={h} 
                         onClick={() => {
                           setShowHistory(false);
                           handleSearch(undefined, h);
-                        }}
-                        className="text-left p-4 rounded-xl bg-black/40 border border-white/5 hover:border-[#00F0FF]/30 transition-all group relative overflow-hidden"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-[#00F0FF] truncate max-w-[150px]">{h.exam || 'Custom Search'}</span>
-                          <span className="text-[10px] text-gray-500">{new Date(h.date).toLocaleDateString()}</span>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-gray-300 font-medium truncate">{h.subject} • {h.topic || 'General'}</p>
-                          {h.userPrompt && (
-                            <p className="text-[10px] text-gray-500 italic truncate">"{h.userPrompt}"</p>
-                          )}
-                        </div>
-                      </button>
+                        }} 
+                      />
                     ))
                   )}
                 </div>

@@ -327,7 +327,6 @@ export default function FlowChart() {
             History
           </button>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Controls */}
@@ -579,7 +578,7 @@ export default function FlowChart() {
         onClose={() => setShowUploadModal(false)}
         onUpload={handleUploadToCourses}
       />
-      </motion.div>
+    </motion.div>
     </div>
   );
 }

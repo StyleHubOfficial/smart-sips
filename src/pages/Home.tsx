@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { usePracticeStore } from "../store/usePracticeStore";
 import { LazySection } from "../components/LazySection";
+import { AnimatedCard } from "../components/AnimatedCard";
 
 export default function Home() {
   const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
@@ -134,7 +135,12 @@ export default function Home() {
               { icon: CheckCircle2, title: "Grammar Assistant", desc: "Real-time grammatical error suggestion and correction.", color: "from-green-400 to-teal-600", delay: 0.8, link: "/grammar" },
               { icon: BookOpen, title: "Classroom Dashboard", desc: "Organized content delivery and management.", color: "from-pink-500 to-rose-500", delay: 0.9, link: "/courses" },
             ].map((feature, idx) => (
-                <Link to={feature.link} key={idx} className="block h-full">
+                <AnimatedCard 
+                  key={idx} 
+                  to={feature.link} 
+                  isSmartPanelMode={isSmartPanelMode}
+                  className="h-full"
+                >
                   <motion.div
                     initial={{ y: isSmartPanelMode ? 0 : 30, opacity: isSmartPanelMode ? 1 : 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
@@ -164,7 +170,7 @@ export default function Home() {
                       <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </motion.div>
-                </Link>
+                </AnimatedCard>
             ))}
           </div>
 

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "motion/react";
 import { FileText, Video, Image as ImageIcon, Download, Eye, File, Edit2, Trash2, Loader2, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { useCoPilotStore } from "../store/useCoPilotStore";
 import { usePracticeStore } from "../store/usePracticeStore";
+import { useNavigate } from "react-router-dom";
 
 export interface ContentItem {
   public_id: string;
@@ -88,7 +89,21 @@ export const ContentCard = React.memo(({
   const date = new Date(item.created_at);
   const openCoPilotModal = useCoPilotStore(state => state.openModal);
   const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+  const [isPressed, setIsPressed] = useState(false);
+  const navigate = useNavigate();
   
+  const handleDelayedAction = (action: () => void) => {
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(() => {
+        action();
+        setIsPressed(false);
+      }, 800);
+    } else {
+      action();
+    }
+  };
+
   const isAiGenerated = meta.teacher === 'AI Assistant' || 
                         meta.description?.toLowerCase().includes('ai-generated') ||
                         meta.tags?.toLowerCase().includes('ai') ||
@@ -100,7 +115,7 @@ export const ContentCard = React.memo(({
     const isVideo = item.resource_type === 'video';
     
     const neonBorderClass = size === 'lg' && !isSmartPanelMode ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
-    const hoverScaleClass = isSmartPanelMode ? '' : 'transition-transform duration-700 group-hover:scale-105';
+    const hoverScaleClass = isSmartPanelMode ? (isPressed ? 'scale-105' : '') : 'transition-transform duration-700 group-hover:scale-105';
     
     if (isPdf) {
       const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
@@ -141,7 +156,7 @@ export const ContentCard = React.memo(({
         )}
         
         <div className="relative z-10 flex flex-col items-center">
-          <div className={`mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}>
+          <div className={`mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 ${isSmartPanelMode ? (isPressed ? 'scale-110 shadow-[0_0_15px_rgba(255,255,255,0.1)]' : '') : 'group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}>
             {getFileIcon(fileType)}
           </div>
           <span className="text-xs font-bold text-white uppercase tracking-widest drop-shadow-md">{fileType}</span>
@@ -164,8 +179,9 @@ export const ContentCard = React.memo(({
           hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
           show: { opacity: 1, y: 0 }
         }}
+        animate={isPressed ? { scale: 1.01 } : { scale: 1 }}
         whileHover={isSmartPanelMode ? {} : { scale: 1.01 }}
-        className={`glass-panel rounded-xl overflow-hidden border border-white/10 group ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)]'} transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4`}
+        className={`glass-panel rounded-xl overflow-hidden border border-white/10 group ${isPressed ? 'is-pressed' : ''} ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)]'} transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4`}
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
@@ -191,29 +207,32 @@ export const ContentCard = React.memo(({
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => {
-              const url = item.secure_url;
-              const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
-              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-              
-              if (isPdf) {
-                e.preventDefault();
-                const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                window.open(pdfUrl, '_blank');
-              } else if (isHtml) {
-                e.preventDefault();
-                const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-                fetch(proxyUrl)
-                  .then(res => {
-                    if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
-                    return res.text();
-                  })
-                  .then(text => {
-                    const blob = new Blob([text], { type: 'text/html' });
-                    const blobUrl = URL.createObjectURL(blob);
-                    window.open(blobUrl, '_blank');
-                  })
-                  .catch(() => window.open(url, '_blank'));
-              }
+              e.preventDefault();
+              handleDelayedAction(() => {
+                const url = item.secure_url;
+                const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+                const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
+                
+                if (isPdf) {
+                  const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                  window.open(pdfUrl, '_blank');
+                } else if (isHtml) {
+                  const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+                  fetch(proxyUrl)
+                    .then(res => {
+                      if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
+                      return res.text();
+                    })
+                    .then(text => {
+                      const blob = new Blob([text], { type: 'text/html' });
+                      const blobUrl = URL.createObjectURL(blob);
+                      window.open(blobUrl, '_blank');
+                    })
+                    .catch(() => window.open(url, '_blank'));
+                } else {
+                  window.open(url, '_blank');
+                }
+              });
             }}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
             title="View"
@@ -263,8 +282,9 @@ export const ContentCard = React.memo(({
         hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
         show: { opacity: 1, y: 0 }
       }}
+      animate={isPressed ? { y: -8, scale: 1.02 } : { y: 0, scale: 1 }}
       whileHover={isSmartPanelMode ? {} : { y: -8, scale: 1.02 }}
-      className={`glass-panel rounded-2xl overflow-hidden border border-white/10 group ${isSmartPanelMode ? '' : 'hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'} transition-colors transition-shadow duration-300 relative flex flex-col`}
+      className={`glass-panel rounded-2xl overflow-hidden border border-white/10 group ${isPressed ? 'is-pressed' : ''} ${isSmartPanelMode ? '' : 'hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'} transition-colors transition-shadow duration-300 relative flex flex-col`}
     >
       {/* Animated Neon Border */}
       {!isSmartPanelMode && (
@@ -326,10 +346,10 @@ export const ContentCard = React.memo(({
         </div>
 
         <button 
-          onClick={() => openCoPilotModal(item)}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider ${isSmartPanelMode ? '' : 'group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]'}`}
+          onClick={() => handleDelayedAction(() => openCoPilotModal(item))}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider ${isSmartPanelMode ? (isPressed ? 'shadow-[0_0_15px_rgba(0,240,255,0.2)]' : '') : 'group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]'}`}
         >
-          <Sparkles className={`w-4 h-4 ${isSmartPanelMode ? '' : 'animate-pulse'}`} /> Auto Suggest (AI)
+          <Sparkles className={`w-4 h-4 ${isSmartPanelMode ? (isPressed ? 'animate-pulse' : '') : 'animate-pulse'}`} /> Auto Suggest (AI)
         </button>
 
         <div className="flex items-center gap-3 pt-4 border-t border-white/10">
@@ -337,32 +357,34 @@ export const ContentCard = React.memo(({
             href={item.secure_url} 
             target="_blank" 
             rel="noopener noreferrer"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.preventDefault();
-              const url = item.secure_url;
-              const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
-              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-              
-              if (isPdf) {
-                const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                window.open(pdfUrl, '_blank');
-              } else if (isHtml) {
-                try {
-                  const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-                  const response = await fetch(proxyUrl);
-                  if (!response.ok) throw new Error(`Proxy fetch failed: ${response.statusText}`);
-                  const text = await response.text();
-                  const blob = new Blob([text], { type: 'text/html' });
-                  const blobUrl = URL.createObjectURL(blob);
-                  window.open(blobUrl, '_blank');
-                } catch (err) {
+              handleDelayedAction(async () => {
+                const url = item.secure_url;
+                const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+                const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
+                
+                if (isPdf) {
+                  const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                  window.open(pdfUrl, '_blank');
+                } else if (isHtml) {
+                  try {
+                    const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error(`Proxy fetch failed: ${response.statusText}`);
+                    const text = await response.text();
+                    const blob = new Blob([text], { type: 'text/html' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    window.open(blobUrl, '_blank');
+                  } catch (err) {
+                    const win = window.open(url, '_blank');
+                    if (win) win.focus();
+                  }
+                } else {
                   const win = window.open(url, '_blank');
                   if (win) win.focus();
                 }
-              } else {
-                const win = window.open(url, '_blank');
-                if (win) win.focus();
-              }
+              });
             }}
             className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
             title="View Content"

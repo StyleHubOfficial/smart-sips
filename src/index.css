@@ -178,3 +178,53 @@ body {
 .animate-gradient-xy {
   animation: gradient-xy 3s ease infinite;
 }
+
+/* Force hover state on tap/click for mobile */
+.is-pressed.glass-panel {
+  border-color: var(--color-border-hover) !important;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.2) !important;
+}
+
+.is-pressed .group-hover\:opacity-100 {
+  opacity: 1 !important;
+}
+
+.is-pressed .group-hover\:opacity-5 {
+  opacity: 0.05 !important;
+}
+
+.is-pressed .group-hover\:translate-y-0 {
+  transform: translateY(0) !important;
+}
+
+.is-pressed .group-hover\:scale-110 {
+  transform: scale(1.1) !important;
+}
+
+.is-pressed .group-hover\:scale-105 {
+  transform: scale(1.05) !important;
+}
+
+.is-pressed .group-hover\:translate-x-1 {
+  transform: translateX(0.25rem) !important;
+}
+
+.is-pressed .group-hover\:text-\[\#00F0FF\] {
+  color: #00F0FF !important;
+}
+
+.is-pressed .group-hover\:text-gray-200 {
+  color: #e5e7eb !important;
+}
+
+.is-pressed .group-hover\:text-gray-300 {
+  color: #d1d5db !important;
+}
+
+.is-pressed .group-hover\:animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+.is-pressed .group-hover\:translate-x-\[200\%\] {
+  transform: translateX(200%) !important;
+}

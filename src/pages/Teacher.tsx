@@ -18,6 +18,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 export default function Teacher() {
   const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
   const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
+  const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -255,7 +256,16 @@ export default function Teacher() {
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
-    await processFile(file);
+    
+    if (isSmartPanelMode) {
+      setIsPressed(true);
+      setTimeout(async () => {
+        setIsPressed(false);
+        await processFile(file);
+      }, 800);
+    } else {
+      await processFile(file);
+    }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -270,7 +280,15 @@ export default function Teacher() {
 
   const handleStartTeaching = () => {
     if (slides.length > 0) {
-      setShowWhiteboard(true);
+      if (isSmartPanelMode) {
+        setIsPressed(true);
+        setTimeout(() => {
+          setIsPressed(false);
+          setShowWhiteboard(true);
+        }, 800);
+      } else {
+        setShowWhiteboard(true);
+      }
     }
   };
 
@@ -455,7 +473,7 @@ export default function Teacher() {
                 {...getRootProps()} 
                 className={`relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-500 min-h-[400px] flex flex-col items-center justify-center p-12 text-center ${
                   isDragActive ? 'border-indigo-500 bg-indigo-500/5' : 'border-white/10 hover:border-white/20 bg-white/5'
-                }`}
+                } ${isPressed ? 'is-pressed border-indigo-500 bg-indigo-500/5' : ''}`}
               >
                 <input {...getInputProps()} />
                 
