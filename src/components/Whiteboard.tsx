@@ -40,10 +40,9 @@ interface WhiteboardProps {
   onSave?: (data: string) => void;
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
   backgroundImage?: string;
-  isSmartPanelMode?: boolean;
 }
 
-export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage, isSmartPanelMode = false }: WhiteboardProps) {
+export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -235,30 +234,28 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     ctx.lineJoin = 'round';
     ctx.globalAlpha = stroke.opacity || 1;
 
-    if (!isSmartPanelMode) {
-      if (selectedStrokeIds.includes(stroke.id)) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00F0FF';
-      } else if (stroke.tool === 'highlighter' && stroke.startTime) {
-        const elapsed = Date.now() - stroke.startTime;
-        if (elapsed < 7000) {
-          const time = Date.now() / 1000;
-          const pulse = (Math.sin(time * 3) + 1) / 2;
-          const glow = pulse * 15 + 5;
-          ctx.shadowBlur = glow;
-          ctx.shadowColor = stroke.color;
-          const fadeStart = 5000;
-          if (elapsed > fadeStart) {
-            const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
-            ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
-            ctx.shadowBlur *= (1 - fadeProgress);
-          } else {
-            ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
-          }
+    if (selectedStrokeIds.includes(stroke.id)) {
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00F0FF';
+    } else if (stroke.tool === 'highlighter' && stroke.startTime) {
+      const elapsed = Date.now() - stroke.startTime;
+      if (elapsed < 7000) {
+        const time = Date.now() / 1000;
+        const pulse = (Math.sin(time * 3) + 1) / 2;
+        const glow = pulse * 15 + 5;
+        ctx.shadowBlur = glow;
+        ctx.shadowColor = stroke.color;
+        const fadeStart = 5000;
+        if (elapsed > fadeStart) {
+          const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
+          ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
+          ctx.shadowBlur *= (1 - fadeProgress);
         } else {
-          ctx.shadowBlur = 0;
-          ctx.globalAlpha = stroke.opacity || 0.3;
+          ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
         }
+      } else {
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = stroke.opacity || 0.3;
       }
     }
 
@@ -280,24 +277,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         ctx.strokeStyle = '#00F0FF';
         ctx.lineWidth = 1;
       }
-      
       ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      
-      // Optimization: Skip points that are too close to each other
-      let lastX = stroke.points[0].x;
-      let lastY = stroke.points[0].y;
-      const threshold = isSmartPanelMode ? 1.0 : 0.5;
-      
       for (let i = 1; i < stroke.points.length; i++) {
-        const p = stroke.points[i];
-        const distSq = Math.pow(p.x - lastX, 2) + Math.pow(p.y - lastY, 2);
-        if (distSq > threshold * threshold || i === stroke.points.length - 1) {
-          ctx.lineTo(p.x, p.y);
-          lastX = p.x;
-          lastY = p.y;
-        }
+        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
       }
-      
       ctx.stroke();
       if (stroke.type === 'lasso') ctx.setLineDash([]);
     } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
@@ -347,10 +330,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       ctx.beginPath();
       ctx.strokeStyle = '#ff4444';
       ctx.lineWidth = 2;
-      if (!isSmartPanelMode) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ff4444';
-      }
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff4444';
       ctx.moveTo(lPath[0].x, lPath[0].y);
       lPath.forEach(p => ctx.lineTo(p.x, p.y));
       ctx.stroke();
@@ -387,10 +368,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     ctx.strokeStyle = '#00F0FF';
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 5]);
-    if (!isSmartPanelMode) {
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = 'rgba(0, 240, 255, 0.5)';
-    }
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = 'rgba(0, 240, 255, 0.5)';
     
     const width = maxX - minX + padding * 2;
     const height = maxY - minY + padding * 2;
@@ -1082,18 +1061,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setCurrentStroke(newStroke);
   };
 
-  const lastDrawTimeRef = useRef<number>(0);
-
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if ('touches' in e) {
       e.preventDefault();
-    }
-
-    // Throttle drawing for smart panels
-    if (isSmartPanelMode) {
-      const now = Date.now();
-      if (now - lastDrawTimeRef.current < 16) return; // ~60fps throttle
-      lastDrawTimeRef.current = now;
     }
 
     const pos = getPos(e);
