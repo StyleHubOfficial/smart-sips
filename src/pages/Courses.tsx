@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { Helmet } from "react-helmet-async";
 import { GrammarTextarea } from "../components/GrammarTextarea";
 import { BookOpen, ChevronLeft, ChevronRight, FileText, PlayCircle, Sparkles, BrainCircuit, Loader2, ArrowLeft } from "lucide-react";
 import { ContentCard, ContentItem, getFileIcon } from "../components/ContentCard";
@@ -7,6 +8,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { usePracticeStore } from "../store/usePracticeStore";
 import { BackButton } from "../components/BackButton";
+import { LazySection, SkeletonCard } from "../components/LazySection";
 import axios from "axios";
 
 // Mock Data for classes and subjects
@@ -199,6 +201,10 @@ export default function Courses() {
 
   return (
     <div className="min-h-screen pb-32 pt-24 px-6 max-w-7xl mx-auto">
+      <Helmet>
+        <title>Courses | Smart Sunrise</title>
+        <meta name="description" content="Explore structured learning materials, AI-generated resources, and classroom content across various subjects and classes." />
+      </Helmet>
       <div className="mb-8">
         <BackButton label="Back" />
       </div>
@@ -371,8 +377,10 @@ export default function Courses() {
               </div>
               
               {loading ? (
-                <div className="flex justify-center py-20">
-                  <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </div>
               ) : filteredContent.length === 0 ? (
                 <div className="text-center py-20 glass-panel rounded-2xl border border-white/10">
@@ -480,8 +488,10 @@ export default function Courses() {
               </h2>
               
               {loading ? (
-                <div className="flex justify-center py-20">
-                  <Loader2 className="w-8 h-8 text-[#00F0FF] animate-spin" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </div>
               ) : filteredContent.length === 0 ? (
                 <div className="text-center py-20 glass-panel rounded-2xl border border-white/10">

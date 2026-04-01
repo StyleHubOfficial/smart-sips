@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
+import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Sparkles, Loader2, Maximize2, Minimize2, FileText, X, Plus, Share2, Wand2, Image as ImageIcon, Upload, Database, ChevronRight } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -316,25 +318,32 @@ export default function ConceptVisualizer() {
   };
 
   return (
-    <motion.div
-      initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={isSmartPanelMode ? undefined : { opacity: 0, y: -20 }}
-      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-    >
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-            <ImageIcon className="w-8 h-8 text-black" />
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Concept Visualizer | Smart Sunrise</title>
+        <meta name="description" content="Generate educational diagrams and visual structures from any topic or document with our AI Concept Visualizer." />
+      </Helmet>
+      <motion.div
+        initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={isSmartPanelMode ? undefined : { opacity: 0, y: -20 }}
+        className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+      >
+        <LazySection>
+          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+                <ImageIcon className="w-8 h-8 text-black" />
+              </div>
+              <div>
+                <h2 className="text-3xl md:text-5xl font-display font-bold">
+                  Concept <span className="text-gradient">Visualizer</span>
+                </h2>
+                <p className="text-gray-400">Generate educational diagrams and visual structures</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 className="text-3xl md:text-5xl font-display font-bold">
-              Concept <span className="text-gradient">Visualizer</span>
-            </h2>
-            <p className="text-gray-400">Generate educational diagrams and visual structures</p>
-          </div>
-        </div>
-      </div>
+        </LazySection>
 
       {/* Templates Section */}
       {!loading && !visualizerData && (
@@ -567,6 +576,7 @@ export default function ConceptVisualizer() {
         onClose={() => setShowUploadModal(false)}
         onUpload={handleUploadToCourses}
       />
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }

@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
+import { LazySection } from '../components/LazySection';
 import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -376,44 +378,50 @@ export default function Teacher() {
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-32 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl sm:text-5xl font-display font-bold text-white">Teacher Mode</h1>
-              <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest">Beta</span>
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Teacher Mode | Smart Sunrise</title>
+        <meta name="description" content="Convert your teaching materials into interactive slides and start teaching with an integrated whiteboard." />
+      </Helmet>
+      <div className="max-w-7xl mx-auto space-y-8">
+        <LazySection>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl sm:text-5xl font-display font-bold text-white">Teacher Mode</h1>
+                <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest">Beta</span>
+              </div>
+              <p className="text-gray-400 text-lg">Convert your teaching materials into interactive AI slides.</p>
             </div>
-            <p className="text-gray-400 text-lg">Convert your teaching materials into interactive AI slides.</p>
+            
+            {slides.length > 0 && (
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-bold disabled:opacity-50"
+                >
+                  <FileText className="w-5 h-5 text-[#00F0FF]" />
+                  {isExporting ? 'Exporting...' : 'Export PDF'}
+                </button>
+                <button 
+                  onClick={clearSlides}
+                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  Clear All
+                </button>
+                <button 
+                  onClick={handleStartTeaching}
+                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all font-bold shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+                >
+                  <Play className="w-5 h-5" />
+                  Start Teaching
+                </button>
+              </div>
+            )}
           </div>
-          
-          {slides.length > 0 && (
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={handleExportPDF}
-                disabled={isExporting}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-bold disabled:opacity-50"
-              >
-                <FileText className="w-5 h-5 text-[#00F0FF]" />
-                {isExporting ? 'Exporting...' : 'Export PDF'}
-              </button>
-              <button 
-                onClick={clearSlides}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
-              >
-                <Trash2 className="w-5 h-5" />
-                Clear All
-              </button>
-              <button 
-                onClick={handleStartTeaching}
-                className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all font-bold shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-              >
-                <Play className="w-5 h-5" />
-                Start Teaching
-              </button>
-            </div>
-          )}
-        </div>
+        </LazySection>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">

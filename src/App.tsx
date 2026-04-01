@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowUp, Zap } from "lucide-react";
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { HelmetProvider, Helmet } from "react-helmet-async";
 import { useAppStore } from "./store/useAppStore";
 import { useThemeStore } from "./store/useThemeStore";
 
@@ -16,6 +17,7 @@ import { IntroSequence } from "./components/IntroSequence";
 import DeveloperCredit from "./components/DeveloperCredit";
 import { PageTransition } from "./components/PageTransition";
 import AutoSuggestModal from "./components/AutoSuggestModal";
+import { SkeletonCard } from "./components/LazySection";
 
 import { usePracticeStore } from "./store/usePracticeStore";
 
@@ -70,6 +72,11 @@ function AppContent({
 
   return (
     <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative ${isSmartPanelMode ? 'text-lg' : ''} ${isGlowEnabled && !isSmartPanelMode ? 'glow-enabled' : ''}`}>
+      <Helmet>
+        <title>Smart Sunrise | Smart Classroom Platform</title>
+        <meta name="description" content="The ultimate smart classroom management and learning platform for modern educators and students." />
+        <link rel="canonical" href={window.location.origin + location.pathname} />
+      </Helmet>
       {/* Animated background grid lines - disabled in smart panel mode */}
       {!isSmartPanelMode && (
         <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0"></div>
@@ -94,7 +101,15 @@ function AppContent({
         />
         
         <main className="flex-1 relative">
-          <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-4 border-[#00F0FF]/20 border-t-[#00F0FF] rounded-full animate-spin"></div></div>}>
+          <Suspense fallback={
+            <div className="p-6 space-y-6 max-w-7xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            </div>
+          }>
             <AnimatePresence mode="wait">
               <Routes location={location} key={location.pathname}>
                 <Route path="/" element={<PageTransition><Home /></PageTransition>} />
@@ -200,70 +215,72 @@ export default function App() {
   };
 
   return (
-    <MotionConfig reducedMotion={(!isGlowEnabled || isSmartPanelMode) ? "always" : "never"}>
-      <AnimatePresence>
-        {showEntryAnimation && <IntroSequence key="intro" onComplete={handleIntroComplete} />}
-      </AnimatePresence>
-      <AnimatePresence>
-        {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
-      </AnimatePresence>
-      
-      <motion.div
-        initial={showEntryAnimation ? { clipPath: 'circle(0% at 0% 100%)' } : { clipPath: 'circle(150% at 0% 100%)' }}
-        animate={isRevealed ? { clipPath: 'circle(150% at 0% 100%)' } : {}}
-        transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
-        className="relative z-10"
-      >
-        {isUnlocked && (
-          <BrowserRouter>
-            <AppContent 
-              isSmartPanelMode={isSmartPanelMode}
-              setIsSmartPanelMode={setIsSmartPanelMode}
-              isLoginModalOpen={isLoginModalOpen}
-              setIsLoginModalOpen={setIsLoginModalOpen}
-              isNotificationsOpen={isNotificationsOpen}
-              setIsNotificationsOpen={setIsNotificationsOpen}
-              isRevealing={false}
-            />
-          </BrowserRouter>
-        )}
-      </motion.div>
-      {!isUnlocked && (
-        <div className="fixed inset-0 z-[10000] bg-[#0a0a0a] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00F0FF10_0%,transparent_70%)]"></div>
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel p-8 rounded-3xl border border-white/10 w-full max-w-md relative z-10 text-center"
-          >
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] mx-auto mb-6">
-              <div className="w-full h-full bg-[#0a0a0a] rounded-2xl flex items-center justify-center">
-                <Zap className="w-10 h-10 text-[#00F0FF]" />
-              </div>
-            </div>
-            <h2 className="text-3xl font-display font-bold text-white mb-2">Access Restricted</h2>
-            <p className="text-gray-400 mb-8 text-sm">Please enter the website access code to continue.</p>
-            
-            <form onSubmit={handleUnlock} className="space-y-4">
-              <input 
-                type="password"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Enter Access Code"
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-6 text-white text-center focus:outline-none focus:border-[#00F0FF]/50 transition-all"
-                autoFocus
+    <HelmetProvider>
+      <MotionConfig reducedMotion={(!isGlowEnabled || isSmartPanelMode) ? "always" : "never"}>
+        <AnimatePresence>
+          {showEntryAnimation && <IntroSequence key="intro" onComplete={handleIntroComplete} />}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
+        </AnimatePresence>
+        
+        <motion.div
+          initial={showEntryAnimation ? { clipPath: 'circle(0% at 0% 100%)' } : { clipPath: 'circle(150% at 0% 100%)' }}
+          animate={isRevealed ? { clipPath: 'circle(150% at 0% 100%)' } : {}}
+          transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
+          className="relative z-10"
+        >
+          {isUnlocked && (
+            <BrowserRouter>
+              <AppContent 
+                isSmartPanelMode={isSmartPanelMode}
+                setIsSmartPanelMode={setIsSmartPanelMode}
+                isLoginModalOpen={isLoginModalOpen}
+                setIsLoginModalOpen={setIsLoginModalOpen}
+                isNotificationsOpen={isNotificationsOpen}
+                setIsNotificationsOpen={setIsNotificationsOpen}
+                isRevealing={false}
               />
-              <button 
-                type="submit"
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
-              >
-                Unlock Platform
-              </button>
-            </form>
-            <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
-          </motion.div>
-        </div>
-      )}
-    </MotionConfig>
+            </BrowserRouter>
+          )}
+        </motion.div>
+        {!isUnlocked && (
+          <div className="fixed inset-0 z-[10000] bg-[#0a0a0a] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00F0FF10_0%,transparent_70%)]"></div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-panel p-8 rounded-3xl border border-white/10 w-full max-w-md relative z-10 text-center"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] mx-auto mb-6">
+                <div className="w-full h-full bg-[#0a0a0a] rounded-2xl flex items-center justify-center">
+                  <Zap className="w-10 h-10 text-[#00F0FF]" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-display font-bold text-white mb-2">Access Restricted</h2>
+              <p className="text-gray-400 mb-8 text-sm">Please enter the website access code to continue.</p>
+              
+              <form onSubmit={handleUnlock} className="space-y-4">
+                <input 
+                  type="password"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Enter Access Code"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-6 text-white text-center focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+                  autoFocus
+                />
+                <button 
+                  type="submit"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
+                >
+                  Unlock Platform
+                </button>
+              </form>
+              <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
+            </motion.div>
+          </div>
+        )}
+      </MotionConfig>
+    </HelmetProvider>
   );
 }

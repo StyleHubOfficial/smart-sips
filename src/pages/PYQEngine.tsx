@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
+import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
 import { PenPaperAnimation } from '../components/PenPaperAnimation';
@@ -492,22 +494,28 @@ export default function PYQEngine() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Global PYQ Engine | Smart Sunrise</title>
+        <meta name="description" content="Intelligently discover, extract, and analyze previous year questions from across the web." />
+      </Helmet>
       <div className="max-w-7xl mx-auto space-y-8">
         
         <BackButton label="Back" />
 
         {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-white/10 mb-4">
-            <Search className="w-8 h-8 text-[#00F0FF]" />
+        <LazySection>
+          <div className="text-center space-y-4">
+            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-white/10 mb-4">
+              <Search className="w-8 h-8 text-[#00F0FF]" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight">
+              Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF]">PYQ Engine</span>
+            </h1>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Intelligently discover, extract, and analyze previous year questions from across the web.
+            </p>
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight">
-            Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF]">PYQ Engine</span>
-          </h1>
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            Intelligently discover, extract, and analyze previous year questions from across the web.
-          </p>
-        </div>
+        </LazySection>
 
         {/* Search Form */}
         <motion.form 

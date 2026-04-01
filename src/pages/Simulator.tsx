@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Helmet } from 'react-helmet-async';
+import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload, Settings } from 'lucide-react';
 import UploadToCoursesModal from '../components/UploadToCoursesModal';
@@ -358,13 +360,19 @@ export default function Simulator() {
   }, []);
 
   return (
-    <motion.div 
-      initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
-      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-    >
-      <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>AI Virtual Laboratory | Smart Sunrise</title>
+        <meta name="description" content="Generate interactive science experiments from any topic or document with our AI Virtual Laboratory." />
+      </Helmet>
+      <motion.div 
+        initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+        className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+      >
+        <LazySection>
+          <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)] shrink-0">
             <FlaskConical className="w-6 h-6 md:w-8 md:h-8 text-black" />
@@ -377,6 +385,8 @@ export default function Simulator() {
             <p className="text-sm md:text-base text-gray-400">Generate interactive science experiments from any topic or document</p>
           </div>
         </div>
+      </div>
+      </LazySection>
 
         <div className="flex flex-wrap items-center gap-3 md:gap-4">
           <div className="flex p-1 bg-black/40 rounded-xl border border-white/10 shrink-0">
@@ -913,6 +923,7 @@ export default function Simulator() {
         onSelect={handleDashboardFileSelect}
         title="Select Simulation Source"
       />
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
