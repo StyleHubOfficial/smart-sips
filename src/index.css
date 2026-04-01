@@ -87,6 +87,12 @@ body {
   box-shadow: none !important;
   /* Disable heavy text shadows */
   text-shadow: none !important;
+  /* Disable heavy filters */
+  filter: none !important;
+  /* Disable mix-blend-mode which is heavy for rendering */
+  mix-blend-mode: normal !important;
+  /* Disable animations that might still be running */
+  animation: none !important;
 }
 
 .smart-panel-mode .glow-enabled .glow-border {

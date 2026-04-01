@@ -176,7 +176,11 @@ export default function Header({
 
           <div className="relative group">
             <button 
-              onClick={() => setIsSmartPanelMode(!isSmartPanelMode)}
+              onClick={() => {
+                const nextMode = !isSmartPanelMode;
+                setIsSmartPanelMode(nextMode);
+                localStorage.setItem('sunrise_manual_smart_panel', 'true');
+              }}
               className={`p-2.5 rounded-xl transition-all duration-300 ${isSmartPanelMode ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
             >
               <Monitor className="w-5 h-5" />

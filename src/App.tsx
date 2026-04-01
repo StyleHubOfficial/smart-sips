@@ -193,6 +193,24 @@ export default function App() {
     }
   }, [isSmartPanelMode]);
 
+  // Automatic Smart Panel Mode detection for large screens
+  useEffect(() => {
+    const checkScreenSize = () => {
+      // If screen is large (>= 1280px) and smart panel mode is not explicitly set in this session
+      // We check if it's the first time or if it's false but the screen is huge
+      const isLargeScreen = window.innerWidth >= 1280;
+      const hasManuallyToggled = localStorage.getItem('sunrise_manual_smart_panel') === 'true';
+      
+      if (isLargeScreen && !isSmartPanelMode && !hasManuallyToggled) {
+        setIsSmartPanelMode(true);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, [isSmartPanelMode, setIsSmartPanelMode]);
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (accessCode === "smart@sunrise" || accessCode === "ss123") {
