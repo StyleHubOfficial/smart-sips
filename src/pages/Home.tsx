@@ -2,9 +2,13 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { PlayCircle, BrainCircuit, FileSearch, MonitorPlay, ChevronRight, BookOpen, Sparkles, Mail, Bot, Zap, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LazySection } from "../components/LazySection";
+
+import { usePracticeStore } from "../store/usePracticeStore";
 
 export default function Home() {
-  const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
+  const isSmartPanelMode = usePracticeStore((state) => state.isSmartPanelMode);
+  const [logo, setLogo] = useState<string | null>("https://res.cloudinary.com/de4qwrmmw/image/upload/f_auto,q_auto/v1774792677/5a3b278a-9094-49bb-bb22-e0e59619f49e-copied-media_2_b1hkap.png");
 
   useEffect(() => {
     fetch('/api/settings')
@@ -21,24 +25,26 @@ export default function Home() {
       <section className="relative h-[70vh] sm:h-[80vh] w-full overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[var(--color-background)] z-10"></div>
         
-        {/* Video Background */}
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline
-          preload="auto"
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-        >
-          <source src="https://cdn.pixabay.com/video/2020/05/25/40131-424917415_large.mp4" type="video/mp4" />
-          {/* Fallback CSS Animation if video fails */}
-          <div className="absolute inset-0 bg-[#0E0E12] flex items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse"></div>
-              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        {/* Video Background - Optimized for performance */}
+        {!isSmartPanelMode && (
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-cover opacity-50"
+          >
+            <source src="https://cdn.pixabay.com/video/2020/05/25/40131-424917415_large.mp4" type="video/mp4" />
+            {/* Fallback CSS Animation if video fails */}
+            <div className="absolute inset-0 bg-[#0E0E12] flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+              </div>
             </div>
-          </div>
-        </video>
+          </video>
+        )}
 
         <div className="relative z-20 text-center px-4 max-w-4xl mx-auto mt-16">
           {logo && (
@@ -93,7 +99,7 @@ export default function Home() {
       </section>
 
       {/* Platform Introduction */}
-      <section className="py-20 px-6 max-w-7xl mx-auto relative z-20">
+      <LazySection className="py-20 px-6 max-w-7xl mx-auto relative z-20">
         <motion.div 
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
@@ -231,7 +237,7 @@ export default function Home() {
             </a>
           </div>
         </motion.div>
-      </section>
+      </LazySection>
     </div>
   );
 }

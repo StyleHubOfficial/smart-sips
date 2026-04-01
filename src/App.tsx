@@ -170,6 +170,14 @@ export default function App() {
     }
   }, [theme]);
 
+  useEffect(() => {
+    if (isSmartPanelMode) {
+      document.body.classList.add('smart-panel-mode');
+    } else {
+      document.body.classList.remove('smart-panel-mode');
+    }
+  }, [isSmartPanelMode]);
+
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (accessCode === "smart@sunrise" || accessCode === "ss123") {
