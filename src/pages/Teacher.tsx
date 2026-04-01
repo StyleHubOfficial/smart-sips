@@ -2,18 +2,14 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
-import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { jsPDF } from 'jspdf';
 import { useTeacherStore } from '../store/useTeacherStore';
+import { usePracticeStore } from '../store/usePracticeStore';
 import Whiteboard from '../components/Whiteboard';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
-// Set up PDF.js worker
-import pdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
-
 export default function Teacher() {
   const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
+  const isSmartPanelMode = usePracticeStore((state) => state.isSmartPanelMode);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -30,6 +26,11 @@ export default function Teacher() {
     setIsProcessing(true);
     setProcessProgress(0);
     try {
+      // Dynamic imports for heavy PDF libraries
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      const pdfWorker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url');
+      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker.default;
+
       const isDashboardFile = 'url' in file;
       const fileType = isDashboardFile ? file.type : file.type;
       const fileName = isDashboardFile ? file.name : file.name;
@@ -109,6 +110,7 @@ export default function Teacher() {
     setIsExporting(true);
 
     try {
+      const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'px',
@@ -348,7 +350,7 @@ export default function Teacher() {
                         currentSlideIndex === idx ? 'border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'border-white/10 hover:border-white/20'
                       }`}
                     >
-                      <img src={slide.imageUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={slide.imageUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                       <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
                         Page {idx + 1}
                       </div>
@@ -368,6 +370,7 @@ export default function Teacher() {
           className="h-full w-full"
           theme="dark"
           backgroundImage={slides[currentSlideIndex].imageUrl}
+          isSmartPanelMode={isSmartPanelMode}
         />
       </div>
     );
@@ -501,7 +504,7 @@ export default function Teacher() {
                     }`}
                     onClick={() => setCurrentSlideIndex(index)}
                   >
-                    <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Play className="w-8 h-8 text-white" />
                     </div>
