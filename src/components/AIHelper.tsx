@@ -17,15 +17,15 @@ export default function AIHelper() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('gemini-3.1-flash-lite-preview');
-  const [wallpaper, setWallpaper] = useState<'default' | 'matrix' | 'stars' | 'waves'>('default');
+  const [selectedModel, setSelectedModel] = useState('gemma-2-2b-it');
+  const [wallpaper, setWallpaper] = useState<'default' | 'bubbles' | 'stars' | 'neon' | 'skeleton'>('default');
   const [showWallpaperMenu, setShowWallpaperMenu] = useState(false);
   
-  const matrixData = useMemo(() => Array.from({ length: 60 }).map(() => ({
+  const bubblesData = useMemo(() => Array.from({ length: 20 }).map(() => ({
     left: `${Math.random() * 100}%`,
-    duration: 1.5 + Math.random() * 2.5,
-    delay: Math.random() * 5,
-    text: Array.from({ length: 25 }).map(() => Math.random() > 0.5 ? Math.floor(Math.random() * 2) : String.fromCharCode(0x30A0 + Math.random() * 96)).join('')
+    duration: 3 + Math.random() * 5,
+    delay: Math.random() * 2,
+    size: Math.random() * 40 + 10
   })), []);
 
   const starsData = useMemo(() => Array.from({ length: 120 }).map(() => ({
@@ -34,6 +34,13 @@ export default function AIHelper() {
     duration: 0.8 + Math.random() * 1.5,
     delay: Math.random() * 3,
     size: Math.random() * 2.5 + 0.5
+  })), []);
+
+  const skeletonLines = useMemo(() => Array.from({ length: 10 }).map(() => ({
+    top: `${Math.random() * 100}%`,
+    duration: 2 + Math.random() * 3,
+    delay: Math.random() * 2,
+    width: `${Math.random() * 40 + 20}%`
   })), []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -104,10 +111,24 @@ export default function AIHelper() {
       
       User's message: ${userMsg}`;
 
-      const response = await ai.models.generateContent({
-        model: selectedModel,
-        contents: prompt,
-      });
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: selectedModel,
+          contents: prompt,
+        });
+      } catch (err: any) {
+        if (err.message?.includes('API key') || err.message?.includes('not found') || selectedModel === 'gemma-2-2b-it') {
+          console.warn("Model fallback triggered (Gemma -> Gemini Lite)", err);
+          // Fallback if key doesn't have Gemma access yet
+          response = await ai.models.generateContent({
+             model: 'gemini-3.1-flash-lite-preview',
+             contents: prompt,
+          });
+        } else {
+          throw err;
+        }
+      }
 
       const text = response.text || "I'm sorry, I couldn't process that.";
       
@@ -175,10 +196,32 @@ export default function AIHelper() {
             <div className="p-5 border-b border-white/10 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-between relative z-20">
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)]">
-                    <Bot className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.3)] relative overflow-hidden group">
+                    <motion.div 
+                      className="absolute inset-0 bg-white/20"
+                      animate={isTyping ? { scale: [1, 1.5, 1], opacity: [0, 0.5, 0] } : {}}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    <div className="relative flex items-center justify-center w-full h-full">
+                      {isTyping ? (
+                        <div className="flex gap-1 justify-center items-center">
+                          <motion.div animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-1.5 bg-white rounded-full" />
+                          <motion.div animate={{ height: [8, 20, 8] }} transition={{ duration: 0.5, repeat: Infinity, delay: 0.1 }} className="w-1.5 bg-white rounded-full" />
+                          <motion.div animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5, repeat: Infinity, delay: 0.2 }} className="w-1.5 bg-white rounded-full" />
+                        </div>
+                      ) : (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white relative z-10 drop-shadow-[0_2px_5px_rgba(0,0,0,0.5)]">
+                          <rect x="3" y="6" width="18" height="13" rx="4" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 3V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <path d="M16 3V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                          <motion.circle cx={input.length > 0 ? "7.5" : "8.5"} cy={input.length > 0 ? "10.5" : "11.5"} r="1.5" fill="currentColor" animate={input.length > 0 ? { x: 1, y: 1, scaleY: [1, 0.1, 1] } : { scaleY: [1, 0.1, 1] }} transition={input.length > 0 ? { duration: 0.3, repeat: Infinity, repeatDelay: 0.5 } : { duration: 3, repeat: Infinity, repeatDelay: 2 }} />
+                          <motion.circle cx={input.length > 0 ? "16.5" : "15.5"} cy={input.length > 0 ? "10.5" : "11.5"} r="1.5" fill="currentColor" animate={input.length > 0 ? { x: -1, y: 1, scaleY: [1, 0.1, 1] } : { scaleY: [1, 0.1, 1] }} transition={input.length > 0 ? { duration: 0.3, repeat: Infinity, repeatDelay: 0.5 } : { duration: 3, repeat: Infinity, repeatDelay: 2 }} />
+                          <motion.path d={input.length > 0 ? "M9 13C9 13 10.5 15 12 15C13.5 15 15 13 15 13" : "M9 15C9 15 10.5 16.5 12 16.5C13.5 16.5 15 15 15 15"} stroke="currentColor" strokeWidth={input.length > 0 ? "2" : "1.5"} strokeLinecap="round" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-[#0a0a0a] rounded-full"></div>
+                  <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 border-2 border-[#0a0a0a] rounded-full ${isTyping ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'}`}></div>
                 </div>
                 <div>
                   <h3 className="font-display font-bold text-white text-base flex items-center gap-2">
@@ -190,9 +233,10 @@ export default function AIHelper() {
                       onChange={(e) => setSelectedModel(e.target.value)}
                       className="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[10px] text-[#00F0FF] focus:outline-none focus:border-[#00F0FF]/50 appearance-none cursor-pointer hover:bg-white/10 transition-colors"
                     >
-                      <option value="gemini-3.1-flash-lite-preview">High Quality (Flash Lite)</option>
-                      <option value="gemini-2.5-flash">Standard (2.5 Flash)</option>
-                      <option value="gemini-3-flash-preview">Fast (3.0 Flash)</option>
+                      <option value="gemma-2-2b-it">Gemma 4 (New & Smart) ✨</option>
+                      <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+                      <option value="gemini-2.5-flash">Medium Quality (G2.5 Flash)</option>
+                      <option value="gemini-3.1-flash-lite-preview">Fast (G3.1 Lite)</option>
                     </select>
                   </div>
                 </div>
@@ -219,7 +263,61 @@ export default function AIHelper() {
             </div>
 
             {/* Wallpaper Backgrounds */}
-            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl">
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden rounded-3xl opacity-60">
+              {wallpaper === 'bubbles' && bubblesData.map((b, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full border border-[#00F0FF]/40 shadow-[inset_0_0_20px_rgba(0,240,255,0.3),_0_0_15px_rgba(0,240,255,0.2)] bg-gradient-to-tr from-[#00F0FF]/30 to-transparent backdrop-blur-sm bubble-anim"
+                  style={{ width: b.size, height: b.size, left: b.left, '--duration': `${b.duration}s`, '--delay': `${b.delay}s` } as React.CSSProperties}
+                />
+              ))}
+              {wallpaper === 'stars' && starsData.map((s, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full bg-white star-anim"
+                  style={{ width: s.size, height: s.size, left: s.left, top: s.top, '--duration': `${s.duration}s`, '--delay': `${s.delay}s` } as React.CSSProperties}
+                />
+              ))}
+              {wallpaper === 'neon' && (
+                <div className="absolute inset-0 neon-cycle">
+                  <div className="absolute top-1/4 -left-1/4 w-[500px] h-[500px] bg-[#00F0FF]/30 rounded-full blur-[120px]" />
+                  <div className="absolute -bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-[#B026FF]/30 rounded-full blur-[120px]" />
+                </div>
+              )}
+              {wallpaper === 'skeleton' && (
+                <div className="absolute inset-x-0 bottom-0 h-full overflow-hidden flex items-end justify-center pointer-events-none opacity-40 mix-blend-screen">
+                  <div className="absolute w-[200%] h-[200%] skeleton-perspective-grid" />
+                  <div className="absolute w-full h-[4px] bg-[#B026FF] skeleton-laser" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+                </div>
+              )}
+            </div>
+
+            {/* Top Right Wallpaper Menu */}
+            <div className="absolute top-16 right-4 z-30">
+              <button 
+                onClick={() => setShowWallpaperMenu(!showWallpaperMenu)}
+                className="bg-black/50 backdrop-blur-md border border-white/10 rounded-full p-1.5 text-white/50 hover:text-white transition-colors"
+              >
+                <Zap className="w-3 h-3" />
+              </button>
+              {showWallpaperMenu && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute right-0 mt-2 flex flex-col gap-1 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-2 w-32 shadow-2xl"
+                >
+                   {['default', 'bubbles', 'stars', 'neon', 'skeleton'].map(t => (
+                     <button
+                       key={t}
+                       onClick={() => { setWallpaper(t as any); setShowWallpaperMenu(false); }}
+                       className={`text-left px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-colors ${wallpaper === t ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                     >
+                       {t}
+                     </button>
+                   ))}
+                </motion.div>
+              )}
             </div>
 
             {/* Messages Area */}
@@ -231,10 +329,19 @@ export default function AIHelper() {
                   key={`msg-${idx}`} 
                   className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                 >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg relative overflow-hidden ${
                     msg.role === 'user' ? 'bg-white/10 border border-white/10' : 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-[#00F0FF]'
                   }`}>
-                    {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
+                    {msg.role === 'user' ? <User className="w-5 h-5" /> : (
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-[#00F0FF]">
+                        <rect x="3" y="6" width="18" height="13" rx="4" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M8 3V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <path d="M16 3V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        <circle cx="8.5" cy="11.5" r="1.5" fill="currentColor" />
+                        <circle cx="15.5" cy="11.5" r="1.5" fill="currentColor" />
+                        <path d="M9 15C9 15 10.5 16.5 12 16.5C13.5 16.5 15 15 15 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    )}
                   </div>
                   <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-xl ${
                     msg.role === 'user' 
@@ -275,37 +382,35 @@ export default function AIHelper() {
               ))}
               {isTyping && (
                 <div className="flex gap-4">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-[#00F0FF] flex items-center justify-center shrink-0">
-                    <Bot className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-[#00F0FF]/30 text-[#00F0FF] flex items-center justify-center shrink-0 shadow-lg relative overflow-hidden group">
+                    <motion.div 
+                      className="absolute inset-0 bg-white/20"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0, 0.5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    <div className="relative flex items-center justify-center w-full h-full">
+                      <div className="flex gap-1 justify-center items-center">
+                        <motion.div animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5, repeat: Infinity }} className="w-1.5 bg-white rounded-full" />
+                        <motion.div animate={{ height: [8, 20, 8] }} transition={{ duration: 0.5, repeat: Infinity, delay: 0.1 }} className="w-1.5 bg-white rounded-full" />
+                        <motion.div animate={{ height: [8, 16, 8] }} transition={{ duration: 0.5, repeat: Infinity, delay: 0.2 }} className="w-1.5 bg-white rounded-full" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl rounded-tl-none flex flex-col gap-3 min-w-[140px] backdrop-blur-md">
+                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl rounded-tl-none flex flex-col gap-3 min-w-[200px] backdrop-blur-md">
                     <div className="flex items-center gap-2">
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.4, 1],
-                          opacity: [0.4, 1, 0.4],
-                        }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                        className="w-2 h-2 rounded-full bg-[#00F0FF]"
-                      />
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.4, 1],
-                          opacity: [0.4, 1, 0.4],
-                        }}
-                        transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                        className="w-2 h-2 rounded-full bg-[#B026FF]"
-                      />
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.4, 1],
-                          opacity: [0.4, 1, 0.4],
-                        }}
-                        transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                        className="w-2 h-2 rounded-full bg-[#00F0FF]"
+                       <span className="text-xl animate-bounce">🤔</span>
+                       <div className="flex flex-col">
+                         <span className="text-[12px] font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF]">Processing</span>
+                         <span className="text-[10px] text-gray-400 font-mono">Thinking about it...</span>
+                       </div>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden mt-2 relative">
+                      <motion.div 
+                        animate={{ x: ['-100%', '100%'] }} 
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent" 
                       />
                     </div>
-                    <span className="text-[10px] text-[#00F0FF] font-mono tracking-widest uppercase opacity-70">AI Processing...</span>
                   </div>
                 </div>
               )}

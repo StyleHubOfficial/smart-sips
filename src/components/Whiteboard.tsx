@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
-import { AIGeneratorModal } from './AIGeneratorModal';
 import { 
   Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, 
   ArrowUpRight, Maximize2, Minimize2, Sparkles, MousePointer2, Wand2, ScanText, Scissors,
@@ -37,17 +36,13 @@ interface WhiteboardProps {
   onClose?: () => void;
   className?: string;
   initialData?: string; // Changed to string (base64 or JSON)
-  onSave?: (data: string) => void;
+  onSave?: (data: string, imageData?: string) => void;
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
   backgroundImage?: string;
 }
 
-import { usePracticeStore } from '../store/usePracticeStore';
-
 export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
-  const { isSmartPanelMode } = usePracticeStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan'>('pen');
@@ -62,33 +57,13 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [showEraserMenu, setShowEraserMenu] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
   const [wipeProgress, setWipeProgress] = useState(0);
+  const [laserPath, setLaserPath] = useState<Point[]>([]);
   const laserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [color, setColor] = useState('#00F0FF');
   const [lineWidth, setLineWidth] = useState(3);
   const [isOCRProcessing, setIsOCRProcessing] = useState(false);
   
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const currentPointsRef = useRef<Point[]>([]);
-  const canvasRectRef = useRef<DOMRect | null>(null);
-  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
-  const [showTextInput, setShowTextInput] = useState(false);
-  const [textInputPos, setTextInputPos] = useState<Point | null>(null);
-  const [textInputValue, setTextInputValue] = useState('');
-
-  useEffect(() => {
-    const updateRect = () => {
-      if (canvasRef.current) {
-        canvasRectRef.current = canvasRef.current.getBoundingClientRect();
-      }
-    };
-    updateRect();
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
-    return () => {
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
-    };
-  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -105,40 +80,20 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const [historyStep, setHistoryStep] = useState(-1);
   
   const [selectedStrokeIds, setSelectedStrokeIds] = useState<string[]>([]);
-  const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
-  const [initialSelectedStrokes, setInitialSelectedStrokes] = useState<Stroke[]>([]);
-  const [initialBounds, setInitialBounds] = useState<{ minX: number, minY: number, maxX: number, maxY: number } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
 
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light' | 'grid' | 'transparent'>(initialTheme);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [backgroundType, setBackgroundType] = useState<'none' | 'grid' | 'dots' | 'lines'>('none');
   const dragControls = useDragControls();
-  const bgImageRef = useRef<HTMLImageElement | null>(null);
-
-  const laserPathRef = useRef<Point[]>([]);
-
-  useEffect(() => {
-    if (backgroundImage) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        bgImageRef.current = img;
-        redrawBackground();
-      };
-      img.src = backgroundImage;
-    } else {
-      bgImageRef.current = null;
-      redrawBackground();
-    }
-  }, [backgroundImage]);
 
   useEffect(() => {
     if (initialData) {
@@ -158,152 +113,62 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
-      const bgCanvas = bgCanvasRef.current;
       const container = containerRef.current;
-      if (!canvas || !bgCanvas || !container) return;
+      if (!canvas || !container) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
       
-      [canvas, bgCanvas].forEach(c => {
-        // We use a fixed internal resolution of 1920x1080 for consistent coordinates across devices
-        c.width = 1920;
-        c.height = 1080;
-        c.style.width = '100%';
-        c.style.height = '100%';
-        c.style.objectFit = 'contain';
-        const ctx = c.getContext('2d');
-        if (ctx) {
-          // Reset transform
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-        }
-      });
+      // Set display size
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
       
-      redrawBackground();
-      redraw();
+      // Set actual size in memory
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      
+      // Scale context to match dpr
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+        redraw();
+      }
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isFullscreen, backgroundImage, theme, backgroundType]);
+  }, [isFullscreen]);
 
-  const redrawBackground = () => {
-    const canvas = bgCanvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+    
+    // Coordinates relative to the canvas element
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
-    const w = 1920;
-    const h = 1080;
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.save();
-    ctx.translate(offset.x, offset.y);
-    ctx.scale(scale, scale);
-
-    renderBackground(ctx, w / scale, h / scale);
-
-    if (bgImageRef.current) {
-      const img = bgImageRef.current;
-      const canvasW = w;
-      const canvasH = h;
-      const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
-      const x = (canvasW - img.width * imgScale) / 2;
-      const y = (canvasH - img.height * imgScale) / 2;
-      ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
-    }
-
-    strokes.forEach(stroke => {
-      drawStroke(ctx, stroke);
-    });
-
-    ctx.restore();
+    // Adjust for scale and offset to get "world" coordinates
+    return {
+      x: (x - offset.x) / scale,
+      y: (y - offset.y) / scale
+    };
   };
 
-  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
-    ctx.save();
-    
-    if (stroke.center && (stroke.rotation || stroke.scale)) {
-      ctx.translate(stroke.center.x, stroke.center.y);
-      if (stroke.rotation) ctx.rotate(stroke.rotation);
-      if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
-      ctx.translate(-stroke.center.x, -stroke.center.y);
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = stroke.opacity || 1;
-
-    if (selectedStrokeIds.includes(stroke.id)) {
-      ctx.shadowBlur = 15;
-      ctx.shadowColor = '#00F0FF';
-    } else if (stroke.tool === 'highlighter' && stroke.startTime) {
-      const elapsed = Date.now() - stroke.startTime;
-      if (elapsed < 7000) {
-        const time = Date.now() / 1000;
-        const pulse = (Math.sin(time * 3) + 1) / 2;
-        const glow = pulse * 15 + 5;
-        ctx.shadowBlur = glow;
-        ctx.shadowColor = stroke.color;
-        const fadeStart = 5000;
-        if (elapsed > fadeStart) {
-          const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
-          ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
-          ctx.shadowBlur *= (1 - fadeProgress);
-        } else {
-          ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
-        }
-      } else {
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = stroke.opacity || 0.3;
-      }
-    }
-
-    if (stroke.type === 'path' || stroke.type === 'lasso') {
-      if (stroke.points.length === 1) {
-        ctx.fillStyle = stroke.color;
-        ctx.beginPath();
-        ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.lineWidth / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        return;
-      }
-      if (stroke.points.length < 2) {
-        ctx.restore();
-        return;
-      }
-      if (stroke.type === 'lasso') {
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = '#00F0FF';
-        ctx.lineWidth = 1;
-      }
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-      }
-      ctx.stroke();
-      if (stroke.type === 'lasso') ctx.setLineDash([]);
-    } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
-      ctx.strokeRect(stroke.startPos.x, stroke.startPos.y, stroke.endPos.x - stroke.startPos.x, stroke.endPos.y - stroke.startPos.y);
-    } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
-      const radius = Math.sqrt(Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + Math.pow(stroke.endPos.y - stroke.startPos.y, 2));
-      ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
-      ctx.stroke();
-    } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
-      ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
-      ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
-      ctx.stroke();
-    } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
-      drawArrow(ctx, stroke.startPos.x, stroke.startPos.y, stroke.endPos.x, stroke.endPos.y);
-    } else if (stroke.type === 'text' && stroke.startPos && stroke.text) {
-      ctx.font = `${stroke.lineWidth * 5}px Inter, sans-serif`;
-      ctx.fillStyle = stroke.color;
-      ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
-    }
-    ctx.restore();
+  const drawArrow = (ctx: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) => {
+    const headlen = 15;
+    const dx = tox - fromx;
+    const dy = toy - fromy;
+    const angle = Math.atan2(dy, dx);
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
   };
 
   const redraw = () => {
@@ -311,44 +176,169 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    const w = 1920;
-    const h = 1080;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.clearRect(0, 0, w, h);
     ctx.save();
+    // Apply pan and zoom transformations
     ctx.translate(offset.x, offset.y);
     ctx.scale(scale, scale);
 
-    if (currentStroke) {
-      // Use currentPointsRef for live drawing paths to avoid state-driven lag
-      if (currentStroke.type === 'path' || currentStroke.type === 'lasso') {
-        drawStroke(ctx, { ...currentStroke, points: currentPointsRef.current });
+    // Render background patterns
+    renderBackground(ctx, (canvas.width / (window.devicePixelRatio || 1)) / scale, (canvas.height / (window.devicePixelRatio || 1)) / scale);
+
+    // Draw background image if exists
+    if (backgroundImage) {
+      const img = new Image();
+      img.src = backgroundImage;
+      if (img.complete) {
+        // Center and scale image to fit/fill properly
+        const canvasW = canvas.width / (window.devicePixelRatio || 1);
+        const canvasH = canvas.height / (window.devicePixelRatio || 1);
+        
+        // Calculate scale to fit the image while maintaining aspect ratio
+        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
+        const x = (canvasW - img.width * imgScale) / 2;
+        const y = (canvasH - img.height * imgScale) / 2;
+        
+        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
       } else {
-        drawStroke(ctx, currentStroke);
+        img.onload = () => redraw();
       }
     }
 
-    const lPath = laserPathRef.current;
-    if (lPath.length > 1) {
+    const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
+
+    allStrokes.forEach(stroke => {
+      ctx.save();
+      
+      if (stroke.center && (stroke.rotation || stroke.scale)) {
+        ctx.translate(stroke.center.x, stroke.center.y);
+        if (stroke.rotation) ctx.rotate(stroke.rotation);
+        if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
+        ctx.translate(-stroke.center.x, -stroke.center.y);
+      }
+
       ctx.beginPath();
-      ctx.strokeStyle = '#ff4444';
-      ctx.lineWidth = 2;
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = '#ff4444';
-      ctx.moveTo(lPath[0].x, lPath[0].y);
-      lPath.forEach(p => ctx.lineTo(p.x, p.y));
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.lineWidth;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.globalAlpha = stroke.opacity || 1;
 
-    ctx.restore();
+      if (selectedStrokeIds.includes(stroke.id)) {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00F0FF';
+      } else if (stroke.tool === 'highlighter' && stroke.startTime) {
+        const elapsed = Date.now() - stroke.startTime;
+        if (elapsed < 7000) {
+          // Blinking/Glow effect for highlighter
+          const time = Date.now() / 1000;
+          const pulse = (Math.sin(time * 3) + 1) / 2; // 0 to 1
+          const glow = pulse * 15 + 5;
+          ctx.shadowBlur = glow;
+          ctx.shadowColor = stroke.color;
+          
+          // Fade out the effect as it nears 7 seconds
+          const fadeStart = 5000;
+          if (elapsed > fadeStart) {
+            const fadeProgress = (elapsed - fadeStart) / (7000 - fadeStart);
+            ctx.globalAlpha = (stroke.opacity || 0.3) * (1 - fadeProgress * 0.5);
+            ctx.shadowBlur *= (1 - fadeProgress);
+          } else {
+            ctx.globalAlpha = (stroke.opacity || 0.3) + (pulse * 0.2);
+          }
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = stroke.opacity || 0.3;
+        }
+      } else {
+        ctx.shadowBlur = 0;
+      }
 
+      if (stroke.type === 'path' || stroke.type === 'lasso') {
+        if (stroke.points.length < 2) {
+          ctx.restore();
+          return;
+        }
+        
+        if (stroke.type === 'lasso') {
+          ctx.setLineDash([5, 5]);
+          ctx.strokeStyle = '#00F0FF';
+          ctx.lineWidth = 1;
+        }
+
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        
+        for (let i = 1; i < stroke.points.length - 2; i++) {
+          const xc = (stroke.points[i].x + stroke.points[i + 1].x) / 2;
+          const yc = (stroke.points[i].y + stroke.points[i + 1].y) / 2;
+          ctx.quadraticCurveTo(stroke.points[i].x, stroke.points[i].y, xc, yc);
+        }
+        
+        if (stroke.points.length > 2) {
+          const last = stroke.points.length - 1;
+          ctx.quadraticCurveTo(
+            stroke.points[last - 1].x, 
+            stroke.points[last - 1].y, 
+            stroke.points[last].x, 
+            stroke.points[last].y
+          );
+        }
+        ctx.stroke();
+        if (stroke.type === 'lasso') ctx.setLineDash([]);
+      } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
+        ctx.strokeRect(
+          stroke.startPos.x, 
+          stroke.startPos.y, 
+          stroke.endPos.x - stroke.startPos.x, 
+          stroke.endPos.y - stroke.startPos.y
+        );
+      } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
+        const radius = Math.sqrt(
+          Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + 
+          Math.pow(stroke.endPos.y - stroke.startPos.y, 2)
+        );
+        ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
+        ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
+        ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
+        ctx.stroke();
+      } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
+        drawArrow(ctx, stroke.startPos.x, stroke.startPos.y, stroke.endPos.x, stroke.endPos.y);
+      } else if (stroke.type === 'text' && stroke.startPos && stroke.text) {
+        ctx.font = `${stroke.lineWidth * 5}px Inter, sans-serif`;
+        ctx.fillStyle = stroke.color;
+        ctx.fillText(stroke.text, stroke.startPos.x, stroke.startPos.y);
+      }
+      
+      ctx.restore();
+    });
+
+    ctx.restore(); // Restore from pan/zoom save
+
+    // Draw selection handles if strokes are selected
     if (selectedStrokeIds.length > 0) {
       const selectedStrokes = strokes.filter(s => selectedStrokeIds.includes(s.id));
       if (selectedStrokes.length > 0) {
         drawSelectionHandles(ctx, selectedStrokes);
       }
     }
+
+    // Draw laser path separately (not stored in strokes)
+    if (laserPath.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = '#ff4444';
+      ctx.moveTo(laserPath[0].x, laserPath[0].y);
+      laserPath.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.globalAlpha = 1;
   };
 
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, selectedStrokes: Stroke[]) => {
@@ -464,55 +454,54 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   };
 
   useEffect(() => {
-    redrawBackground();
-    redraw(); // Ensure main canvas is cleared/updated when strokes change
-  }, [strokes, offset, scale, selectedStrokeIds]);
-
-  useEffect(() => {
     let animationFrame: number;
-    const animate = (time: number) => {
-      // Only redraw if we are actively drawing, panning, or have something dynamic (like highlighter pulse)
-      // For a smart panel, we want to minimize unnecessary redraws to save CPU/GPU.
+    const animate = () => {
       const hasActiveHighlighter = strokes.some(s => s.tool === 'highlighter' && s.startTime && (Date.now() - s.startTime < 7000));
-      
-      if (isDrawing && currentStroke?.type === 'path' && (currentStroke.tool === 'pen' || currentStroke.tool === 'eraser')) {
-        // Skip redraw to allow direct canvas drawing for zero latency
-      } else if (isDrawing || isPanning || currentStroke || laserPathRef.current.length > 0 || selectedStrokeIds.length > 0 || hasActiveHighlighter) {
+      if (hasActiveHighlighter || currentStroke?.tool === 'highlighter') {
         redraw();
       }
       animationFrame = requestAnimationFrame(animate);
     };
-    animationFrame = requestAnimationFrame(animate);
+    animate();
     return () => cancelAnimationFrame(animationFrame);
-  }, [currentStroke, selectedStrokeIds, scale, offset, isDrawing, isPanning, strokes]);
+  }, [strokes, currentStroke]);
+
+  useEffect(() => {
+    redraw();
+  }, [strokes, currentStroke, laserPath, selectedStrokeIds, scale, offset]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
-    const bgCanvas = bgCanvasRef.current;
-    if (!canvas || !bgCanvas) return;
+    if (!canvas) return;
     
+    // Create a temporary canvas to include the background
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
 
-    // Fill background color
-    if (theme === 'dark' || theme === 'grid') {
-      tempCtx.fillStyle = '#1a1b26';
-    } else if (theme === 'light') {
-      tempCtx.fillStyle = '#ffffff';
-    } else {
-      tempCtx.fillStyle = '#000000';
-    }
+    // Fill background
+    tempCtx.fillStyle = theme === 'dark' ? '#0E0E12' : '#FFFFFF';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw background canvas (includes grid and background image and finished strokes)
-    tempCtx.drawImage(bgCanvas, 0, 0);
+    // Draw background image if exists
+    if (backgroundImage) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = backgroundImage;
+      img.onload = () => {
+        tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(canvas, 0, 0);
+        const link = document.createElement('a');
+        link.download = `whiteboard-${Date.now()}.png`;
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+      };
+      return;
+    }
 
-    // Draw main canvas (active stroke if any)
     tempCtx.drawImage(canvas, 0, 0);
-
     const link = document.createElement('a');
     link.download = `whiteboard-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
@@ -522,33 +511,20 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
   const downloadAsPDF = async () => {
     const { jsPDF } = await import('jspdf');
     const canvas = canvasRef.current;
-    const bgCanvas = bgCanvasRef.current;
-    if (!canvas || !bgCanvas) return;
+    if (!canvas) return;
 
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) return;
-
-    // Fill background color
-    if (theme === 'dark' || theme === 'grid') {
-      tempCtx.fillStyle = '#1a1b26';
-    } else if (theme === 'light') {
-      tempCtx.fillStyle = '#ffffff';
-    } else {
-      tempCtx.fillStyle = '#000000';
-    }
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-    tempCtx.drawImage(bgCanvas, 0, 0);
-    tempCtx.drawImage(canvas, 0, 0);
-
-    const imgData = tempCanvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
       unit: 'px',
       format: [canvas.width, canvas.height]
     });
+
+    // If theme is dark, we should probably add a dark background to the PDF too
+    if (theme === 'dark') {
+      pdf.setFillColor(14, 14, 18); // #0E0E12
+      pdf.rect(0, 0, canvas.width, canvas.height, 'F');
+    }
 
     pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(`whiteboard-${Date.now()}.pdf`);
@@ -602,7 +578,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     newHistory.push(newStrokes);
     setHistory(newHistory);
     setHistoryStep(newHistory.length - 1);
-    if (onSave) onSave(JSON.stringify(newStrokes));
+    if (onSave) {
+      setTimeout(() => {
+        const imageData = canvasRef.current?.toDataURL('image/jpeg', 0.8);
+        onSave(JSON.stringify(newStrokes), imageData);
+      }, 50); // wait for redraw
+    }
   };
 
   const undo = () => {
@@ -610,7 +591,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       const prevStep = historyStep - 1;
       setHistoryStep(prevStep);
       setStrokes(history[prevStep]);
-      if (onSave) onSave(JSON.stringify(history[prevStep]));
+      if (onSave) {
+        setTimeout(() => {
+          const imageData = canvasRef.current?.toDataURL('image/jpeg', 0.8);
+          onSave(JSON.stringify(history[prevStep]), imageData);
+        }, 50);
+      }
     }
   };
 
@@ -619,7 +605,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       const nextStep = historyStep + 1;
       setHistoryStep(nextStep);
       setStrokes(history[nextStep]);
-      if (onSave) onSave(JSON.stringify(history[nextStep]));
+      if (onSave) {
+        setTimeout(() => {
+          const imageData = canvasRef.current?.toDataURL('image/jpeg', 0.8);
+          onSave(JSON.stringify(history[nextStep]), imageData);
+        }, 50);
+      }
     }
   };
 
@@ -849,91 +840,42 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
   };
 
-  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvasRectRef.current || canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-    
-    // Calculate scale and offset due to object-fit: contain
-    const canvasRatio = 1920 / 1080;
-    const rectRatio = rect.width / rect.height;
-    let drawWidth = rect.width;
-    let drawHeight = rect.height;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    if (rectRatio > canvasRatio) {
-      drawWidth = rect.height * canvasRatio;
-      offsetX = (rect.width - drawWidth) / 2;
-    } else {
-      drawHeight = rect.width / canvasRatio;
-      offsetY = (rect.height - drawHeight) / 2;
-    }
-
-    const scaleX = 1920 / drawWidth;
-    const scaleY = 1080 / drawHeight;
-
-    return {
-      x: ((clientX - rect.left - offsetX) * scaleX - offset.x) / scale,
-      y: ((clientY - rect.top - offsetY) * scaleY - offset.y) / scale
-    };
-  };
-
-  const drawArrow = (ctx: CanvasRenderingContext2D, fromx: number, fromy: number, tox: number, toy: number) => {
-    const headlen = 15;
-    const dx = tox - fromx;
-    const dy = toy - fromy;
-    const angle = Math.atan2(dy, dx);
-    ctx.moveTo(fromx, fromy);
-    ctx.lineTo(tox, toy);
-    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
-    ctx.moveTo(tox, toy);
-    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
-    ctx.stroke();
-  };
-
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if ('touches' in e) {
+      // Prevent scrolling while drawing
       e.preventDefault();
     }
 
-    if (tool === 'pan' || (e as React.MouseEvent).button === 1) {
+    if (tool === 'pan') {
       setIsPanning(true);
-      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-      setLastPanPos({ x: clientX, y: clientY });
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        setLastPanPos({ x: clientX, y: clientY });
+      }
       return;
     }
 
     const pos = getPos(e);
     setStartPos(pos);
+    setCursorPos(pos);
     setIsDrawing(true);
-    currentPointsRef.current = [pos];
 
     if (tool === 'select') {
       if (selectedStrokeIds.length > 0) {
-        const selectedStrokes = strokes.filter(s => selectedStrokeIds.includes(s.id));
-        if (selectedStrokes.length > 0) {
-          // Calculate combined bounds
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-          selectedStrokes.forEach(stroke => {
-            const bounds = getStrokeBounds(stroke);
-            minX = Math.min(minX, bounds.minX);
-            minY = Math.min(minY, bounds.minY);
-            maxX = Math.max(maxX, bounds.maxX);
-            maxY = Math.max(maxY, bounds.maxY);
-          });
-
-          const padding = 15;
-          const handleSize = 12;
+        const selected = strokes.find(s => s.id === selectedStrokeIds[0]);
+        if (selected) {
+          const bounds = getStrokeBounds(selected);
+          const padding = 10;
+          const handleSize = 10;
           
+          // Check handles
           const handles = [
-            { x: minX - padding, y: minY - padding, id: 'tl' },
-            { x: maxX + padding, y: minY - padding, id: 'tr' },
-            { x: minX - padding, y: maxY + padding, id: 'bl' },
-            { x: maxX + padding, y: maxY + padding, id: 'br' },
+            { x: bounds.minX - padding, y: bounds.minY - padding, id: 'tl' },
+            { x: bounds.maxX + padding, y: bounds.minY - padding, id: 'tr' },
+            { x: bounds.minX - padding, y: bounds.maxY + padding, id: 'bl' },
+            { x: bounds.maxX + padding, y: bounds.maxY + padding, id: 'br' },
           ];
           
           const clickedHandle = handles.find(h => 
@@ -943,29 +885,14 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           if (clickedHandle) {
             setIsResizing(true);
             setResizeHandle(clickedHandle.id);
-            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
-            setInitialBounds({ minX, minY, maxX, maxY });
             return;
           }
           
-          const rotX = (minX + maxX) / 2;
-          const rotY = minY - padding - 40;
+          // Check rotation handle
+          const rotX = (bounds.minX + bounds.maxX) / 2;
+          const rotY = bounds.minY - padding - 30;
           if (Math.abs(pos.x - rotX) < handleSize && Math.abs(pos.y - rotY) < handleSize) {
             setIsRotating(true);
-            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
-            setInitialBounds({ minX, minY, maxX, maxY });
-            return;
-          }
-
-          // Check if click is inside the bounds of the selected strokes
-          const isInsideSelection = pos.x >= minX - padding && pos.x <= maxX + padding && pos.y >= minY - padding && pos.y <= maxY + padding;
-          if (isInsideSelection) {
-            setIsDragging(true);
-            setInitialSelectedStrokes(selectedStrokes.map(s => ({ ...s })));
-            setInitialBounds({ minX, minY, maxX, maxY });
-            // Use the first selected stroke's center as reference for dragging offset
-            const center = getStrokeCenter(selectedStrokes[0]);
-            setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
             return;
           }
         }
@@ -979,6 +906,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         setDragOffset({ x: pos.x - center.x, y: pos.y - center.y });
       } else {
         setSelectedStrokeIds([]);
+        // Start lasso selection
         setTool('lasso');
         const newStroke: Stroke = {
           id: 'lasso-' + Date.now(),
@@ -1021,9 +949,22 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (tool === 'text') {
-      setTextInputPos(pos);
-      setTextInputValue('');
-      setShowTextInput(true);
+      const text = prompt('Enter text:');
+      if (text) {
+        const newStroke: Stroke = {
+          id: Date.now().toString(),
+          tool: 'text',
+          points: [pos],
+          color,
+          lineWidth,
+          type: 'text',
+          text,
+          startPos: pos
+        };
+        const newStrokes = [...strokes, newStroke];
+        setStrokes(newStrokes);
+        saveToHistory(newStrokes);
+      }
       setIsDrawing(false);
       return;
     }
@@ -1041,26 +982,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       startTime: Date.now()
     };
 
-    if (newStroke.type === 'path') {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.save();
-          ctx.translate(offset.x, offset.y);
-          ctx.scale(scale, scale);
-          ctx.beginPath();
-          ctx.arc(pos.x, pos.y, newStroke.lineWidth / 2, 0, Math.PI * 2);
-          ctx.fillStyle = newStroke.color;
-          if (newStroke.opacity) {
-            ctx.globalAlpha = newStroke.opacity;
-          }
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-    }
-
     setCurrentStroke(newStroke);
   };
 
@@ -1068,8 +989,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     if ('touches' in e) {
       e.preventDefault();
     }
-
-    const pos = getPos(e);
 
     if (isPanning) {
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
@@ -1084,6 +1003,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (!isDrawing) return;
+    const pos = getPos(e);
+    setCursorPos(pos);
 
     if (tool === 'eraser' && eraserMode === 'stroke') {
       const stroke = findStrokeAt(pos);
@@ -1091,6 +1012,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         const newStrokes = strokes.filter(s => s.id !== stroke.id);
         if (newStrokes.length !== strokes.length) {
           setStrokes(newStrokes);
+          // Only save to history when a stroke is actually removed
           saveToHistory(newStrokes);
         }
       }
@@ -1098,72 +1020,54 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
 
     if (tool === 'select' && selectedStrokeIds.length > 0) {
-      if (isDragging && initialBounds) {
-        const dx = pos.x - startPos.x;
-        const dy = pos.y - startPos.y;
-
+      if (isDragging) {
         setStrokes(prev => prev.map(s => {
-          const initial = initialSelectedStrokes.find(is => is.id === s.id);
-          if (initial) {
+          if (selectedStrokeIds.includes(s.id)) {
+            const dx = pos.x - cursorPos.x;
+            const dy = pos.y - cursorPos.y;
+            
             return {
-              ...initial,
-              points: initial.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
-              startPos: initial.startPos ? { x: initial.startPos.x + dx, y: initial.startPos.y + dy } : undefined,
-              endPos: initial.endPos ? { x: initial.endPos.x + dx, y: initial.endPos.y + dy } : undefined,
-              center: initial.center ? { x: initial.center.x + dx, y: initial.center.y + dy } : undefined
+              ...s,
+              points: s.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+              startPos: s.startPos ? { x: s.startPos.x + dx, y: s.startPos.y + dy } : undefined,
+              endPos: s.endPos ? { x: s.endPos.x + dx, y: s.endPos.y + dy } : undefined,
+              center: s.center ? { x: s.center.x + dx, y: s.center.y + dy } : undefined
             };
           }
           return s;
         }));
-      } else if (isResizing && resizeHandle && initialBounds) {
-        const dx = pos.x - startPos.x;
-        const dy = pos.y - startPos.y;
-        
-        const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
-        const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
-        
-        let scaleX = 1;
-        let scaleY = 1;
-        
-        if (resizeHandle.includes('r')) scaleX = (initialWidth + dx) / initialWidth;
-        if (resizeHandle.includes('l')) scaleX = (initialWidth - dx) / initialWidth;
-        if (resizeHandle.includes('b')) scaleY = (initialHeight + dy) / initialHeight;
-        if (resizeHandle.includes('t')) scaleY = (initialHeight - dy) / initialHeight;
-        
-        // Keep aspect ratio if shift is pressed (simulated here)
-        // scaleX = scaleY = Math.max(scaleX, scaleY);
-
+      } else if (isResizing && resizeHandle) {
         setStrokes(prev => prev.map(s => {
-          const initial = initialSelectedStrokes.find(is => is.id === s.id);
-          if (initial) {
-            const center = initial.center || getStrokeCenter(initial);
+          if (selectedStrokeIds.includes(s.id)) {
+            const center = s.center || getStrokeCenter(s);
+            const dx = pos.x - center.x;
+            const dy = pos.y - center.y;
+            
+            // Calculate scale based on distance from center
+            const initialBounds = getStrokeBounds(s);
+            const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
+            const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
+            
+            const scaleX = Math.abs(dx * 2) / initialWidth;
+            const scaleY = Math.abs(dy * 2) / initialHeight;
+            
             return {
-              ...initial,
-              scale: { 
-                x: (initial.scale?.x || 1) * scaleX, 
-                y: (initial.scale?.y || 1) * scaleY 
-              },
+              ...s,
+              scale: { x: scaleX, y: scaleY },
               center
             };
           }
           return s;
         }));
-      } else if (isRotating && initialBounds) {
-        const center = {
-          x: (initialBounds.minX + initialBounds.maxX) / 2,
-          y: (initialBounds.minY + initialBounds.maxY) / 2
-        };
-        const initialAngle = Math.atan2(startPos.y - center.y, startPos.x - center.x);
-        const currentAngle = Math.atan2(pos.y - center.y, pos.x - center.x);
-        const deltaAngle = currentAngle - initialAngle;
-
+      } else if (isRotating) {
         setStrokes(prev => prev.map(s => {
-          const initial = initialSelectedStrokes.find(is => is.id === s.id);
-          if (initial) {
+          if (selectedStrokeIds.includes(s.id)) {
+            const center = s.center || getStrokeCenter(s);
+            const angle = Math.atan2(pos.y - center.y, pos.x - center.x) + Math.PI / 2;
             return {
-              ...initial,
-              rotation: (initial.rotation || 0) + deltaAngle,
-              center: initial.center || getStrokeCenter(initial)
+              ...s,
+              rotation: angle,
+              center
             };
           }
           return s;
@@ -1172,46 +1076,36 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       return;
     }
 
-    currentPointsRef.current.push(pos);
-
     if (tool === 'lasso' || tool === 'ai-ocr' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
-      // No need to setCurrentStroke here, redraw uses currentPointsRef
+      if (currentStroke) {
+        setCurrentStroke({
+          ...currentStroke,
+          points: [...currentStroke.points, pos]
+        });
+      }
       return;
     }
 
     if (tool === 'laser') {
-      laserPathRef.current.push(pos);
+      setLaserPath(prev => [...prev, pos]);
+      return;
+    }
+
+    if (tool === 'eraser' && eraserMode === 'stroke') {
+      const stroke = findStrokeAt(pos);
+      if (stroke) {
+        setStrokes(prev => prev.filter(s => s.id !== stroke.id));
+      }
       return;
     }
 
     if (!currentStroke) return;
 
     if (currentStroke.type === 'path') {
-      // Draw directly to canvas for zero latency
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.save();
-          ctx.translate(offset.x, offset.y);
-          ctx.scale(scale, scale);
-          ctx.beginPath();
-          const prevPos = currentPointsRef.current[currentPointsRef.current.length - 2];
-          if (prevPos) {
-            ctx.moveTo(prevPos.x, prevPos.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.strokeStyle = currentStroke.color;
-            ctx.lineWidth = currentStroke.lineWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            if (currentStroke.opacity) {
-              ctx.globalAlpha = currentStroke.opacity;
-            }
-            ctx.stroke();
-          }
-          ctx.restore();
-        }
-      }
+      setCurrentStroke({
+        ...currentStroke,
+        points: [...currentStroke.points, pos]
+      });
     } else {
       setCurrentStroke({
         ...currentStroke,
@@ -1236,7 +1130,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         }
       }
       setCurrentStroke(null);
-      currentPointsRef.current = [];
       setTool('select');
       return;
     }
@@ -1246,7 +1139,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         performOCR(currentStroke.points);
       }
       setCurrentStroke(null);
-      currentPointsRef.current = [];
       setTool('select');
       return;
     }
@@ -1258,24 +1150,20 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         saveToHistory(newStrokes);
       }
       setCurrentStroke(null);
-      currentPointsRef.current = [];
       return;
     }
 
     if (tool === 'laser') {
       if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
-      laserTimeoutRef.current = setTimeout(() => {
-        laserPathRef.current = [];
-        currentPointsRef.current = [];
-      }, 1000);
+      laserTimeoutRef.current = setTimeout(() => setLaserPath([]), 1000);
       return;
     }
 
     if (currentStroke) {
-      let strokeToSave = { ...currentStroke, points: [...currentPointsRef.current] };
-
-      if (tool === 'smart-pen' && strokeToSave.type === 'path') {
-        const recognized = recognizeShape(strokeToSave.points);
+      let strokeToSave = currentStroke;
+      
+      if (tool === 'smart-pen') {
+        const recognized = recognizeShape(currentStroke.points);
         if (recognized) {
           strokeToSave = recognized;
         }
@@ -1285,7 +1173,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       setStrokes(newStrokes);
       saveToHistory(newStrokes);
       setCurrentStroke(null);
-      currentPointsRef.current = [];
     } else if (tool === 'select' || (tool === 'eraser' && eraserMode === 'stroke')) {
       saveToHistory(strokes);
     }
@@ -1361,21 +1248,17 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       <div 
         ref={containerRef}
         onWheel={handleWheel}
-        className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${className}`}
-        style={{ touchAction: 'none', transform: 'translateZ(0)' }}
+        className={`relative flex flex-col h-full ${theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'} rounded-2xl border border-white/10 overflow-hidden shadow-2xl transition-all ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''} ${tool === 'select' ? 'pointer-events-none' : ''} ${className}`}
+        style={{ touchAction: 'none' }}
       >
         {/* Canvas Area */}
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
-          <canvas
-            ref={bgCanvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none"
-          />
           <canvas
             ref={canvasRef}
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
-            onMouseOut={() => { stopDrawing(); }}
+            onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
@@ -1415,150 +1298,64 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         </div>
       </div>
 
-      {/* Floating Toolbar Toggle */}
-      <button 
-        onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-500 text-white rounded-full shadow-[0_0_20px_rgba(99,102,241,0.5)] flex items-center justify-center z-[100] hover:scale-110 transition-transform active:scale-95"
-      >
-        <Settings className={`w-6 h-6 transition-transform duration-500 ${isToolbarOpen ? 'rotate-90' : ''}`} />
-      </button>
-
       {/* Floating Draggable Toolbar */}
-      <AnimatePresence>
-        {isToolbarOpen && (
-          <motion.div 
-            initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.9, y: 20 }}
-            drag
-            dragControls={dragControls}
-            dragListener={false}
-            dragMomentum={false}
-            className="fixed bottom-24 left-4 right-4 md:left-auto md:right-24 md:w-auto flex flex-col p-4 bg-black/40 border border-white/10 backdrop-blur-2xl rounded-3xl z-[100] pointer-events-auto shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-1 ring-white/5 group"
-          >
-            <div 
-                onPointerDown={(e) => dragControls.start(e)}
-                className="cursor-move flex items-center justify-between pb-3 border-b border-white/10 mb-3"
-            >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#00F0FF] animate-pulse" />
-                  <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Premium Toolbar</span>
-                </div>
-                <div className="flex gap-1">
-                  <div className="w-1 h-1 rounded-full bg-white/20" />
-                  <div className="w-1 h-1 rounded-full bg-white/20" />
-                  <div className="w-1 h-1 rounded-full bg-white/20" />
-                </div>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              {/* Tool Selection */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { id: 'select', icon: MousePointer2, label: 'Select' },
-                  { id: 'pen', icon: Pen, label: 'Pen' },
-                  { id: 'highlighter', icon: Highlighter, label: 'Highlighter' },
-                  { id: 'eraser', icon: Eraser, label: 'Eraser' },
-                  { id: 'rect', icon: RectIcon, label: 'Rectangle' },
-                  { id: 'circle', icon: CircleIcon, label: 'Circle' },
-                  { id: 'line', icon: Minus, label: 'Line' },
-                  { id: 'arrow', icon: ArrowRight, label: 'Arrow' },
-                  { id: 'text', icon: TextIcon, label: 'Text' },
-                  { id: 'laser', icon: Wand2, label: 'Laser' },
-                  { id: 'lasso', icon: Lasso, label: 'Lasso' },
-                  { id: 'ai-ocr', icon: ScanText, label: 'AI OCR' },
-                  { id: 'pan', icon: Hand, label: 'Pan' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTool(t.id as any)}
-                    className={`p-2.5 rounded-xl transition-all duration-300 relative group ${
-                      tool === t.id 
-                        ? 'bg-[#00F0FF] text-black shadow-[0_0_15px_rgba(0,240,255,0.4)]' 
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    }`}
-                    title={t.label}
-                  >
-                    <t.icon className="w-5 h-5" />
-                    {tool === t.id && (
-                      <motion.div
-                        layoutId="activeTool"
-                        className="absolute inset-0 bg-[#00F0FF] rounded-xl -z-10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                  </button>
-                ))}
-                
-                <div className="w-px h-6 bg-white/10 mx-1" />
-                
-                <button
-                  onClick={() => setShowAIGenerator(true)}
-                  className={`p-2.5 rounded-xl transition-all duration-300 ${
-                    showAIGenerator ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'text-indigo-400 hover:bg-indigo-500/10'
-                  }`}
-                  title="AI Object Generator"
-                >
-                  <Sparkles className="w-5 h-5" />
-                </button>
-              </div>
+      <motion.div 
+        drag
+        dragControls={dragControls}
+        dragListener={false}
+        dragMomentum={false}
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+      >
+        <div 
+            onPointerDown={(e) => dragControls.start(e)}
+            className="cursor-move flex items-center justify-between pb-2 border-b border-white/10 mb-2"
+        >
+            <span className="text-white/50 text-xs font-medium">Toolbar</span>
+        </div>
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 flex-wrap overflow-visible pr-4">
+              <button onClick={() => setTool('select')} className={`p-2 rounded-lg transition-colors ${tool === 'select' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Selector Tool">
+                <MousePointer2 className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('lasso')} className={`p-2 rounded-lg transition-colors ${tool === 'lasso' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Lasso Selection">
+                <Sparkles className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
 
-              {/* Color & Size Selection */}
-              <div className="flex items-center justify-between gap-4 py-2 border-y border-white/10">
-                <div className="flex items-center gap-1.5">
-                  {['#00F0FF', '#FF00E5', '#00FF66', '#FFB800', '#FF4D4D', '#FFFFFF'].map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setColor(c)}
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        color === c ? 'border-white scale-110 shadow-[0_0_10px_rgba(255,255,255,0.3)]' : 'border-transparent hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    {[2, 4, 8, 16].map((w) => (
-                      <button
-                        key={w}
-                        onClick={() => setLineWidth(w)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all ${
-                          lineWidth === w ? 'bg-white/20 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
-                        }`}
-                      >
-                        <div 
-                          className="bg-current rounded-full" 
-                          style={{ width: Math.max(2, w/2), height: Math.max(2, w/2) }} 
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Selection Actions */}
+              <button onClick={() => setTool('smart-pen')} className={`p-2 rounded-lg transition-colors ${tool === 'smart-pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Smart Shape Pen">
+                <Wand2 className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('ai-ocr')} className={`p-2 rounded-lg transition-colors ${tool === 'ai-ocr' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Text Recognition (Lasso)">
+                <ScanText className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('pan')} className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pan & Zoom Tool">
+                <Hand className="w-5 h-5" />
+              </button>
+              
               {selectedStrokeIds.length > 0 && (
-                <motion.div 
-                  initial={isSmartPanelMode ? false : { height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  className="flex items-center gap-3 bg-white/5 rounded-2xl p-2 border border-white/10"
-                >
-                  <button 
-                    onClick={() => {
-                      const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
-                      setStrokes(newStrokes);
-                      saveToHistory(newStrokes);
-                      setSelectedStrokeIds([]);
-                    }}
-                    className="p-2 rounded-xl text-red-400 hover:bg-red-500/20 transition-colors"
-                  >
+                <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
+                  <button onClick={() => {
+                    const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
+                    setStrokes(newStrokes);
+                    saveToHistory(newStrokes);
+                    setSelectedStrokeIds([]);
+                  }} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors" title="Delete Selected">
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  
-                  <div className="w-px h-4 bg-white/10" />
-                  
-                  <div className="flex items-center gap-1">
+                  <input 
+                    type="color" 
+                    onChange={(e) => {
+                      const newStrokes = strokes.map(s => 
+                        selectedStrokeIds.includes(s.id) ? { ...s, color: e.target.value } : s
+                      );
+                      setStrokes(newStrokes);
+                      saveToHistory(newStrokes);
+                    }}
+                    className="w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0"
+                    title="Change Color of Selected"
+                  />
+                  <div className="flex flex-col gap-0.5">
                     <button 
                       onClick={() => {
                         const newStrokes = strokes.map(s => {
@@ -1569,9 +1366,9 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                         setStrokes(newStrokes);
                         saveToHistory(newStrokes);
                       }}
-                      className="p-1.5 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      className="p-0.5 text-white/60 hover:text-white"
                     >
-                      <Maximize2 className="w-4 h-4" />
+                      <Maximize2 className="w-3 h-3" />
                     </button>
                     <button 
                       onClick={() => {
@@ -1583,118 +1380,236 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
                         setStrokes(newStrokes);
                         saveToHistory(newStrokes);
                       }}
-                      className="p-1.5 text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      className="p-0.5 text-white/60 hover:text-white"
                     >
-                      <Minimize2 className="w-4 h-4" />
+                      <Minimize2 className="w-3 h-3" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               )}
 
-              {/* Utility Actions */}
-              <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                <div className="flex items-center gap-1">
-                  <button onClick={undo} className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Undo">
-                    <Undo className="w-4 h-4" />
-                  </button>
-                  <button onClick={redo} className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all" title="Redo">
-                    <Redo className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={clear} className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all" title="Clear All">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={downloadAsPDF} className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/10 rounded-xl transition-all" title="Download PDF">
-                    <Download className="w-4 h-4" />
-                  </button>
-                </div>
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              <button onClick={() => setTool('pen')} className={`p-2 rounded-lg transition-colors ${tool === 'pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pen">
+                <Pen className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('highlighter')} className={`p-2 rounded-lg transition-colors ${tool === 'highlighter' ? 'bg-yellow-500/20 text-yellow-400' : 'text-gray-400 hover:bg-white/5'}`} title="Highlighter">
+                <Highlighter className="w-5 h-5" />
+              </button>
+              
+              {/* Advanced Eraser */}
+              <div className="relative flex items-center">
+                <button 
+                  onClick={() => {
+                    if (tool === 'eraser') {
+                      setShowEraserMenu(!showEraserMenu);
+                    } else {
+                      setTool('eraser');
+                      setShowEraserMenu(false);
+                    }
+                  }} 
+                  className={`p-2 rounded-lg transition-colors ${tool === 'eraser' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
+                  title="Eraser (Click again for options)"
+                >
+                  <Eraser className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showEraserMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute bottom-full left-0 mb-2 flex flex-col bg-[#0f172a]/95 border border-white/20 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden z-[70] min-w-[180px] p-1"
+                    >
+                      <button onClick={() => { setTool('eraser'); setEraserMode('pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Eraser className="w-3.5 h-3.5" /> Pixel Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Minus className="w-3.5 h-3.5" /> Stroke Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-stroke'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-stroke' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Scissors className="w-3.5 h-3.5" /> Lasso Stroke Eraser
+                      </button>
+                      <button onClick={() => { setTool('eraser'); setEraserMode('lasso-pixel'); setShowEraserMenu(false); }} className={`px-3 py-2 rounded-lg text-xs text-left whitespace-nowrap flex items-center gap-2 transition-colors ${eraserMode === 'lasso-pixel' ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
+                        <Sparkles className="w-3.5 h-3.5" /> Lasso Pixel Eraser
+                      </button>
+                      <div className="h-px bg-white/10 my-1 mx-2" />
+                      <button onClick={() => { setTool('eraser'); setEraserMode('all'); setShowEraserMenu(false); }} className="px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-400/10 text-left whitespace-nowrap flex items-center gap-2">
+                        <Trash2 className="w-3.5 h-3.5" /> Clear All
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <button onClick={() => setTool('text')} className={`p-2 rounded-lg transition-colors ${tool === 'text' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Text">
+                <Type className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <button onClick={() => setTool('rect')} className={`p-2 rounded-lg transition-colors ${tool === 'rect' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Rectangle">
+                <Square className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('circle')} className={`p-2 rounded-lg transition-colors ${tool === 'circle' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Circle">
+                <Circle className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('line')} className={`p-2 rounded-lg transition-colors ${tool === 'line' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Line">
+                <Minus className="w-5 h-5" />
+              </button>
+              <button onClick={() => setTool('arrow')} className={`p-2 rounded-lg transition-colors ${tool === 'arrow' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Arrow">
+                <ArrowUpRight className="w-5 h-5" />
+              </button>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              
+              <div className="flex items-center gap-2 px-2">
+                <input 
+                  type="color" 
+                  value={color} 
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                  title="Color"
+                />
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="20" 
+                  value={lineWidth} 
+                  onChange={(e) => setLineWidth(parseInt(e.target.value))}
+                  className="w-20 accent-[#00F0FF]"
+                  title="Stroke Thickness"
+                />
+              </div>
+              
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+              
+              <button onClick={undo} disabled={historyStep <= 0} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Undo">
+                <Undo className="w-5 h-5" />
+              </button>
+              <button onClick={redo} disabled={historyStep >= history.length - 1} className="p-2 rounded-lg text-gray-400 hover:bg-white/5 disabled:opacity-50 transition-colors" title="Redo">
+                <Redo className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <button onClick={toggleFullscreen} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors" title="Toggle Fullscreen">
+                {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+              <button onClick={clear} className="p-2 rounded-lg text-red-400 hover:bg-red-400/10 transition-colors" title="Clear All">
+                <Trash2 className="w-5 h-5" />
+              </button>
+              <button onClick={download} className="p-2 rounded-lg text-green-400 hover:bg-green-400/10 transition-colors" title="Download">
+                <Download className="w-5 h-5" />
+              </button>
+              {onClose && (
+                <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:bg-white/10 transition-colors ml-1" title="Close Whiteboard">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <div className="relative">
+                <button 
+                  onClick={() => setShowBackgroundMenu(!showBackgroundMenu)} 
+                  className={`p-2 rounded-lg transition-colors ${backgroundType !== 'none' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} 
+                  title="Background Pattern"
+                >
+                  <Layout className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showBackgroundMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[120px] shadow-2xl"
+                    >
+                      {[
+                        { id: 'none', label: 'None', icon: X },
+                        { id: 'grid', label: 'Grid', icon: Grid },
+                        { id: 'dots', label: 'Dots', icon: MoreVertical },
+                        { id: 'lines', label: 'Lines', icon: Layers },
+                      ].map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => { setBackgroundType(bg.id as any); setShowBackgroundMenu(false); }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-colors ${backgroundType === bg.id ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`}
+                        >
+                          <bg.icon className="w-3 h-3" />
+                          {bg.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="relative">
+                <button 
+                  onClick={() => setShowExportMenu(!showExportMenu)} 
+                  className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition-colors" 
+                  title="Export Options"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/20 backdrop-blur-xl rounded-xl p-2 min-w-[150px] shadow-2xl"
+                    >
+                      <button
+                        onClick={() => { downloadAsImage(); setShowExportMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        Download PNG
+                      </button>
+                      <button
+                        onClick={() => { downloadAsPDF(); setShowExportMenu(false); }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Download PDF
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
+                <button 
+                  onClick={() => { setScale(Math.max(0.1, scale - 0.1)); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-[10px] font-mono text-white/40 w-10 text-center">
+                  {Math.round(scale * 100)}%
+                </span>
+                <button 
+                  onClick={() => { setScale(Math.min(5, scale + 0.1)); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => { setScale(1); setOffset({x: 0, y: 0}); redraw(); }}
+                  className="p-1 text-white/60 hover:text-white transition-colors border-l border-white/10 ml-1"
+                  title="Reset View"
+                >
+                  <Search className="w-4 h-4" />
+                </button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {showAIGenerator && (
-      <AIGeneratorModal 
-        onClose={() => setShowAIGenerator(false)} 
-        onInsert={(content) => {
-          const newStroke: Stroke = {
-            id: Date.now().toString(),
-            tool: 'text',
-            points: [{ x: 960, y: 540 }],
-            color,
-            lineWidth: 4,
-            type: 'text',
-            text: content,
-            startPos: { x: 960, y: 540 }
-          };
-          const newStrokes = [...strokes, newStroke];
-          setStrokes(newStrokes);
-          saveToHistory(newStrokes);
-        }}
-      />
-    )}
-
-    {showTextInput && textInputPos && (
-      <div 
-        className="fixed z-[1000] p-2 bg-black/80 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl"
-        style={{ 
-          left: (textInputPos.x * scale + offset.x) / 1920 * (canvasRectRef.current?.width || 0) + (canvasRectRef.current?.left || 0),
-          top: (textInputPos.y * scale + offset.y) / 1080 * (canvasRectRef.current?.height || 0) + (canvasRectRef.current?.top || 0),
-        }}
-      >
-        <input
-          autoFocus
-          value={textInputValue}
-          onChange={(e) => setTextInputValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              if (textInputValue.trim()) {
-                const newStroke: Stroke = {
-                  id: Date.now().toString(),
-                  tool: 'text',
-                  points: [textInputPos],
-                  color,
-                  lineWidth,
-                  type: 'text',
-                  text: textInputValue,
-                  startPos: textInputPos
-                };
-                const newStrokes = [...strokes, newStroke];
-                setStrokes(newStrokes);
-                saveToHistory(newStrokes);
-              }
-              setShowTextInput(false);
-              setTextInputPos(null);
-            } else if (e.key === 'Escape') {
-              setShowTextInput(false);
-              setTextInputPos(null);
-            }
-          }}
-          onBlur={() => {
-            if (textInputValue.trim()) {
-              const newStroke: Stroke = {
-                id: Date.now().toString(),
-                tool: 'text',
-                points: [textInputPos],
-                color,
-                lineWidth,
-                type: 'text',
-                text: textInputValue,
-                startPos: textInputPos
-              };
-              const newStrokes = [...strokes, newStroke];
-              setStrokes(newStrokes);
-              saveToHistory(newStrokes);
-            }
-            setShowTextInput(false);
-            setTextInputPos(null);
-          }}
-          className="bg-transparent border-none text-white outline-none min-w-[100px] font-sans"
-          placeholder="Type here..."
-        />
-      </div>
-    )}
+        </div>
+      </motion.div>
     </>
   );
 }

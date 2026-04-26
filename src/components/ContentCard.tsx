@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { motion } from "motion/react";
-import { FileText, Video, Image as ImageIcon, Download, Eye, File, Edit2, Trash2, Loader2, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { FileText, Video, Image as ImageIcon, Download, Eye, File, Edit2, Trash2, Loader2, Sparkles, Loader } from "lucide-react";
 import { format } from "date-fns";
 import { useCoPilotStore } from "../store/useCoPilotStore";
-import { usePracticeStore } from "../store/usePracticeStore";
-import { useNavigate } from "react-router-dom";
 
 export interface ContentItem {
   public_id: string;
@@ -52,8 +50,13 @@ export const ContentCard = React.memo(({
 }) => {
   const meta: any = item.context?.custom || item.context || {};
   
+  const getMeta = (key: string) => {
+    const k = Object.keys(meta).find(k => k.toLowerCase() === key.toLowerCase());
+    return k ? meta[k] : undefined;
+  };
+  
   const deriveTitle = () => {
-    const rawTitle = meta.title || "";
+    const rawTitle = getMeta('title') || "";
     const fileName = item.public_id.split('/').pop() || "";
     
     const isHash = (text: string) => {
@@ -63,8 +66,9 @@ export const ContentCard = React.memo(({
 
     if (rawTitle && rawTitle.length > 1) return rawTitle;
     
-    if (meta.description && meta.description.length > 5 && !isHash(meta.description)) {
-      const firstLine = meta.description.split('\n')[0].split('.')[0].trim();
+    const desc = getMeta('description');
+    if (desc && desc.length > 5 && !isHash(desc)) {
+      const firstLine = desc.split('\n')[0].split('.')[0].trim();
       if (firstLine.length > 3 && firstLine.length < 60) return firstLine;
     }
 
@@ -80,55 +84,47 @@ export const ContentCard = React.memo(({
       }
     }
     
-    if (meta.subject && meta.subject !== 'All') return `${meta.subject} Resource`;
+    const subj = getMeta('subject');
+    if (subj && subj !== 'All') return `${subj} Resource`;
     return "Educational Resource";
   };
 
   const title = deriveTitle();
-  const fileType = meta.fileType || item.format?.toUpperCase() || "Document";
+  const fileType = getMeta('fileType') || item.format?.toUpperCase() || "Document";
   const date = new Date(item.created_at);
   const openCoPilotModal = useCoPilotStore(state => state.openModal);
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-  const [isPressed, setIsPressed] = useState(false);
-  const navigate = useNavigate();
   
-  const handleDelayedAction = (action: () => void) => {
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(() => {
-        action();
-        setIsPressed(false);
-      }, 800);
-    } else {
-      action();
-    }
-  };
+  const teacher = getMeta('teacher');
+  const dStr = getMeta('description') || '';
+  const tagsStr = getMeta('tags') || '';
+  const titleStr = getMeta('title') || '';
+  const subjectName = getMeta('subject') || 'Subject';
+  const className = getMeta('class') || 'Class';
 
-  const isAiGenerated = meta.teacher === 'AI Assistant' || 
-                        meta.description?.toLowerCase().includes('ai-generated') ||
-                        meta.tags?.toLowerCase().includes('ai') ||
-                        meta.title?.toLowerCase().includes('ai');
+  const isAiGenerated = teacher === 'AI Assistant' || 
+                        dStr.toLowerCase().includes('ai-generated') ||
+                        tagsStr.toLowerCase().includes('ai') ||
+                        titleStr.toLowerCase().includes('ai');
 
   const renderThumbnail = (size: 'sm' | 'lg') => {
     const isPdf = item.format === 'pdf';
     const isImage = item.resource_type === 'image' && !isPdf;
     const isVideo = item.resource_type === 'video';
     
-    const neonBorderClass = size === 'lg' && !isSmartPanelMode ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
-    const hoverScaleClass = isSmartPanelMode ? (isPressed ? 'scale-105' : '') : 'transition-transform duration-700 group-hover:scale-105';
+    const neonBorderClass = size === 'lg' ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
     
     if (isPdf) {
       const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
     if (isImage) {
-      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
     
     if (isVideo) {
       const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover ${hoverScaleClass} border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
     }
 
     const getNeonGradient = (subject?: string) => {
@@ -150,13 +146,13 @@ export const ContentCard = React.memo(({
         {isAiGenerated && (
           <>
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]"></div>
-            <div className={`absolute -top-10 -right-10 w-32 h-32 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 ${isSmartPanelMode ? '' : 'animate-pulse'}`}></div>
-            <div className={`absolute -bottom-10 -left-10 w-32 h-32 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 ${isSmartPanelMode ? '' : 'animate-pulse'}`} style={{ animationDelay: '1s' }}></div>
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 animate-pulse"></div>
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[50px] opacity-50 animate-pulse" style={{ animationDelay: '1s' }}></div>
           </>
         )}
         
         <div className="relative z-10 flex flex-col items-center">
-          <div className={`mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 ${isSmartPanelMode ? (isPressed ? 'scale-110 shadow-[0_0_15px_rgba(255,255,255,0.1)]' : '') : 'group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]'}`}>
+          <div className="mb-3 p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 group-hover:scale-110 transition-transform duration-500 shadow-[0_0_15px_rgba(255,255,255,0.1)]">
             {getFileIcon(fileType)}
           </div>
           <span className="text-xs font-bold text-white uppercase tracking-widest drop-shadow-md">{fileType}</span>
@@ -172,16 +168,66 @@ export const ContentCard = React.memo(({
     );
   };
 
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleLinkClick = (e: React.MouseEvent, url: string, download: boolean = false) => {
+    e.preventDefault();
+    if (window.innerWidth <= 768) {
+      setIsNavigating(true);
+      setTimeout(() => {
+        setIsNavigating(false);
+        executeNavigation(url, download);
+      }, 800); // 0.8s hover animation wait
+    } else {
+      executeNavigation(url, download);
+    }
+  };
+
+  const executeNavigation = (url: string, download: boolean) => {
+    const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
+    const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
+    
+    if (download) {
+      const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
+      window.open(downloadUrl, '_blank');
+      return;
+    }
+
+    if (isPdf) {
+      const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      window.open(pdfUrl, '_blank');
+    } else if (isHtml) {
+      const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+      fetch(proxyUrl)
+        .then(res => {
+          if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
+          return res.text();
+        })
+        .then(text => {
+          const blob = new Blob([text], { type: 'text/html' });
+          const blobUrl = URL.createObjectURL(blob);
+          window.open(blobUrl, '_blank');
+        })
+        .catch(() => window.open(url, '_blank'));
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   if (viewMode === 'list') {
     return (
       <motion.div 
-        variants={{
-          hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
-          show: { opacity: 1, y: 0 }
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: false, amount: 0.05, margin: "50px" }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        whileHover={{ scale: 1.01 }}
+        className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''}`}
+        onClick={(e) => {
+          // If clicked anywhere on the card area in mobile, treat as view click (if not on a specific button)
+          if ((e.target as HTMLElement).closest('button')) return;
+          handleLinkClick(e as any, item.secure_url, false);
         }}
-        animate={isPressed ? { scale: 1.01 } : { scale: 1 }}
-        whileHover={isSmartPanelMode ? {} : { scale: 1.01 }}
-        className={`glass-panel rounded-xl overflow-hidden border border-white/10 group ${isPressed ? 'is-pressed' : ''} ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)]'} transition-colors transition-shadow duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4`}
       >
         <div className="flex items-center gap-4 w-full sm:w-auto flex-1 min-w-0">
           <div className="w-16 h-16 rounded-lg bg-black/50 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden relative">
@@ -190,13 +236,21 @@ export const ContentCard = React.memo(({
           
           <div className="flex-1 min-w-0">
             <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors" title={title}>{title}</h3>
-            <p className="text-sm text-gray-400 truncate">{meta.subject || "General"} • {meta.class || "All Classes"} • By {meta.teacher || "Teacher"} • {format(date, "MMM d, yyyy")}</p>
+            <p className="text-sm text-gray-400 truncate">{subjectName || "General"} • {className || "All Classes"} • By {teacher || "Teacher"} • {format(date, "MMM d, yyyy")}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/10 sm:border-0">
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t border-white/10 sm:border-0 relative">
+          {isNavigating && (
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded z-10 flex items-center justify-center">
+              <Loader className="w-4 h-4 text-[#00F0FF] animate-spin" />
+            </div>
+          )}
           <button 
-            onClick={() => openCoPilotModal(item)}
+            onClick={(e) => {
+              e.stopPropagation();
+              openCoPilotModal(item);
+            }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-xs font-bold uppercase tracking-wider"
             title="AI Classroom Co-Pilot"
           >
@@ -207,32 +261,8 @@ export const ContentCard = React.memo(({
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => {
-              e.preventDefault();
-              handleDelayedAction(() => {
-                const url = item.secure_url;
-                const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
-                const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-                
-                if (isPdf) {
-                  const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                  window.open(pdfUrl, '_blank');
-                } else if (isHtml) {
-                  const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-                  fetch(proxyUrl)
-                    .then(res => {
-                      if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
-                      return res.text();
-                    })
-                    .then(text => {
-                      const blob = new Blob([text], { type: 'text/html' });
-                      const blobUrl = URL.createObjectURL(blob);
-                      window.open(blobUrl, '_blank');
-                    })
-                    .catch(() => window.open(url, '_blank'));
-                } else {
-                  window.open(url, '_blank');
-                }
-              });
+              e.stopPropagation();
+              handleLinkClick(e as any, item.secure_url, false);
             }}
             className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white"
             title="View"
@@ -240,14 +270,11 @@ export const ContentCard = React.memo(({
             <Eye className="w-4 h-4" />
           </a>
           <button 
-            onClick={async (e) => {
-              e.preventDefault();
-              const url = item.secure_url;
-              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-              const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
-              window.open(downloadUrl, '_blank');
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLinkClick(e, item.secure_url, true);
             }}
-            className={`p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-all duration-300 text-white ${isSmartPanelMode ? '' : 'hover:scale-110 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]'}`}
+            className="p-2 rounded-lg bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 transition-all duration-300 text-white hover:scale-110 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]"
             title="Download"
           >
             <Download className="w-4 h-4" />
@@ -278,18 +305,24 @@ export const ContentCard = React.memo(({
 
   return (
     <motion.div 
-      variants={{
-        hidden: { opacity: 0, y: isSmartPanelMode ? 0 : 20 },
-        show: { opacity: 1, y: 0 }
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: false, amount: 0.05, margin: "50px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''}`}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        handleLinkClick(e as any, item.secure_url, false);
       }}
-      animate={isPressed ? { y: -8, scale: 1.02 } : { y: 0, scale: 1 }}
-      whileHover={isSmartPanelMode ? {} : { y: -8, scale: 1.02 }}
-      className={`glass-panel rounded-2xl overflow-hidden border border-white/10 group ${isPressed ? 'is-pressed' : ''} ${isSmartPanelMode ? '' : 'hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)]'} transition-colors transition-shadow duration-300 relative flex flex-col`}
     >
-      {/* Animated Neon Border */}
-      {!isSmartPanelMode && (
-        <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
+      {isNavigating && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center">
+          <Loader className="w-8 h-8 text-[#00F0FF] animate-spin" />
+        </div>
       )}
+      {/* Animated Neon Border */}
+      <div className="absolute inset-0 rounded-2xl p-[1px] bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-gradient-xy pointer-events-none z-50" style={{ WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }}></div>
       
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#00F0FF]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       
@@ -313,7 +346,7 @@ export const ContentCard = React.memo(({
         </div>
       )}
 
-      <div className="h-40 bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
+      <div className="aspect-video w-full bg-black/50 relative flex items-center justify-center overflow-hidden border-b border-white/5">
         {renderThumbnail('lg')}
         <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-medium border border-white/10 flex items-center gap-2 z-20">
           {getFileIcon(fileType)}
@@ -328,11 +361,11 @@ export const ContentCard = React.memo(({
           </div>
           <h3 className="font-display font-semibold text-lg truncate text-white group-hover:text-[#00F0FF] transition-colors flex-1" title={title}>{title}</h3>
         </div>
-        <p className="text-sm text-gray-400 mb-2 truncate">{meta.subject || "General"} • {meta.class || "All Classes"}</p>
+        <p className="text-sm text-gray-400 mb-2 truncate">{subjectName || "General"} • {className || "All Classes"}</p>
         
-        {meta.tags && (
-          <div className="flex flex-wrap gap-1 mb-4 overflow-hidden h-6">
-            {meta.tags.split(',').map((tag: string, idx: number) => (
+        {tagsStr && (
+          <div className="flex flex-wrap gap-1 mb-4 overflow-hidden max-h-[3rem]">
+            {tagsStr.split(',').map((tag: string, idx: number) => (
               <span key={idx} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-[#00F0FF] uppercase tracking-wider whitespace-nowrap">
                 #{tag.trim()}
               </span>
@@ -341,65 +374,37 @@ export const ContentCard = React.memo(({
         )}
         
         <div className="mt-auto flex items-center justify-between text-xs text-gray-500 mb-4">
-          <span>By {meta.teacher || "Teacher"}</span>
+          <span>By {teacher || "Teacher"}</span>
           <span>{format(date, "MMM d, yyyy")}</span>
         </div>
 
         <button 
-          onClick={() => handleDelayedAction(() => openCoPilotModal(item))}
-          className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider ${isSmartPanelMode ? (isPressed ? 'shadow-[0_0_15px_rgba(0,240,255,0.2)]' : '') : 'group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]'}`}
+          onClick={() => openCoPilotModal(item)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 rounded-xl bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 hover:from-[#00F0FF]/20 hover:to-[#B026FF]/20 border border-[#00F0FF]/30 transition-all text-[#00F0FF] text-sm font-bold uppercase tracking-wider group-hover:shadow-[0_0_15px_rgba(0,240,255,0.2)]"
         >
-          <Sparkles className={`w-4 h-4 ${isSmartPanelMode ? (isPressed ? 'animate-pulse' : '') : 'animate-pulse'}`} /> Auto Suggest (AI)
+          <Sparkles className="w-4 h-4 animate-pulse" /> Auto Suggest (AI)
         </button>
 
-        <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+        <div className="flex items-center gap-3 pt-4 border-t border-white/10 relative z-20">
           <a 
             href={item.secure_url} 
             target="_blank" 
             rel="noopener noreferrer"
             onClick={(e) => {
-              e.preventDefault();
-              handleDelayedAction(async () => {
-                const url = item.secure_url;
-                const isHtml = item.resource_type === 'raw' && (url.includes('.html') || fileType.includes('HTML'));
-                const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-                
-                if (isPdf) {
-                  const pdfUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                  window.open(pdfUrl, '_blank');
-                } else if (isHtml) {
-                  try {
-                    const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
-                    const response = await fetch(proxyUrl);
-                    if (!response.ok) throw new Error(`Proxy fetch failed: ${response.statusText}`);
-                    const text = await response.text();
-                    const blob = new Blob([text], { type: 'text/html' });
-                    const blobUrl = URL.createObjectURL(blob);
-                    window.open(blobUrl, '_blank');
-                  } catch (err) {
-                    const win = window.open(url, '_blank');
-                    if (win) win.focus();
-                  }
-                } else {
-                  const win = window.open(url, '_blank');
-                  if (win) win.focus();
-                }
-              });
+              e.stopPropagation();
+              handleLinkClick(e as any, item.secure_url, false);
             }}
-            className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium"
+            className="flex-1 flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 py-2 rounded-xl transition-colors text-sm font-medium relative z-30"
             title="View Content"
           >
             <Eye className="w-4 h-4" /> View
           </a>
           <button 
-            onClick={async (e) => {
-              e.preventDefault();
-              const url = item.secure_url;
-              const isPdf = url.toLowerCase().endsWith('.pdf') || item.format === 'pdf';
-              const downloadUrl = isPdf && url.includes('/upload/') ? url.replace('/upload/', '/upload/fl_attachment/') : url;
-              window.open(downloadUrl, '_blank');
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLinkClick(e, item.secure_url, true);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white ${isSmartPanelMode ? '' : 'hover:scale-105 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)]'}`}
+            className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#00F0FF]/20 to-[#B026FF]/20 hover:from-[#00F0FF]/40 hover:to-[#B026FF]/40 border border-[#00F0FF]/30 py-2 rounded-xl transition-all duration-300 text-sm font-medium text-white hover:scale-105 hover:shadow-[0_0_15px_rgba(0,240,255,0.5)] relative z-30"
             title="Download Content"
           >
             <Download className="w-4 h-4" /> Download

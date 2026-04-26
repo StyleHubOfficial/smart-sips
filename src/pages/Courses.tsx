@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Helmet } from "react-helmet-async";
 import { GrammarTextarea } from "../components/GrammarTextarea";
 import { BookOpen, ChevronLeft, ChevronRight, FileText, PlayCircle, Sparkles, BrainCircuit, Loader2, ArrowLeft } from "lucide-react";
 import { ContentCard, ContentItem, getFileIcon } from "../components/ContentCard";
+import { SkeletonGrid } from "../components/SkeletonLoader";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
-import { usePracticeStore } from "../store/usePracticeStore";
 import { BackButton } from "../components/BackButton";
-import { LazySection, SkeletonCard } from "../components/LazySection";
 import axios from "axios";
 
 // Mock Data for classes and subjects
@@ -16,12 +14,8 @@ const CLASSES = ["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 
 const SUBJECTS = ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "English", "Hindi", "History", "Geography", "Economics", "Accountancy", "Business Studies"];
 
 export default function Courses() {
-  const [selectedClass, setSelectedClass] = useState<string | null>(() => {
-    return localStorage.getItem('sunrise_last_class');
-  });
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(() => {
-    return localStorage.getItem('sunrise_last_subject');
-  });
+  const [selectedClass, setSelectedClass] = useState<string | null>(() => localStorage.getItem('sunrise_last_class'));
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(() => localStorage.getItem('sunrise_last_subject'));
   const [showAllContent, setShowAllContent] = useState(false);
   const [showAIGenerated, setShowAIGenerated] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,11 +40,26 @@ export default function Courses() {
 
   const { isAuthenticated } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
-  const isSmartPanelMode = usePracticeStore((state) => state.isSmartPanelMode);
 
   useEffect(() => {
     fetchContent();
   }, []);
+
+  useEffect(() => {
+    if (selectedClass) {
+      localStorage.setItem('sunrise_last_class', selectedClass);
+    } else {
+      localStorage.removeItem('sunrise_last_class');
+    }
+  }, [selectedClass]);
+
+  useEffect(() => {
+    if (selectedSubject) {
+      localStorage.setItem('sunrise_last_subject', selectedSubject);
+    } else {
+      localStorage.removeItem('sunrise_last_subject');
+    }
+  }, [selectedSubject]);
 
   const fetchContent = async () => {
     try {
@@ -149,22 +158,11 @@ export default function Courses() {
     }
   };
 
-  const handleSelectClass = (cls: string) => {
-    setSelectedClass(cls);
-    localStorage.setItem('sunrise_last_class', cls);
-  };
-
-  const handleSelectSubject = (sub: string) => {
-    setSelectedSubject(sub);
-    localStorage.setItem('sunrise_last_subject', sub);
-  };
-
   const handleBack = () => {
     if (selectedSubject) {
       setSelectedSubject(null);
     } else if (selectedClass) {
       setSelectedClass(null);
-      localStorage.removeItem('sunrise_last_class');
     } else if (showAllContent) {
       setShowAllContent(false);
     } else if (showAIGenerated) {
@@ -200,11 +198,7 @@ export default function Courses() {
   });
 
   return (
-    <div className="min-h-screen pb-32 pt-24 px-6 max-w-7xl mx-auto">
-      <Helmet>
-        <title>Courses | Smart Sunrise</title>
-        <meta name="description" content="Explore structured learning materials, AI-generated resources, and classroom content across various subjects and classes." />
-      </Helmet>
+    <div className="min-h-screen pb-32 pt-24 px-6 max-w-[1920px] mx-auto 2xl:px-12">
       <div className="mb-8">
         <BackButton label="Back" />
       </div>
@@ -233,9 +227,7 @@ export default function Courses() {
       </div>
 
       <div className="mb-8 relative group">
-        {!isSmartPanelMode && (
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200 animate-gradient-xy"></div>
-        )}
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-[#00F0FF] via-[#B026FF] to-[#00F0FF] rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-1000 group-focus-within:duration-200 animate-gradient-xy"></div>
         <input
           type="text"
           placeholder="Search content by title or tags..."
@@ -256,7 +248,7 @@ export default function Courses() {
               transition={{ duration: 0.3 }}
               className="space-y-12"
             >
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                 {CLASSES.map((cls, idx) => {
                   const classContent = content.filter(item => {
                     const meta: any = item.context?.custom || item.context || {};
@@ -274,24 +266,23 @@ export default function Courses() {
                   return (
                     <motion.button
                       key={cls}
-                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: isSmartPanelMode ? 0 : idx * 0.05 }}
-                      onClick={() => handleSelectClass(cls)}
-                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#00F0FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, amount: 0.1 }}
+                      transition={{ delay: idx * 0.05 }}
+                      onClick={() => setSelectedClass(cls)}
+                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
                     >
-                      {!isSmartPanelMode && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      )}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       
                       {/* New Content Badge */}
                       {newCount > 0 && (
-                        <div className={`absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#00F0FF] text-black text-[10px] font-bold ${isSmartPanelMode ? '' : 'shadow-[0_0_10px_rgba(0,240,255,0.5)] animate-pulse'} z-20`}>
+                        <div className="absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#00F0FF] text-black text-[10px] font-bold shadow-[0_0_10px_rgba(0,240,255,0.5)] z-20 animate-pulse">
                           +{newCount} NEW
                         </div>
                       )}
 
-                      <BookOpen className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF]'} mb-4 transition-colors relative z-10`} />
+                      <BookOpen className="w-10 h-10 text-gray-400 group-hover:text-[#00F0FF] mb-4 transition-colors relative z-10" />
                       <h3 className="text-xl font-bold text-white relative z-10">{cls}</h3>
                       <p className="text-xs text-gray-500 mt-2 relative z-10">{count} {count === 1 ? 'Item' : 'Items'}</p>
                     </motion.button>
@@ -300,16 +291,14 @@ export default function Courses() {
                 
                 {/* All Content Card */}
                 <motion.button
-                  initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: isSmartPanelMode ? 0 : CLASSES.length * 0.05 }}
+                  transition={{ delay: CLASSES.length * 0.05 }}
                   onClick={() => setShowAllContent(true)}
-                  className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#B026FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
+                  className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#B026FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
                 >
-                  {!isSmartPanelMode && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  )}
-                  <FileText className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-[#B026FF]'} mb-4 transition-colors relative z-10`} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <FileText className="w-10 h-10 text-gray-400 group-hover:text-[#B026FF] mb-4 transition-colors relative z-10" />
                   <h3 className="text-xl font-bold text-white relative z-10">All Content</h3>
                   <p className="text-xs text-gray-500 mt-2 relative z-10">{content.length} {content.length === 1 ? 'Item' : 'Items'}</p>
                 </motion.button>
@@ -327,16 +316,15 @@ export default function Courses() {
 
                   return (
                     <motion.button
-                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: isSmartPanelMode ? 0 : (CLASSES.length + 1) * 0.05 }}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, amount: 0.1 }}
+                      transition={{ delay: (CLASSES.length + 1) * 0.05 }}
                       onClick={() => setShowAIGenerated(true)}
-                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-emerald-400/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(52,211,153,0.15)]'} transition-all duration-300 group relative overflow-hidden flex flex-col items-center justify-center text-center`}
+                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-emerald-400/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(52,211,153,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
                     >
-                      {!isSmartPanelMode && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      )}
-                      <Sparkles className={`w-10 h-10 text-gray-400 ${isSmartPanelMode ? '' : 'group-hover:text-emerald-400'} mb-4 transition-colors relative z-10`} />
+                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <Sparkles className="w-10 h-10 text-gray-400 group-hover:text-emerald-400 mb-4 transition-colors relative z-10" />
                       <h3 className="text-xl font-bold text-white relative z-10">AI Generated</h3>
                       <p className="text-xs text-gray-500 mt-2 relative z-10">{aiCount} {aiCount === 1 ? 'Item' : 'Items'}</p>
                     </motion.button>
@@ -377,10 +365,8 @@ export default function Courses() {
               </div>
               
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
+                <div className="py-8 w-full">
+                  <SkeletonGrid count={10} />
                 </div>
               ) : filteredContent.length === 0 ? (
                 <div className="text-center py-20 glass-panel rounded-2xl border border-white/10">
@@ -389,14 +375,9 @@ export default function Courses() {
                   <p className="text-gray-400">No resources found matching this category.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                   {filteredContent.map((item, idx) => (
-                    <motion.div
-                      key={`special-item-${item.public_id}-${idx}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                    >
+                    <div key={`special-item-${item.public_id}-${idx}`}>
                       <ContentCard
                         item={item}
                         viewMode="grid"
@@ -405,7 +386,7 @@ export default function Courses() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                       />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -425,7 +406,7 @@ export default function Courses() {
                 <ChevronRight className="w-5 h-5 text-gray-600" />
                 Select Subject
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 {SUBJECTS.map((sub, idx) => {
                   const subjectContent = content.filter(item => {
                     const meta: any = item.context?.custom || item.context || {};
@@ -443,25 +424,24 @@ export default function Courses() {
                   return (
                     <motion.button
                       key={sub}
-                      initial={{ opacity: 0, scale: isSmartPanelMode ? 1 : 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: isSmartPanelMode ? 0 : idx * 0.05 }}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, amount: 0.1 }}
+                      transition={{ delay: idx * 0.05 }}
                       onClick={() => setSelectedSubject(sub)}
-                      className={`glass-panel p-8 rounded-2xl border border-white/10 ${isSmartPanelMode ? '' : 'hover:border-[#B026FF]/50 hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)]'} transition-all duration-300 group relative overflow-hidden text-left`}
+                      className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#B026FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)] relative overflow-hidden text-left"
                     >
-                      {!isSmartPanelMode && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      )}
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#B026FF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       
                       {/* New Content Badge */}
                       {newCount > 0 && (
-                        <div className={`absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#B026FF] text-white text-[10px] font-bold ${isSmartPanelMode ? '' : 'shadow-[0_0_10px_rgba(176,38,255,0.5)] animate-pulse'} z-20`}>
+                        <div className="absolute top-4 right-4 px-2 py-1 rounded-lg bg-[#B026FF] text-white text-[10px] font-bold shadow-[0_0_10px_rgba(176,38,255,0.5)] z-20 animate-pulse">
                           +{newCount} NEW
                         </div>
                       )}
 
                       <h3 className="text-2xl font-bold text-white mb-2 relative z-10">{sub}</h3>
-                      <p className={`text-gray-400 text-sm relative z-10 ${isSmartPanelMode ? '' : 'group-hover:text-gray-300'} transition-colors`}>
+                      <p className="text-gray-400 text-sm relative z-10 group-hover:text-gray-300 transition-colors">
                         {count} {count === 1 ? 'Resource' : 'Resources'} available
                       </p>
                     </motion.button>
@@ -488,10 +468,8 @@ export default function Courses() {
               </h2>
               
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
+                <div className="py-8 w-full">
+                  <SkeletonGrid count={10} />
                 </div>
               ) : filteredContent.length === 0 ? (
                 <div className="text-center py-20 glass-panel rounded-2xl border border-white/10">
@@ -500,14 +478,9 @@ export default function Courses() {
                   <p className="text-gray-400">There are currently no resources available for this subject.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                   {filteredContent.map((item, idx) => (
-                    <motion.div
-                      key={`class-subject-item-${item.public_id}-${idx}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                    >
+                    <div key={`class-subject-item-${item.public_id}-${idx}`}>
                       <ContentCard
                         item={item}
                         viewMode="grid"
@@ -516,7 +489,7 @@ export default function Courses() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                       />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}

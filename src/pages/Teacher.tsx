@@ -1,15 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { LazySection } from '../components/LazySection';
 import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { jsPDF } from 'jspdf';
 import { useTeacherStore } from '../store/useTeacherStore';
 import Whiteboard from '../components/Whiteboard';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
-import { usePracticeStore } from '../store/usePracticeStore';
 
 // Set up PDF.js worker
 import pdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
@@ -17,47 +13,45 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export default function Teacher() {
   const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-  const [isPressed, setIsPressed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
   const [importSettings, setImportSettings] = useState({
     quality: 2, // Scale factor
     renderAnnotations: true,
   });
 
-  const [showSlideGrid, setShowSlideGrid] = useState(false);
-  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const onDrop = async (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (!file) return;
 
-  const processFile = async (file: File | { url: string, type: string, name: string }) => {
     setIsProcessing(true);
     setProcessProgress(0);
     try {
-      const isDashboardFile = 'url' in file;
-      const fileType = isDashboardFile ? file.type : file.type;
-      const fileName = isDashboardFile ? file.name : file.name;
-
-      if (fileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf')) {
-        let arrayBuffer: ArrayBuffer;
-        if (isDashboardFile) {
-          const response = await fetch(file.url);
-          arrayBuffer = await response.arrayBuffer();
-        } else {
-          arrayBuffer = await (file as File).arrayBuffer();
-        }
-
+      if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || file.name.endsWith('.pptx') || file.name.endsWith('.ppt')) {
+        alert("PPTX support is currently experimental. For best results, please save your PowerPoint as a PDF and upload the PDF instead.");
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (file.type === 'application/pdf') {
+        const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         const newSlides = [];
         setTotalItems(pdf.numPages);
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
+          
+          // Calculate scale to fit a standard HD resolution if needed, 
+          // but we use the quality setting as base scale.
           const viewport = page.getViewport({ scale: importSettings.quality });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           
+          // We want to ensure the canvas is large enough for high quality
           canvas.height = viewport.height;
           canvas.width = viewport.width;
 
@@ -77,194 +71,24 @@ export default function Teacher() {
           setProcessProgress(i);
         }
         setSlides(newSlides);
-      } else if (fileType.startsWith('image/') || fileName.toLowerCase().match(/\.(jpg|jpeg|png|webp)$/)) {
+      } else if (file.type.startsWith('image/')) {
         setTotalItems(1);
-        if (isDashboardFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
           setSlides([{
             id: `slide-${Date.now()}`,
-            imageUrl: file.url,
+            imageUrl: e.target?.result as string,
             whiteboardData: '',
           }]);
           setProcessProgress(1);
-        } else {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setSlides([{
-              id: `slide-${Date.now()}`,
-              imageUrl: e.target?.result as string,
-              whiteboardData: '',
-            }]);
-            setProcessProgress(1);
-          };
-          reader.readAsDataURL(file as File);
-        }
+        };
+        reader.readAsDataURL(file);
       }
     } catch (error) {
       console.error("Error processing file:", error);
       alert("Failed to process file. Please try again.");
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const [isExporting, setIsExporting] = useState(false);
-
-  const handleExportPDF = async () => {
-    if (slides.length === 0) return;
-    setIsExporting(true);
-
-    try {
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [1920, 1080] // Standard HD format for consistency
-      });
-
-      for (let i = 0; i < slides.length; i++) {
-        const slide = slides[i];
-        if (i > 0) pdf.addPage([1920, 1080], 'landscape');
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 1920;
-        canvas.height = 1080;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) continue;
-
-        // 1. Draw background (dark theme to match whiteboard)
-        ctx.fillStyle = '#1a1b26';
-        ctx.fillRect(0, 0, 1920, 1080);
-
-        // 2. Draw slide image
-        const img = new Image();
-        if (!slide.imageUrl.startsWith('data:')) {
-          img.crossOrigin = "anonymous";
-        }
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = slide.imageUrl;
-        });
-        
-        // Draw image maintaining aspect ratio
-        const imgRatio = img.width / img.height;
-        const canvasRatio = 1920 / 1080;
-        let drawWidth = 1920;
-        let drawHeight = 1080;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (imgRatio > canvasRatio) {
-          drawHeight = 1920 / imgRatio;
-          offsetY = (1080 - drawHeight) / 2;
-        } else {
-          drawWidth = 1080 * imgRatio;
-          offsetX = (1920 - drawWidth) / 2;
-        }
-        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-        // 3. Draw whiteboard strokes
-        if (slide.whiteboardData) {
-          try {
-            const strokes = JSON.parse(slide.whiteboardData);
-            strokes.forEach((stroke: any) => {
-              ctx.save();
-              
-              // Handle rotation/scale if present
-              if (stroke.center && (stroke.rotation || stroke.scale)) {
-                ctx.translate(stroke.center.x, stroke.center.y);
-                if (stroke.rotation) ctx.rotate(stroke.rotation);
-                if (stroke.scale) ctx.scale(stroke.scale.x, stroke.scale.y);
-                ctx.translate(-stroke.center.x, -stroke.center.y);
-              }
-
-              ctx.beginPath();
-              ctx.strokeStyle = stroke.color;
-              ctx.lineWidth = stroke.lineWidth || stroke.width || 3;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.globalAlpha = stroke.opacity || 1;
-
-              if ((stroke.type === 'path' || stroke.type === 'lasso') && stroke.points && stroke.points.length > 0) {
-                if (stroke.points.length === 1) {
-                  ctx.fillStyle = stroke.color;
-                  ctx.beginPath();
-                  ctx.arc(stroke.points[0].x, stroke.points[0].y, (stroke.lineWidth || stroke.width || 3) / 2, 0, Math.PI * 2);
-                  ctx.fill();
-                } else {
-                  if (stroke.type === 'lasso') {
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeStyle = '#00F0FF';
-                    ctx.lineWidth = 1;
-                  }
-                  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-                  for (let j = 1; j < stroke.points.length; j++) {
-                    ctx.lineTo(stroke.points[j].x, stroke.points[j].y);
-                  }
-                  ctx.stroke();
-                  if (stroke.type === 'lasso') ctx.setLineDash([]);
-                }
-              } else if (stroke.type === 'rect' && stroke.startPos && stroke.endPos) {
-                ctx.strokeRect(stroke.startPos.x, stroke.startPos.y, stroke.endPos.x - stroke.startPos.x, stroke.endPos.y - stroke.startPos.y);
-              } else if (stroke.type === 'circle' && stroke.startPos && stroke.endPos) {
-                const radius = Math.sqrt(Math.pow(stroke.endPos.x - stroke.startPos.x, 2) + Math.pow(stroke.endPos.y - stroke.startPos.y, 2));
-                ctx.arc(stroke.startPos.x, stroke.startPos.y, radius, 0, 2 * Math.PI);
-                ctx.stroke();
-              } else if (stroke.type === 'line' && stroke.startPos && stroke.endPos) {
-                ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
-                ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
-                ctx.stroke();
-              } else if (stroke.type === 'arrow' && stroke.startPos && stroke.endPos) {
-                // Simple arrow drawing
-                const headlen = 15;
-                const angle = Math.atan2(stroke.endPos.y - stroke.startPos.y, stroke.endPos.x - stroke.startPos.x);
-                ctx.moveTo(stroke.startPos.x, stroke.startPos.y);
-                ctx.lineTo(stroke.endPos.x, stroke.endPos.y);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(stroke.endPos.x, stroke.endPos.y);
-                ctx.lineTo(stroke.endPos.x - headlen * Math.cos(angle - Math.PI / 6), stroke.endPos.y - headlen * Math.sin(angle - Math.PI / 6));
-                ctx.moveTo(stroke.endPos.x, stroke.endPos.y);
-                ctx.lineTo(stroke.endPos.x - headlen * Math.cos(angle + Math.PI / 6), stroke.endPos.y - headlen * Math.sin(angle + Math.PI / 6));
-                ctx.stroke();
-              } else if (stroke.type === 'text' && (stroke.startPos || (stroke.points && stroke.points[0])) && stroke.text) {
-                const pos = stroke.startPos || stroke.points[0];
-                const size = (stroke.lineWidth || stroke.width || 3) * 5;
-                ctx.font = `${size}px Inter, sans-serif`;
-                ctx.fillStyle = stroke.color;
-                ctx.fillText(stroke.text, pos.x, pos.y);
-              }
-              ctx.restore();
-            });
-          } catch (e) {
-            console.error("Failed to parse whiteboard data for export:", e);
-          }
-        }
-
-        const slideData = canvas.toDataURL('image/png', 1.0); // Use PNG with max quality
-        pdf.addImage(slideData, 'PNG', 0, 0, 1920, 1080);
-      }
-
-      pdf.save(`lecture-${Date.now()}.pdf`);
-    } catch (error) {
-      console.error("Error exporting PDF:", error);
-      alert("Failed to export PDF. Please try again.");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const onDrop = async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-    
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(async () => {
-        setIsPressed(false);
-        await processFile(file);
-      }, 800);
-    } else {
-      await processFile(file);
     }
   };
 
@@ -280,104 +104,137 @@ export default function Teacher() {
 
   const handleStartTeaching = () => {
     if (slides.length > 0) {
-      if (isSmartPanelMode) {
-        setIsPressed(true);
-        setTimeout(() => {
-          setIsPressed(false);
-          setShowWhiteboard(true);
-        }, 800);
-      } else {
-        setShowWhiteboard(true);
-      }
+      setShowWhiteboard(true);
     }
   };
 
-  const handleSaveWhiteboard = (data: string) => {
-    updateSlideWhiteboardData(currentSlideIndex, data);
+  const handleExportAllPDF = async () => {
+    if (slides.length === 0) return;
+    setIsProcessing(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [1920, 1080]
+      });
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        const imgData = slide.annotatedImageUrl || slide.imageUrl;
+        
+        if (i > 0) {
+          pdf.addPage([1920, 1080], 'landscape');
+        } else {
+          pdf.deletePage(1);
+          pdf.addPage([1920, 1080], 'landscape');
+        }
+
+        pdf.addImage(imgData, 'PNG', 0, 0, 1920, 1080);
+      }
+
+      pdf.save(`presentation-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export PDF.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  const handleSaveWhiteboard = (data: string, imageData?: string) => {
+    updateSlideWhiteboardData(currentSlideIndex, data, imageData);
+  };
+
+  const [showSlidePreview, setShowSlidePreview] = useState(false);
 
   if (showWhiteboard) {
     return (
-      <div className="fixed inset-0 z-[60] bg-black overflow-hidden">
-        {/* Floating Slide Changer at Bottom Left */}
-        <div className="absolute bottom-6 left-6 z-[100] flex items-center gap-2 bg-black/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/10 shadow-2xl">
+      <div className="fixed inset-0 z-[60] bg-black">
+        <div className="absolute bottom-4 left-4 z-[70] flex items-center gap-2 bg-black/50 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10">
           <button 
             onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
             disabled={currentSlideIndex === 0}
-            className="p-2.5 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
+            className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           
           <button 
-            onClick={() => setShowSlideGrid(true)}
-            className="px-4 py-2 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors flex items-center gap-2"
+            onClick={() => setShowSlidePreview(!showSlidePreview)}
+            className="px-4 py-2 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors"
           >
-            <span className="opacity-50">Slide</span>
-            <span className="font-bold">{currentSlideIndex + 1}</span>
-            <span className="opacity-50">/</span>
-            <span className="opacity-50">{slides.length}</span>
+            {currentSlideIndex + 1} / {slides.length}
           </button>
 
           <button 
             onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))}
             disabled={currentSlideIndex === slides.length - 1}
-            className="p-2.5 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
+            className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
+          
+          <div className="w-[1px] h-6 bg-white/20 mx-2" />
+          
+          <button 
+            onClick={() => {
+              const newSlides = [...slides];
+              newSlides.splice(currentSlideIndex + 1, 0, {
+                id: `slide-blank-${Date.now()}`,
+                imageUrl: '', // Blank slide
+                whiteboardData: ''
+              });
+              setSlides(newSlides);
+              setCurrentSlideIndex(currentSlideIndex + 1);
+            }}
+            className="p-2 text-indigo-400 hover:bg-indigo-500/20 rounded-xl transition-colors"
+            title="Add Blank Slide"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+
+          <div className="w-[1px] h-6 bg-white/20 mx-2" />
+          
+          <button 
+            onClick={() => setShowWhiteboard(false)}
+            className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg uppercase tracking-wider transition-colors"
+          >
+            Exit
+          </button>
         </div>
 
-        {/* Exit Button at Top Right */}
-        <button 
-          onClick={() => setShowWhiteboard(false)}
-          className="absolute top-6 right-6 z-[100] px-6 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-400 rounded-2xl font-bold text-sm transition-all backdrop-blur-xl"
-        >
-          Exit Session
-        </button>
-
-        {/* Slide Grid Overlay */}
         <AnimatePresence>
-          {showSlideGrid && (
+          {showSlidePreview && (
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-2xl p-8 overflow-y-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-20 left-4 z-[70] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex gap-4 overflow-x-auto max-w-[calc(100vw-2rem)] shadow-2xl"
             >
-              <div className="max-w-6xl mx-auto">
-                <div className="flex items-center justify-between mb-12">
-                  <h2 className="text-3xl font-display font-bold text-white">All Slides</h2>
-                  <button 
-                    onClick={() => setShowSlideGrid(false)}
-                    className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white transition-colors"
-                  >
-                    <Trash2 className="w-6 h-6 rotate-45" /> {/* Using Trash2 rotated as a close icon for simplicity or just X */}
-                  </button>
+              {slides.map((slide, idx) => (
+                <div 
+                  key={slide.id}
+                  onClick={() => {
+                    setCurrentSlideIndex(idx);
+                    setShowSlidePreview(false);
+                  }}
+                  className={`relative shrink-0 w-32 aspect-[16/9] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                    idx === currentSlideIndex ? 'border-indigo-500' : 'border-transparent hover:border-white/20'
+                  }`}
+                >
+                  {slide.imageUrl ? (
+                    <img src={slide.imageUrl} className="w-full h-full object-cover" alt={`Slide ${idx + 1}`} />
+                  ) : (
+                    <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                      <span className="text-white/30 text-xs">Blank</span>
+                    </div>
+                  )}
+                  <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white">
+                    {idx + 1}
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                  {slides.map((slide, idx) => (
-                    <motion.div
-                      key={slide.id}
-                      whileHover={isSmartPanelMode ? {} : { scale: 1.05 }}
-                      whileTap={isSmartPanelMode ? {} : { scale: 0.95 }}
-                      onClick={() => {
-                        setCurrentSlideIndex(idx);
-                        setShowSlideGrid(false);
-                      }}
-                      className={`relative aspect-[16/9] rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
-                        currentSlideIndex === idx ? 'border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'border-white/10 hover:border-white/20'
-                      }`}
-                    >
-                      <img src={slide.imageUrl} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
-                        Page {idx + 1}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
@@ -396,84 +253,53 @@ export default function Teacher() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <Helmet>
-        <title>Teacher Mode | Smart Sunrise</title>
-        <meta name="description" content="Convert your teaching materials into interactive slides and start teaching with an integrated whiteboard." />
-      </Helmet>
-      <div className="max-w-7xl mx-auto space-y-8">
-        <LazySection>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl sm:text-5xl font-display font-bold text-white">Teacher Mode</h1>
-                <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest">Beta</span>
-              </div>
-              <p className="text-gray-400 text-lg">Convert your teaching materials into interactive AI slides.</p>
+    <div className="min-h-screen pt-24 pb-32 px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl sm:text-5xl font-display font-bold text-white">SBoard</h1>
+              <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest">Smart Board</span>
             </div>
-            
-            {slides.length > 0 && (
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={handleExportPDF}
-                  disabled={isExporting}
-                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all font-bold disabled:opacity-50"
-                >
-                  <FileText className="w-5 h-5 text-[#00F0FF]" />
-                  {isExporting ? 'Exporting...' : 'Export PDF'}
-                </button>
-                <button 
-                  onClick={clearSlides}
-                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
-                >
-                  <Trash2 className="w-5 h-5" />
-                  Clear All
-                </button>
-                <button 
-                  onClick={handleStartTeaching}
-                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all font-bold shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-                >
-                  <Play className="w-5 h-5" />
-                  Start Teaching
-                </button>
-              </div>
-            )}
+            <p className="text-gray-400 text-lg">Convert your teaching materials into interactive AI slides.</p>
           </div>
-        </LazySection>
+          
+          {slides.length > 0 && (
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={clearSlides}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
+              >
+                <Trash2 className="w-5 h-5" />
+                Clear All
+              </button>
+              <button 
+                onClick={handleExportAllPDF}
+                disabled={isProcessing}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all font-bold disabled:opacity-50"
+              >
+                <FileText className="w-5 h-5" />
+                Export PDF
+              </button>
+              <button 
+                onClick={handleStartTeaching}
+                className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all font-bold shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+              >
+                <Play className="w-5 h-5" />
+                Start Teaching
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            {isProcessing && (
-              <div className="glass-panel rounded-[2rem] p-8 border border-indigo-500/30 bg-indigo-500/5 mb-8">
-                <div className="flex justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold text-white">Processing Material</span>
-                      <p className="text-xs text-gray-400">Converting pages to high-quality interactive slides...</p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-mono text-indigo-400 font-bold">{processProgress} / {totalItems}</span>
-                </div>
-                <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
-                  <motion.div 
-                    className="h-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.6)]"
-                    initial={{ width: "0%" }}
-                    animate={{ width: `${(processProgress / Math.max(1, totalItems)) * 100}%` }}
-                    transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-                  />
-                </div>
-              </div>
-            )}
-
             {slides.length === 0 ? (
               <div 
                 {...getRootProps()} 
                 className={`relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-500 min-h-[400px] flex flex-col items-center justify-center p-12 text-center ${
                   isDragActive ? 'border-indigo-500 bg-indigo-500/5' : 'border-white/10 hover:border-white/20 bg-white/5'
-                } ${isPressed ? 'is-pressed border-indigo-500 bg-indigo-500/5' : ''}`}
+                }`}
               >
                 <input {...getInputProps()} />
                 
@@ -487,50 +313,62 @@ export default function Teacher() {
                 <h3 className="text-2xl font-bold text-white mb-4">
                   {isProcessing ? 'Processing your file...' : 'Upload Teaching Material'}
                 </h3>
-                <p className="text-gray-400 max-w-md mx-auto mb-8">
-                  Drag and drop your PDF, PPTX or images here. We'll convert them into high-quality interactive slides.
+                <p className="text-gray-400 max-w-md mx-auto mb-6">
+                  Drag and drop your PDF or images here. We'll convert them into high-quality interactive slides. (For PPTX, please save as PDF first).
                 </p>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDashboardSelector(true);
+                  }}
+                  className="mb-8 flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-indigo-200 transition-all font-medium z-10 relative"
+                >
+                  <Database className="w-5 h-5" />
+                  Select from Dashboard
+                </button>
 
                 <div className="flex flex-wrap justify-center gap-4">
                   <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
                     <FileText className="w-4 h-4" /> PDF
                   </div>
                   <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
-                    <Presentation className="w-4 h-4" /> PPTX
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
                     <Sparkles className="w-4 h-4" /> Images
                   </div>
                 </div>
 
-                <div className="mt-8 pt-8 border-t border-white/5 w-full max-w-xs">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDashboardSelector(true);
-                    }}
-                    className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 font-bold"
-                  >
-                    <Database className="w-5 h-5 text-indigo-400" />
-                    Select from Dashboard
-                  </button>
-                </div>
+                {isProcessing && (
+                  <div className="absolute inset-x-0 bottom-0 p-8">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Processing Pages</span>
+                      <span className="text-xs font-mono text-indigo-400">{processProgress} / {totalItems}</span>
+                    </div>
+                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
+                      <motion.div 
+                        className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        initial={{ width: "0%" }}
+                        animate={{ width: `${(processProgress / totalItems) * 100}%` }}
+                        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {slides.map((slide, index) => (
                   <motion.div 
                     key={slide.id}
-                    initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={isSmartPanelMode ? { duration: 0 } : { delay: index * 0.05 }}
+                    transition={{ delay: index * 0.05 }}
                     className={`relative aspect-[16/9] rounded-2xl overflow-hidden border-2 transition-all cursor-pointer group ${
                       currentSlideIndex === index ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-white/10 hover:border-white/20'
                     }`}
                     onClick={() => setCurrentSlideIndex(index)}
                   >
                     <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
-                    <div className={`absolute inset-0 bg-black/40 opacity-0 ${isSmartPanelMode ? '' : 'group-hover:opacity-100'} transition-opacity flex items-center justify-center`}>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Play className="w-8 h-8 text-white" />
                     </div>
                     <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
@@ -601,7 +439,7 @@ export default function Teacher() {
                   "Use 2x or higher quality for 4K writing experience.",
                   "PDFs work best for multi-page slide conversion.",
                   "Your whiteboard annotations are saved per slide.",
-                  "Use the Pen tool for smooth writing experience."
+                  "Use the Smart Pen in whiteboard for perfect shapes."
                 ].map((tip, i) => (
                   <li key={i} className="flex gap-3 text-sm text-gray-400">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
@@ -612,19 +450,32 @@ export default function Teacher() {
             </div>
           </div>
         </div>
-        <DashboardFileSelector 
-          isOpen={showDashboardSelector}
-          onClose={() => setShowDashboardSelector(false)}
-          onSelect={(file) => {
-            processFile({
-              url: file.url,
-              type: file.resource_type === 'image' ? 'image/png' : 'application/pdf',
-              name: file.name
-            });
-            setShowDashboardSelector(false);
-          }}
-        />
       </div>
+      
+      <DashboardFileSelector
+        isOpen={showDashboardSelector}
+        onClose={() => setShowDashboardSelector(false)}
+        onSelect={async (file) => {
+          try {
+            setIsProcessing(true);
+            setProcessProgress(0);
+            const proxyUrl = `/api/proxy?url=${encodeURIComponent(file.url || file.fileUrl)}`;
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
+            
+            const blob = await res.blob();
+            const fileObj = new File([blob], file.name || 'document.pdf', { type: blob.type });
+            await onDrop([fileObj]);
+          } catch (error) {
+            console.error("Failed to load file from dashboard:", error);
+            alert("Failed to load file from dashboard.");
+          } finally {
+            setIsProcessing(false);
+            setShowDashboardSelector(false);
+          }
+        }}
+        allowMultiple={false}
+      />
     </div>
   );
 }

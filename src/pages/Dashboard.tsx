@@ -12,6 +12,7 @@ import AutoSuggestModal from "../components/AutoSuggestModal";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { ContentCard, ContentItem, getFileIcon } from "../components/ContentCard";
+import { SkeletonGrid } from "../components/SkeletonLoader";
 
 interface DashboardProps {
   isSmartPanelMode: boolean;
@@ -203,34 +204,34 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
   return (
     <motion.div 
-      initial={isSmartPanelMode ? { opacity: 1 } : { opacity: 0 }}
+      initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={isSmartPanelMode ? { opacity: 1 } : { opacity: 0 }}
-      transition={{ duration: isSmartPanelMode ? 0 : 0.5 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
       className="p-6 md:p-10 max-w-[1600px] mx-auto pb-32"
     >
       {/* Hero Section */}
       <div className="mb-12 text-center md:text-left">
         <motion.h2 
-          initial={isSmartPanelMode ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
+          initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: isSmartPanelMode ? 0 : 0.2 }}
+          transition={{ delay: 0.2 }}
           className="text-3xl md:text-5xl font-display font-bold mb-4"
         >
-          Smart Classroom <span className={isSmartPanelMode ? "text-[#00F0FF]" : "text-gradient"}>Content Hub</span>
+          Smart Classroom <span className="text-gradient">Content Hub</span>
         </motion.h2>
         <motion.div 
-          initial={isSmartPanelMode ? { width: "100px" } : { width: 0 }}
+          initial={{ width: 0 }}
           animate={{ width: "100px" }}
-          transition={{ delay: isSmartPanelMode ? 0 : 0.4, duration: isSmartPanelMode ? 0 : 0.8 }}
-          className={`h-1 rounded-full md:mx-0 mx-auto ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF]'}`}
+          transition={{ delay: 0.4, duration: 0.8 }}
+          className="h-1 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-full md:mx-0 mx-auto"
         />
       </div>
 
       {/* Announcements Section */}
       {siteNotifications.length > 0 && (
         <motion.div 
-          initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-10 space-y-4"
         >
@@ -239,7 +240,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {siteNotifications.slice(0, 3).map((notif, index) => (
-              <div key={`announcement-${notif.id}-${index}`} className={`glass-panel rounded-xl p-5 border border-[#00F0FF]/30 relative overflow-hidden ${isSmartPanelMode ? 'bg-[#00F0FF]/5' : 'bg-gradient-to-br from-[#00F0FF]/5 to-transparent'}`}>
+              <div key={`announcement-${notif.id}-${index}`} className="glass-panel rounded-xl p-5 border border-[#00F0FF]/30 bg-gradient-to-br from-[#00F0FF]/5 to-transparent relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-[#00F0FF]"></div>
                 <h4 className="font-bold text-white mb-1">{notif.title}</h4>
                 <p className="text-sm text-gray-300 mb-3">{notif.message}</p>
@@ -255,9 +256,9 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
       {/* Quick Tools Section */}
       <motion.div 
-        initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: isSmartPanelMode ? 0 : 0.2 }}
+        transition={{ delay: 0.2 }}
         className="mb-12"
       >
         <div className="flex items-center justify-between mb-6">
@@ -269,45 +270,45 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Link to="/practice" className="group">
-            <div className={`glass-panel rounded-2xl p-6 border border-white/10 h-full relative overflow-hidden ${isSmartPanelMode ? 'bg-[#00F0FF]/5' : 'bg-gradient-to-br from-[#00F0FF]/5 to-transparent hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-all duration-500'}`}>
-              {!isSmartPanelMode && <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F0FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#00F0FF]/10 transition-all"></div>}
-              <div className={`w-12 h-12 rounded-xl bg-[#00F0FF]/20 flex items-center justify-center mb-4 border border-[#00F0FF]/30 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform'}`}>
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-transparent hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#00F0FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#00F0FF]/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-[#00F0FF]/20 flex items-center justify-center mb-4 border border-[#00F0FF]/30 group-hover:scale-110 transition-transform">
                 <BrainCircuit className="w-6 h-6 text-[#00F0FF]" />
               </div>
-              <h4 className={`text-lg font-bold text-white mb-2 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF] transition-colors'}`}>Practice Arena</h4>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">Practice Arena</h4>
               <p className="text-sm text-gray-400">Generate authentic competitive exam questions with deep AI reasoning.</p>
             </div>
           </Link>
 
           <Link to="/simulator" className="group">
-            <div className={`glass-panel rounded-2xl p-6 border border-white/10 h-full relative overflow-hidden ${isSmartPanelMode ? 'bg-[#B026FF]/5' : 'bg-gradient-to-br from-[#B026FF]/5 to-transparent hover:border-[#B026FF]/50 hover:shadow-[0_0_30px_rgba(176,38,255,0.1)] transition-all duration-500'}`}>
-              {!isSmartPanelMode && <div className="absolute top-0 right-0 w-32 h-32 bg-[#B026FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#B026FF]/10 transition-all"></div>}
-              <div className={`w-12 h-12 rounded-xl bg-[#B026FF]/20 flex items-center justify-center mb-4 border border-[#B026FF]/30 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform'}`}>
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#B026FF]/5 to-transparent hover:border-[#B026FF]/50 hover:shadow-[0_0_30px_rgba(176,38,255,0.1)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#B026FF]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#B026FF]/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-[#B026FF]/20 flex items-center justify-center mb-4 border border-[#B026FF]/30 group-hover:scale-110 transition-transform">
                 <MonitorPlay className="w-6 h-6 text-[#B026FF]" />
               </div>
-              <h4 className={`text-lg font-bold text-white mb-2 ${isSmartPanelMode ? '' : 'group-hover:text-[#B026FF] transition-colors'}`}>Simulator Generator</h4>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#B026FF] transition-colors">Simulator Generator</h4>
               <p className="text-sm text-gray-400">Create interactive 2D & 3D physics simulations for complex concepts.</p>
             </div>
           </Link>
 
           <Link to="/flowchart" className="group">
-            <div className={`glass-panel rounded-2xl p-6 border border-white/10 h-full relative overflow-hidden ${isSmartPanelMode ? 'bg-[#00F0FF]/5' : 'bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500'}`}>
-              {!isSmartPanelMode && <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>}
-              <div className={`w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform'}`}>
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 group-hover:scale-110 transition-transform">
                 <GitGraph className="w-6 h-6 text-white" />
               </div>
-              <h4 className={`text-lg font-bold text-white mb-2 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF] transition-colors'}`}>FlowChart Generator</h4>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">FlowChart Generator</h4>
               <p className="text-sm text-gray-400">Transform processes into logical, AI-powered diagrams and flowcharts.</p>
             </div>
           </Link>
 
           <Link to="/visualizer" className="group">
-            <div className={`glass-panel rounded-2xl p-6 border border-white/10 h-full relative overflow-hidden ${isSmartPanelMode ? 'bg-[#00F0FF]/5' : 'bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500'}`}>
-              {!isSmartPanelMode && <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>}
-              <div className={`w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform'}`}>
+            <div className="glass-panel rounded-2xl p-6 border border-white/10 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 hover:border-white/30 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transition-all duration-500 h-full relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-white/10 transition-all"></div>
+              <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 border border-white/20 group-hover:scale-110 transition-transform">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <h4 className={`text-lg font-bold text-white mb-2 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF] transition-colors'}`}>Concept Visualizer</h4>
+              <h4 className="text-lg font-bold text-white mb-2 group-hover:text-[#00F0FF] transition-colors">Concept Visualizer</h4>
               <p className="text-sm text-gray-400">Convert scientific concepts into interactive visual explanations.</p>
             </div>
           </Link>
@@ -316,12 +317,12 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
       {/* Filter Section */}
       <motion.div 
-        initial={isSmartPanelMode ? { y: 0, opacity: 1 } : { y: 20, opacity: 0 }}
+        initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: isSmartPanelMode ? 0 : 0.3 }}
+        transition={{ delay: 0.3 }}
         className="glass-panel rounded-2xl p-6 mb-10 flex flex-col md:flex-row gap-4 items-center justify-between border border-white/10 relative overflow-hidden"
       >
-        {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
         
         <div className="relative w-full md:w-1/3 group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -433,7 +434,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         {/* Background Tasks Section */}
         {tasks.length > 0 && (
           <motion.div
-            initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-12"
           >
@@ -487,38 +488,34 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
       {/* Content Grid */}
       {loading ? (
-        <div className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={`skeleton-${i}`} className={`glass-panel rounded-2xl animate-pulse border border-white/5 relative overflow-hidden ${viewMode === 'grid' ? 'h-72' : 'h-24'}`}>
-               {!isSmartPanelMode && <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>}
-            </div>
-          ))}
+        <div className="w-full">
+          <SkeletonGrid count={8} type={viewMode === 'grid' ? 'card' : 'list'} />
         </div>
       ) : filteredContent.length === 0 ? (
         <motion.div 
-          initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center justify-center py-32 text-center"
         >
           <div className="relative w-48 h-48 mb-8">
             <motion.div 
-              animate={isSmartPanelMode ? {} : { rotate: 360 }}
+              animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="absolute inset-0 rounded-full border border-dashed border-[#00F0FF]/30"
             />
             <motion.div 
-              animate={isSmartPanelMode ? {} : { rotate: -360 }}
+              animate={{ rotate: -360 }}
               transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
               className="absolute inset-4 rounded-full border border-[#B026FF]/30"
             />
-            <div className={`absolute inset-0 flex items-center justify-center`}>
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center border border-white/10 backdrop-blur-md ${isSmartPanelMode ? 'bg-[#00F0FF]/10' : 'bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 shadow-[0_0_30px_rgba(0,240,255,0.2)]'}`}>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-center border border-white/10 backdrop-blur-md shadow-[0_0_30px_rgba(0,240,255,0.2)]">
                 <FileText className="w-10 h-10 text-[#00F0FF] opacity-80" />
               </div>
             </div>
             
             {/* Floating particles */}
-            {!isSmartPanelMode && [...Array(5)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
               <motion.div
                 key={`particle-${i}`}
                 animate={{ 
@@ -541,19 +538,19 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
               />
             ))}
           </div>
-          <h3 className={`text-3xl font-display font-bold mb-3 ${isSmartPanelMode ? 'text-white' : 'text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400'}`}>No Content Found</h3>
+          <h3 className="text-3xl font-display font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 mb-3">No Content Found</h3>
           <p className="text-gray-500 max-w-md">The digital vault is empty. Adjust your filters or upload new educational resources to populate the dashboard.</p>
         </motion.div>
       ) : (
         <motion.div 
-          variants={isSmartPanelMode ? {} : {
+          variants={{
             hidden: { opacity: 0 },
             show: {
               opacity: 1,
               transition: { staggerChildren: 0.1 }
             }
           }}
-          initial={isSmartPanelMode ? "show" : "hidden"}
+          initial="hidden"
           animate="show"
           className={viewMode === 'grid' ? `grid ${gridCols}` : 'flex flex-col gap-4'}
         >
@@ -573,7 +570,7 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
 
       {/* Visual Learning Simulations (VLS) Section */}
       <motion.div 
-        initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-16"
       >
@@ -626,22 +623,20 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
           ].map((vls, i) => (
             <motion.div 
               key={`vls-card-${i}`}
-              whileHover={isSmartPanelMode ? {} : { y: -5, scale: 1.02 }}
+              whileHover={{ y: -5, scale: 1.02 }}
               className="glass-panel rounded-2xl p-6 border border-white/10 group cursor-pointer relative overflow-hidden"
             >
-              {!isSmartPanelMode && <div className={`absolute inset-0 bg-gradient-to-br ${vls.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>}
+              <div className={`absolute inset-0 bg-gradient-to-br ${vls.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
               <div className="relative z-10">
-                <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-[#00F0FF] ${isSmartPanelMode ? '' : 'group-hover:scale-110 transition-transform duration-300'}`}>
+                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 text-[#00F0FF] group-hover:scale-110 transition-transform duration-300">
                   {vls.icon}
                 </div>
-                <h3 className={`font-display font-bold text-lg text-white mb-1 ${isSmartPanelMode ? '' : 'group-hover:text-[#00F0FF] transition-colors'}`}>{vls.title}</h3>
+                <h3 className="font-display font-bold text-lg text-white mb-1 group-hover:text-[#00F0FF] transition-colors">{vls.title}</h3>
                 <p className="text-sm text-gray-400">{vls.subject}</p>
               </div>
-              {!isSmartPanelMode && (
-                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ArrowUpRight className="w-5 h-5 text-[#00F0FF]" />
-                </div>
-              )}
+              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ArrowUpRight className="w-5 h-5 text-[#00F0FF]" />
+              </div>
             </motion.div>
           ))}
         </div>
@@ -655,20 +650,20 @@ export default function Dashboard({ isSmartPanelMode }: DashboardProps) {
         {editingItem && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
-              initial={isSmartPanelMode ? { opacity: 1 } : { opacity: 0 }}
+              initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={isSmartPanelMode ? { opacity: 1 } : { opacity: 0 }}
+              exit={{ opacity: 0 }}
               onClick={() => setEditingItem(null)}
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             
             <motion.div 
-              initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-              className={`glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/20 overflow-hidden max-h-[90vh] overflow-y-auto bg-black/40 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-2xl'}`}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="glass-panel rounded-3xl p-6 md:p-8 w-full max-w-2xl relative z-10 border border-white/20 shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto bg-black/40 backdrop-blur-2xl"
             >
-              {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/10 to-[#B026FF]/10 pointer-events-none"></div>
               
               <button 
                 onClick={() => setEditingItem(null)}

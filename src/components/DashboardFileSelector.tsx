@@ -24,7 +24,6 @@ interface DashboardFile {
   public_id: string;
   format?: string;
   resource_type?: string;
-  meta?: any;
   context?: {
     custom?: {
       title?: string;
@@ -48,35 +47,6 @@ interface DashboardFileSelectorProps {
   onSelectMultiple?: (files: any[]) => void;
 }
 
-import { usePracticeStore } from '../store/usePracticeStore';
-
-const SubjectButton = ({ sub, onClick }: any) => {
-  const [isPressed, setIsPressed] = useState(false);
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-
-  const handleInteraction = () => {
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(() => {
-        setIsPressed(false);
-        onClick();
-      }, 800);
-    } else {
-      onClick();
-    }
-  };
-
-  return (
-    <button
-      onClick={handleInteraction}
-      className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center ${isPressed ? 'is-pressed border-[#00F0FF]/50 bg-white/10' : ''}`}
-    >
-      <BookOpen className={`w-8 h-8 mx-auto mb-3 transition-colors ${isPressed ? 'text-[#00F0FF]' : 'text-gray-500 group-hover:text-[#00F0FF]'}`} />
-      <span className="font-bold text-white">{sub}</span>
-    </button>
-  );
-};
-
 export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   isOpen,
   onClose,
@@ -86,7 +56,6 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   allowMultiple = false,
   onSelectMultiple
 }) => {
-  const { isSmartPanelMode } = usePracticeStore();
   const [files, setFiles] = useState<DashboardFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,13 +80,17 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
       const response = await fetch('/api/content');
       const data = await response.json();
       const resources = (data.resources || []).map((file: any) => {
-        // Cloudinary context can be directly in context or under context.custom
         const meta = file.context?.custom || file.context || {};
+        
+        const getMeta = (key: string) => {
+          const k = Object.keys(meta).find(k => k.toLowerCase() === key.toLowerCase());
+          return k ? meta[k] : undefined;
+        };
         
         // Derive a better name if title is missing
         const deriveName = () => {
-          const title = meta.title || meta.Title;
-          if (title && title.length > 1) return title;
+          const rawTitle = getMeta('title');
+          if (rawTitle && rawTitle.length > 2) return rawTitle;
           
           // Try to get name from public_id or filename
           const rawName = file.filename || file.public_id.split('/').pop() || "";
@@ -125,6 +98,7 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
           // Check if it's likely a hash (long string of random chars)
           const isHash = (text: string) => {
             if (text.length < 15) return false;
+            // If it has no spaces, underscores, or hyphens and is long, it's likely a hash
             return !/[_\-\s]/.test(text) && /[a-z]/.test(text) && /[0-9]/.test(text);
           };
           
@@ -142,8 +116,10 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
           }
           
           // Fallback to subject or generic name
-          if (meta.subject) return `${meta.subject} Resource`;
-          if (meta.class) return `${meta.class} Material`;
+          const subject = getMeta('subject');
+          const className = getMeta('class');
+          if (subject) return `${subject} Resource`;
+          if (className) return `${className} Material`;
           return "Educational Document";
         };
 
@@ -151,11 +127,9 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
           ...file,
           id: file.public_id,
           name: deriveName(),
-          type: meta.fileType || file.format?.toUpperCase() || "Document",
+          type: getMeta('fileType') || file.format?.toUpperCase() || "Document",
           url: file.secure_url,
-          createdAt: file.created_at,
-          // Store meta directly for easier access in filtering
-          meta: meta
+          createdAt: file.created_at
         };
       });
       setFiles(resources);
@@ -168,29 +142,34 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
 
   const getFilteredFiles = () => {
     return files.filter(file => {
-      const meta = file.meta || {};
+      const meta = file.context?.custom || file.context || {};
+      
+      const getMeta = (key: string) => {
+        const k = Object.keys(meta).find(k => k.toLowerCase() === key.toLowerCase());
+        return k ? meta[k] : undefined;
+      };
+      
       const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
       
       if (selectedCategory === 'AI Generated') {
-        const isAI = meta.teacher === 'AI Assistant' || 
-                     meta.description?.toLowerCase().includes('ai-generated') ||
-                     meta.tags?.toLowerCase().includes('ai') ||
-                     meta.title?.toLowerCase().includes('ai') ||
-                     meta.isAI === 'true' || meta.isAI === true;
+        const teacher = getMeta('teacher');
+        const desc = getMeta('description');
+        const tags = getMeta('tags');
+        const title = getMeta('title');
+        const isAI = teacher === 'AI Assistant' || 
+                     desc?.toLowerCase().includes('ai-generated') ||
+                     tags?.toLowerCase().includes('ai') ||
+                     title?.toLowerCase().includes('ai') ||
+                     getMeta('isAI');
         if (!isAI) return false;
       } else if (selectedCategory && selectedCategory !== 'All Content') {
-        // Handle potential case sensitivity or extra spaces
-        const fileClass = (meta.class || meta.className || meta.Class || "").toString().trim().toLowerCase();
-        const targetClass = selectedCategory.toString().trim().toLowerCase();
-        
-        // Also check if the category name is part of the class string (e.g. "Class 10" in "Class 10 - Science")
-        if (!fileClass.includes(targetClass) && !targetClass.includes(fileClass)) return false;
+        const className = getMeta('class');
+        if (className?.trim() !== selectedCategory) return false;
       }
 
       if (selectedSubject) {
-        const fileSubject = (meta.subject || meta.Subject || "").toString().trim().toLowerCase();
-        const targetSubject = selectedSubject.toString().trim().toLowerCase();
-        if (!fileSubject.includes(targetSubject) && !targetSubject.includes(fileSubject)) return false;
+        const subject = getMeta('subject');
+        if (subject?.trim() !== selectedSubject) return false;
       }
 
       return matchesSearch;
@@ -232,9 +211,9 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <motion.div 
-        initial={isSmartPanelMode ? false : { opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={isSmartPanelMode ? undefined : { opacity: 0, scale: 0.95, y: 20 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)]"
       >
         {/* Header */}
@@ -356,22 +335,28 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
                   className="grid grid-cols-2 sm:grid-cols-3 gap-4"
                 >
                   {SUBJECTS.map(sub => (
-                    <SubjectButton
+                    <button
                       key={sub}
-                      sub={sub}
                       onClick={() => {
                         setSelectedSubject(sub);
                         setView('files');
                       }}
-                    />
+                      className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center"
+                    >
+                      <BookOpen className="w-8 h-8 text-gray-500 group-hover:text-[#00F0FF] mx-auto mb-3 transition-colors" />
+                      <span className="font-bold text-white">{sub}</span>
+                    </button>
                   ))}
-                  <SubjectButton
-                    sub="All Subjects"
+                  <button
                     onClick={() => {
                       setSelectedSubject(null);
                       setView('files');
                     }}
-                  />
+                    className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-[#00F0FF]/50 hover:bg-white/10 transition-all group text-center"
+                  >
+                    <Filter className="w-8 h-8 text-gray-500 group-hover:text-[#00F0FF] mx-auto mb-3 transition-colors" />
+                    <span className="font-bold text-white">All Subjects</span>
+                  </button>
                 </motion.div>
               )}
 
@@ -395,15 +380,56 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
                       </button>
                     </div>
                   ) : (
-                    filteredFiles.map((file, index) => (
-                      <FileItem 
-                        key={file.id || `file-${index}`}
-                        file={file}
-                        isSelected={selectedFiles.find(f => f.id === file.id)}
-                        allowMultiple={allowMultiple}
-                        onClick={() => handleFileClick(file)}
-                      />
-                    ))
+                    filteredFiles.map((file, index) => {
+                      const isSelected = selectedFiles.find(f => f.id === file.id);
+                      const meta = file.context?.custom || file.context || {};
+                      const getMeta = (key: string) => {
+                        const k = Object.keys(meta).find(k => k.toLowerCase() === key.toLowerCase());
+                        return k ? meta[k] : undefined;
+                      };
+                      const subject = getMeta('subject');
+
+                      return (
+                        <button
+                          key={file.id || `file-${index}`}
+                          onClick={() => handleFileClick(file)}
+                          className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
+                            isSelected 
+                              ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 shadow-[0_0_15px_rgba(0,240,255,0.1)]' 
+                              : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className={`p-3 rounded-xl transition-colors ${
+                            isSelected ? 'bg-[#00F0FF] text-black' : 'bg-white/5 text-gray-400 group-hover:text-white'
+                          }`}>
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-white truncate">{file.name}</div>
+                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                              <span className="px-1.5 py-0.5 rounded bg-white/5">{file.type || 'Document'}</span>
+                              <span>•</span>
+                              <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+                              {subject && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-[#B026FF]">{subject}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {allowMultiple ? (
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                              isSelected ? 'bg-[#00F0FF] border-[#00F0FF]' : 'border-white/20'
+                            }`}>
+                              {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
+                            </div>
+                          ) : (
+                            <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" />
+                          )}
+                        </button>
+                      );
+                    })
                   )}
                 </motion.div>
               )}
@@ -415,92 +441,18 @@ export const DashboardFileSelector: React.FC<DashboardFileSelectorProps> = ({
   );
 };
 
-const CategoryCard = ({ title, icon, color, onClick }: any) => {
-  const [isPressed, setIsPressed] = useState(false);
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-
-  const handleInteraction = () => {
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(() => {
-        setIsPressed(false);
-        onClick();
-      }, 800);
-    } else {
-      onClick();
-    }
-  };
-
-  return (
-    <button
-      onClick={handleInteraction}
-      className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all group text-left relative overflow-hidden ${isPressed ? 'is-pressed border-white/30 bg-white/10' : ''}`}
-    >
-      <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-100 group-[.is-pressed]:opacity-100 transition-opacity`} />
-      <div className="relative z-10">
-        <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-white group-[.is-pressed]:text-white mb-4 w-fit transition-colors">
-          {icon}
-        </div>
-        <h4 className="text-lg font-bold text-white">{title}</h4>
-        <p className="text-xs text-gray-500 group-hover:text-gray-400 group-[.is-pressed]:text-gray-400 transition-colors">Browse resources in this category</p>
+const CategoryCard = ({ title, icon, color, onClick }: any) => (
+  <button
+    onClick={onClick}
+    className={`p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all group text-left relative overflow-hidden`}
+  >
+    <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-0 group-hover:opacity-100 transition-opacity`} />
+    <div className="relative z-10">
+      <div className="p-3 rounded-xl bg-white/5 text-gray-400 group-hover:text-white mb-4 w-fit transition-colors">
+        {icon}
       </div>
-    </button>
-  );
-};
-
-const FileItem = ({ file, isSelected, allowMultiple, onClick }: any) => {
-  const [isPressed, setIsPressed] = useState(false);
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-
-  const handleInteraction = () => {
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(() => {
-        setIsPressed(false);
-        onClick();
-      }, 800);
-    } else {
-      onClick();
-    }
-  };
-
-  return (
-    <button
-      onClick={handleInteraction}
-      className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
-        isSelected 
-          ? 'bg-[#00F0FF]/10 border-[#00F0FF]/50 shadow-[0_0_15px_rgba(0,240,255,0.1)]' 
-          : `bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10 ${isPressed ? 'is-pressed border-white/30 bg-white/10' : ''}`
-      }`}
-    >
-      <div className={`p-3 rounded-xl transition-colors ${
-        isSelected ? 'bg-[#00F0FF] text-black' : `bg-white/5 text-gray-400 group-hover:text-white group-[.is-pressed]:text-white ${isPressed ? 'bg-[#00F0FF] text-black' : ''}`
-      }`}>
-        <FileText className="w-6 h-6" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-bold text-white truncate">{file.name}</div>
-        <div className="text-xs text-gray-500 flex items-center gap-2">
-          <span className="px-1.5 py-0.5 rounded bg-white/5">{file.type || 'Document'}</span>
-          <span>•</span>
-          <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-          {file.context?.custom?.subject && (
-            <>
-              <span>•</span>
-              <span className="text-[#B026FF]">{file.context.custom.subject}</span>
-            </>
-          )}
-        </div>
-      </div>
-      {allowMultiple ? (
-        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-          isSelected ? 'bg-[#00F0FF] border-[#00F0FF]' : 'border-white/20'
-        }`}>
-          {isSelected && <div className="w-2 h-2 bg-black rounded-full" />}
-        </div>
-      ) : (
-        <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white group-[.is-pressed]:text-white transition-colors" />
-      )}
-    </button>
-  );
-};
+      <h4 className="text-lg font-bold text-white">{title}</h4>
+      <p className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">Browse resources in this category</p>
+    </div>
+  </button>
+);

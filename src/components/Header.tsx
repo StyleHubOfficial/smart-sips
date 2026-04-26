@@ -14,6 +14,7 @@ interface HeaderProps {
   isNotificationsOpen: boolean;
   setIsNotificationsOpen: (open: boolean) => void;
   isRevealing?: boolean;
+  containerRef?: React.RefObject<HTMLElement>;
 }
 
 export default function Header({ 
@@ -22,7 +23,8 @@ export default function Header({
   onOpenLogin, 
   isNotificationsOpen, 
   setIsNotificationsOpen, 
-  isRevealing
+  isRevealing,
+  containerRef
 }: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -84,18 +86,16 @@ export default function Header({
         />
       )}
       <motion.header 
-        initial={{ y: isSmartPanelMode ? 0 : -100, opacity: 0 }}
+        initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={isSmartPanelMode ? { duration: 0.2 } : { duration: 0.8, ease: "easeOut" }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
         className="glass-panel sticky top-0 z-50 px-6 py-4 flex items-center justify-between border-b border-white/5"
       >
       <div className="flex items-center gap-4">
         <div className="relative group cursor-pointer">
-          {!isSmartPanelMode && (
-            <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-          )}
+          <div className="absolute -inset-2 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
           <div className="relative flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] ${isSmartPanelMode ? '' : 'shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] shadow-[0_0_20px_rgba(0,240,255,0.4)]">
               <div className="w-full h-full bg-[#0E0E12] rounded-full flex items-center justify-center overflow-hidden">
                 {logo ? (
                   <img 
@@ -126,23 +126,6 @@ export default function Header({
         </div>
 
         <div className="flex items-center gap-2">
-          {isAuthenticated && (
-            <div className="relative group">
-              <button 
-                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className={`p-2.5 rounded-xl transition-all duration-300 relative ${isNotificationsOpen ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
-              >
-                <Bell className="w-5 h-5" />
-                {notifications.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                )}
-              </button>
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Notifications
-              </div>
-            </div>
-          )}
-          
           {isAuthenticated ? (
             <div className="relative group">
               <button 
@@ -176,11 +159,7 @@ export default function Header({
 
           <div className="relative group">
             <button 
-              onClick={() => {
-                const nextMode = !isSmartPanelMode;
-                setIsSmartPanelMode(nextMode);
-                localStorage.setItem('sunrise_manual_smart_panel', 'true');
-              }}
+              onClick={() => setIsSmartPanelMode(!isSmartPanelMode)}
               className={`p-2.5 rounded-xl transition-all duration-300 ${isSmartPanelMode ? 'bg-[#00F0FF]/20 text-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'bg-white/5 text-[var(--color-text-muted)] hover:bg-white/10 hover:text-[var(--color-text)]'}`}
             >
               <Monitor className="w-5 h-5" />

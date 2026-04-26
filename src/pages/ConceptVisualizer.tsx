@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Sparkles, Loader2, Maximize2, Minimize2, FileText, X, Plus, Share2, Wand2, Image as ImageIcon, Upload, Database, ChevronRight } from 'lucide-react';
 import { useNotificationStore } from '../store/useNotificationStore';
@@ -18,10 +16,8 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { GoogleGenAI } from '@google/genai';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
-import { usePracticeStore } from '../store/usePracticeStore';
 
 export default function ConceptVisualizer() {
-  const { isSmartPanelMode } = usePracticeStore();
   const {
     query,
     sourceFile,
@@ -43,18 +39,14 @@ export default function ConceptVisualizer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
-  const isGenerating = tasks.some(t => (t.toolId === 'concept-visualizer' || t.toolId === 'visualizer') && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for Concept Visualizer
-    const visualizerTask = tasks.find(t => (t.toolId === 'concept-visualizer' || t.toolId === 'visualizer'));
-    if (visualizerTask) {
-      if (visualizerTask.status === 'completed' && !visualizerData) {
-        useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
-        if (visualizerTask.query) setQuery(visualizerTask.query);
-      }
+    const visualizerTask = tasks.find(t => t.toolId === 'concept-visualizer' && t.status === 'completed');
+    if (visualizerTask && !visualizerData) {
+      useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
     }
-  }, [tasks, visualizerData, setQuery]);
+  }, [tasks, visualizerData]);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
@@ -318,37 +310,30 @@ export default function ConceptVisualizer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <Helmet>
-        <title>Concept Visualizer | Smart Sunrise</title>
-        <meta name="description" content="Generate educational diagrams and visual structures from any topic or document with our AI Concept Visualizer." />
-      </Helmet>
-      <motion.div
-        initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={isSmartPanelMode ? undefined : { opacity: 0, y: -20 }}
-        className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-      >
-        <LazySection>
-          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
-                <ImageIcon className="w-8 h-8 text-black" />
-              </div>
-              <div>
-                <h2 className="text-3xl md:text-5xl font-display font-bold">
-                  Concept <span className="text-gradient">Visualizer</span>
-                </h2>
-                <p className="text-gray-400">Generate educational diagrams and visual structures</p>
-              </div>
-            </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+    >
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)]">
+            <ImageIcon className="w-8 h-8 text-black" />
           </div>
-        </LazySection>
+          <div>
+            <h2 className="text-3xl md:text-5xl font-display font-bold">
+              Concept <span className="text-gradient">Visualizer</span>
+            </h2>
+            <p className="text-gray-400">Generate educational diagrams and visual structures</p>
+          </div>
+        </div>
+      </div>
 
       {/* Templates Section */}
       {!loading && !visualizerData && (
         <motion.div 
-          initial={isSmartPanelMode ? false : { opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-12"
         >
@@ -384,9 +369,10 @@ export default function ConceptVisualizer() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
-                <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
-                <option value="gemini-3.1-flash-lite-preview">Medium Quality (G3.1 Lite)</option>
-                <option value="gemini-2.5-flash">Fast (G2.5 Flash)</option>
+                <option value="gemma-2-2b-it">Gemma 4 (New & Smart) ✨</option>
+              <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+              <option value="gemini-2.5-flash">Medium Quality (G2.5 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (G3.1 Lite)</option>
               </select>
             </div>
 
@@ -422,7 +408,7 @@ export default function ConceptVisualizer() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Quantum Entanglement, Mitosis, Black Holes..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-48"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
                 />
                 <button 
                   onClick={handlePromptBuild}
@@ -463,11 +449,11 @@ export default function ConceptVisualizer() {
 
               <button
                 onClick={handleGenerate}
-                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
+                disabled={loading || (!query.trim() && !sourceFile)}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
               >
-                {loading || isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
-                {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : 'Generate Diagrams'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                {loading ? 'Generating...' : 'Generate Diagrams'}
               </button>
             </div>
           </div>
@@ -516,11 +502,11 @@ export default function ConceptVisualizer() {
 
             {/* Content */}
             <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
-              {loading || isGenerating ? (
+              {loading ? (
                 <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
                   <div className="w-full max-w-md space-y-2 text-center">
-                    <span className="text-xs font-mono text-[#00F0FF]">{isGenerating ? 'Background Generating...' : 'Generating Educational Diagrams...'}</span>
+                    <span className="text-xs font-mono text-[#00F0FF]">Generating Educational Diagrams...</span>
                   </div>
                 </div>
               ) : visualizerData ? (
@@ -576,7 +562,6 @@ export default function ConceptVisualizer() {
         onClose={() => setShowUploadModal(false)}
         onUpload={handleUploadToCourses}
       />
-      </motion.div>
-    </div>
+    </motion.div>
   );
 }

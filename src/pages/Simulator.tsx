@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Download, Play, Box, Layers, MonitorPlay, Save, Trash2, History, ChevronRight, Share2, FlaskConical, Atom, FileText, X, Plus, MessageSquare, Volume2, VolumeX, Wand2, Database, Upload, Settings } from 'lucide-react';
 import UploadToCoursesModal from '../components/UploadToCoursesModal';
@@ -9,7 +7,6 @@ import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
-import { usePracticeStore } from '../store/usePracticeStore';
 import SimLoader from '../components/SimLoader';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 import { useLocation } from 'react-router-dom';
@@ -19,7 +16,6 @@ import { pcmToWav } from '../utils/audio';
 import { GoogleGenAI } from '@google/genai';
 
 export default function Simulator() {
-  const { isSmartPanelMode } = usePracticeStore();
   const { 
     query, generatedCode, loading, model, mode, savedSimulations, subject, sourceFile,
     setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation, setSubject, setSourceFile
@@ -67,18 +63,14 @@ export default function Simulator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
-  const isGenerating = tasks.some(t => t.toolId === 'simulator' && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for Simulator
-    const simulatorTask = tasks.find(t => t.toolId === 'simulator');
-    if (simulatorTask) {
-      if (simulatorTask.status === 'completed' && !generatedCode) {
-        setGeneratedCode(simulatorTask.result);
-        if (simulatorTask.query) setQuery(simulatorTask.query);
-      }
+    const simulatorTask = tasks.find(t => t.toolId === 'simulator' && t.status === 'completed');
+    if (simulatorTask && !generatedCode) {
+      setGeneratedCode(simulatorTask.result);
     }
-  }, [tasks, generatedCode, setGeneratedCode, setQuery]);
+  }, [tasks, generatedCode, setGeneratedCode]);
 
   const handleExplain = async () => {
     if (!generatedCode) return;
@@ -360,19 +352,13 @@ export default function Simulator() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <Helmet>
-        <title>AI Virtual Laboratory | Smart Sunrise</title>
-        <meta name="description" content="Generate interactive science experiments from any topic or document with our AI Virtual Laboratory." />
-      </Helmet>
-      <motion.div 
-        initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
-        className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-      >
-        <LazySection>
-          <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+    >
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.3)] shrink-0">
             <FlaskConical className="w-6 h-6 md:w-8 md:h-8 text-black" />
@@ -385,8 +371,6 @@ export default function Simulator() {
             <p className="text-sm md:text-base text-gray-400">Generate interactive science experiments from any topic or document</p>
           </div>
         </div>
-      </div>
-      </LazySection>
 
         <div className="flex flex-wrap items-center gap-3 md:gap-4">
           <div className="flex p-1 bg-black/40 rounded-xl border border-white/10 shrink-0">
@@ -434,13 +418,14 @@ export default function Simulator() {
             )}
           </button>
         </div>
+      </div>
 
       <AnimatePresence>
         {showHistory && (
           <motion.div
-            initial={isSmartPanelMode ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+            initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            exit={isSmartPanelMode ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
+            exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden mb-8"
           >
             <div className="glass-panel rounded-2xl p-6 border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -482,10 +467,10 @@ export default function Simulator() {
         )}
       </AnimatePresence>
 
-      <div className="p-4 md:p-8 space-y-8">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 custom-scrollbar">
         {/* Controls Section (Input Area) - NOW AT THE TOP */}
-        <div className={`glass-panel rounded-3xl p-6 md:p-8 border border-white/10 relative overflow-hidden ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.3)]'}`}>
-          {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>}
+        <div className="glass-panel rounded-3xl p-6 md:p-8 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
           
           <div className="flex flex-col gap-6 relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -531,7 +516,7 @@ export default function Simulator() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={sourceFile ? `Generating based on ${sourceFile.name}...` : "e.g., 'Projectile motion with air resistance', 'Chemical bonding of NaCl'..."}
-                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 transition-all min-h-[180px] resize-none pr-14 text-lg leading-relaxed"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-5 text-white placeholder-gray-600 focus:outline-none focus:border-[#00F0FF]/50 transition-all min-h-[120px] resize-none pr-14 text-lg leading-relaxed"
               />
               <button 
                 onClick={handlePromptBuild}
@@ -545,9 +530,9 @@ export default function Simulator() {
 
             {sourceFile && (
               <motion.div 
-                initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex items-center justify-between p-4 rounded-2xl border ${isSmartPanelMode ? 'bg-[#00F0FF]/10 border-[#00F0FF]/30' : 'bg-[#00F0FF]/10 border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]'}`}
+                className="flex items-center justify-between p-4 rounded-2xl bg-[#00F0FF]/10 border border-[#00F0FF]/30 shadow-[0_0_20px_rgba(0,240,255,0.1)]"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 rounded-lg bg-[#00F0FF]/20">
@@ -610,22 +595,23 @@ export default function Simulator() {
                     onChange={(e) => setModel(e.target.value)}
                     className="bg-black/40 border border-white/10 rounded-xl px-4 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-[#B026FF]/50 transition-all cursor-pointer"
                   >
-                    <option value="gemini-3-flash-preview">G3 Flash (HQ)</option>
-                    <option value="gemini-3.1-flash-lite-preview">G3.1 Lite (Med)</option>
-                    <option value="gemini-2.5-flash">G2.5 Flash (Fast)</option>
+                    <option value="gemma-2-2b-it">Gemma 4 (New & Smart) ✨</option>
+              <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+              <option value="gemini-2.5-flash">Medium Quality (G2.5 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (G3.1 Lite)</option>
                   </select>
                 </div>
               </div>
 
               <button 
                 onClick={handleGenerate}
-                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
+                disabled={loading || (!query.trim() && !sourceFile)}
                 className="w-full md:w-auto flex items-center justify-center gap-3 px-10 py-4 rounded-2xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-black shadow-[0_0_30px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(176,38,255,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
               >
-                {loading || isGenerating ? (
+                {loading ? (
                   <>
                     <Loader2 className="w-6 h-6 animate-spin" />
-                    <span className="uppercase tracking-widest">{isGenerating ? 'Background Generating...' : 'Generating...'}</span>
+                    <span className="uppercase tracking-widest">Generating...</span>
                   </>
                 ) : (
                   <>
@@ -640,13 +626,13 @@ export default function Simulator() {
 
         {/* Simulation Area */}
         <div className="space-y-6">
-          {(loading || isGenerating) && (
+          {loading && (
             <div className="py-12">
               <SimLoader />
             </div>
           )}
 
-          {!(loading || isGenerating) && generatedCode && (
+          {!loading && generatedCode && (
             <div className="space-y-8">
               {/* 1. Simulation View */}
               <div className="space-y-3">
@@ -654,9 +640,9 @@ export default function Simulator() {
                   <Box className="w-3 h-3" /> Simulation Model
                 </div>
                 <motion.div 
-                  initial={isSmartPanelMode ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.98 }}
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className={`relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 bg-black ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.5)]'}`}
+                  className="relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-black"
                 >
                   <iframe 
                     ref={iframeRef}
@@ -741,7 +727,7 @@ export default function Simulator() {
                   <Settings className="w-3 h-3" /> Interactive Controls
                 </div>
                 <motion.div 
-                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1"
                 >
@@ -759,9 +745,9 @@ export default function Simulator() {
                   <FlaskConical className="w-3 h-3" /> Scientific Theory & Explanation
                 </div>
                 <motion.div 
-                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(176,38,255,0.1)]'}`}
+                  className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a0a0a] p-1 shadow-[0_0_50px_rgba(176,38,255,0.1)]"
                 >
                   <iframe 
                     srcDoc={generatedCode + `
@@ -817,13 +803,13 @@ export default function Simulator() {
       <AnimatePresence>
         {showExplainer && (
           <motion.div 
-            initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            exit={{ opacity: 0, y: 20 }}
             className="w-full mt-6"
           >
-            <div className={`glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 relative overflow-hidden bg-black/80 ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(240,0,255,0.15)] backdrop-blur-xl'}`}>
-              {!isSmartPanelMode && <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>}
+            <div className="glass-panel rounded-3xl p-6 border border-[#00F0FF]/30 shadow-[0_0_50px_rgba(240,0,255,0.15)] relative overflow-hidden bg-black/80 backdrop-blur-xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#00F0FF]/5 to-[#B026FF]/5 pointer-events-none"></div>
               
               <div className="flex items-center justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-2">
@@ -923,6 +909,5 @@ export default function Simulator() {
         title="Select Simulation Source"
       />
     </motion.div>
-    </div>
   );
 }

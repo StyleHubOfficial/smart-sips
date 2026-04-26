@@ -21,7 +21,6 @@ interface AppState {
   maintenanceAlerts: MaintenanceAlert[];
   onlineTimes: Record<string, string>;
   isGlowEnabled: boolean;
-  isSmartPanelMode: boolean;
   viewedContent: string[];
   
   addSiteNotification: (notif: Omit<SiteNotification, 'id' | 'timestamp'>) => void;
@@ -32,7 +31,6 @@ interface AppState {
   setMaintenanceAlert: (alert: MaintenanceAlert) => void;
   removeMaintenanceAlert: (id: string) => void;
   toggleGlow: () => void;
-  toggleSmartPanelMode: () => void;
   markContentAsViewed: (contentId: string) => void;
   resetApp: () => void;
 }
@@ -44,7 +42,6 @@ export const useAppStore = create<AppState>()(
       maintenanceAlerts: [],
       onlineTimes: {},
       isGlowEnabled: false,
-      isSmartPanelMode: false,
       viewedContent: [],
       
       addSiteNotification: (notif) => set((state) => ({
@@ -78,7 +75,6 @@ export const useAppStore = create<AppState>()(
       })),
 
       toggleGlow: () => set((state) => ({ isGlowEnabled: !state.isGlowEnabled })),
-      toggleSmartPanelMode: () => set((state) => ({ isSmartPanelMode: !state.isSmartPanelMode })),
       
       markContentAsViewed: (contentId) => set((state) => ({
         viewedContent: state.viewedContent.includes(contentId) 
@@ -91,7 +87,6 @@ export const useAppStore = create<AppState>()(
         maintenanceAlerts: [],
         onlineTimes: {},
         isGlowEnabled: false,
-        isSmartPanelMode: false,
         viewedContent: []
       })
     }),

@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, BookOpen, BrainCircuit, History, Loader2, Download, FileText, CheckCircle, XCircle, ArrowRight, Bookmark, Sparkles, PenTool, Link as LinkIcon, Clock, Wand2, GraduationCap, HelpCircle, ArrowLeft } from 'lucide-react';
 import { PenPaperAnimation } from '../components/PenPaperAnimation';
@@ -16,7 +14,6 @@ import { BackButton } from '../components/BackButton';
 import { QuestionExporter } from '../components/QuestionExporter';
 import { useNavigate } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
-import { usePracticeStore } from '../store/usePracticeStore';
 
 interface PYQ {
   question_id: string;
@@ -32,44 +29,7 @@ interface PYQ {
   importance?: string;
 }
 
-const HistoryItem = ({ h, onClick }: { h: any, onClick: () => void }) => {
-  const [isPressed, setIsPressed] = useState(false);
-  const isSmartPanelMode = usePracticeStore(state => state.isSmartPanelMode);
-
-  const handleInteraction = () => {
-    if (isSmartPanelMode) {
-      setIsPressed(true);
-      setTimeout(() => {
-        setIsPressed(false);
-        onClick();
-      }, 800);
-    } else {
-      onClick();
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleInteraction}
-      className={`text-left p-4 rounded-xl bg-black/40 border border-white/5 hover:border-[#00F0FF]/30 transition-all group relative overflow-hidden ${isPressed ? 'is-pressed border-[#00F0FF]/30' : ''}`}
-    >
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-xs font-bold text-[#00F0FF] truncate max-w-[150px]">{h.exam || 'Custom Search'}</span>
-        <span className="text-[10px] text-gray-500">{new Date(h.date).toLocaleDateString()}</span>
-      </div>
-      <div className="space-y-1">
-        <p className="text-[10px] text-gray-300 font-medium truncate">{h.subject} • {h.topic || 'General'}</p>
-        {h.userPrompt && (
-          <p className="text-[10px] text-gray-500 italic truncate">"{h.userPrompt}"</p>
-        )}
-      </div>
-    </button>
-  );
-};
-
 export default function PYQEngine() {
-  const { isSmartPanelMode } = usePracticeStore();
   const [exam, setExam] = useState('');
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
@@ -115,24 +75,16 @@ export default function PYQEngine() {
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const { tasks } = useGenerationStore();
-  const isGenerating = tasks.some(t => t.toolId === 'pyq-engine' && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for PYQ Engine
-    const pyqTask = tasks.find(t => t.toolId === 'pyq-engine');
-    if (pyqTask) {
-      if (pyqTask.status === 'completed' && results.length === 0) {
-        try {
-          const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
-          setResults(parsedResults);
-          sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
-          if (pyqTask.query) setUserPrompt(pyqTask.query);
-        } catch (e) {
-          console.error("Failed to parse background PYQ results", e);
-        }
-      }
+    const pyqTask = tasks.find(t => t.toolId === 'pyq-engine' && t.status === 'completed');
+    if (pyqTask && results.length === 0) {
+      const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
+      setResults(parsedResults);
+      sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
     }
-  }, [tasks, results, setUserPrompt]);
+  }, [tasks, results]);
 
   useEffect(() => {
     const savedResults = sessionStorage.getItem('pyq_generated_results');
@@ -530,35 +482,29 @@ export default function PYQEngine() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <Helmet>
-        <title>Global PYQ Engine | Smart Sunrise</title>
-        <meta name="description" content="Intelligently discover, extract, and analyze previous year questions from across the web." />
-      </Helmet>
       <div className="max-w-7xl mx-auto space-y-8">
         
         <BackButton label="Back" />
 
         {/* Header */}
-        <LazySection>
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-white/10 mb-4">
-              <Search className="w-8 h-8 text-[#00F0FF]" />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight">
-              Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF]">PYQ Engine</span>
-            </h1>
-            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-              Intelligently discover, extract, and analyze previous year questions from across the web.
-            </p>
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border border-white/10 mb-4">
+            <Search className="w-8 h-8 text-[#00F0FF]" />
           </div>
-        </LazySection>
+          <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight">
+            Global <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00F0FF] to-[#B026FF]">PYQ Engine</span>
+          </h1>
+          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+            Intelligently discover, extract, and analyze previous year questions from across the web.
+          </p>
+        </div>
 
         {/* Search Form */}
         <motion.form 
-          initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           onSubmit={handleSearch}
-          className={`glass-panel p-6 rounded-3xl border border-white/10 max-w-4xl mx-auto relative ${isSmartPanelMode ? '' : 'shadow-[0_0_50px_rgba(0,0,0,0.5)]'}`}
+          className="glass-panel p-6 rounded-3xl border border-white/10 max-w-4xl mx-auto relative"
         >
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-3">
@@ -614,9 +560,9 @@ export default function PYQEngine() {
           <AnimatePresence>
             {showHistory && (
               <motion.div 
-                initial={isSmartPanelMode ? { opacity: 1, height: 'auto', marginBottom: 24 } : { opacity: 0, height: 0, marginBottom: 0 }}
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-                exit={isSmartPanelMode ? { opacity: 1, height: 'auto', marginBottom: 24 } : { opacity: 0, height: 0, marginBottom: 0 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 className="overflow-hidden"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
@@ -627,14 +573,26 @@ export default function PYQEngine() {
                     </div>
                   ) : (
                     searchHistory.map((h, idx) => (
-                      <HistoryItem 
-                        key={h.date} 
-                        h={h} 
+                      <button
+                        key={h.date}
+                        type="button"
                         onClick={() => {
                           setShowHistory(false);
                           handleSearch(undefined, h);
-                        }} 
-                      />
+                        }}
+                        className="text-left p-4 rounded-xl bg-black/40 border border-white/5 hover:border-[#00F0FF]/30 transition-all group relative overflow-hidden"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-[#00F0FF] truncate max-w-[150px]">{h.exam || 'Custom Search'}</span>
+                          <span className="text-[10px] text-gray-500">{new Date(h.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-gray-300 font-medium truncate">{h.subject} • {h.topic || 'General'}</p>
+                          {h.userPrompt && (
+                            <p className="text-[10px] text-gray-500 italic truncate">"{h.userPrompt}"</p>
+                          )}
+                        </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -749,9 +707,10 @@ export default function PYQEngine() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-colors appearance-none"
               >
-                <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
-                <option value="gemini-3.1-flash-lite-preview">Medium Quality (G3.1 Lite)</option>
-                <option value="gemini-2.5-flash">Fast (G2.5 Flash)</option>
+                <option value="gemma-2-2b-it">Gemma 4 (New & Smart) ✨</option>
+              <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+              <option value="gemini-2.5-flash">Medium Quality (G2.5 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (G3.1 Lite)</option>
               </select>
             </div>
             <div className="space-y-2 lg:col-span-2">
@@ -795,11 +754,11 @@ export default function PYQEngine() {
           <div className="mt-6 flex justify-end">
             <button 
               type="submit"
-              disabled={isSearching || isExtracting || isGenerating}
-              className={`px-8 py-3 rounded-xl text-white font-bold transition-all disabled:opacity-50 flex items-center gap-2 ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
+              disabled={isSearching || isExtracting}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center gap-2"
             >
-              {isSearching || isExtracting || isGenerating ? (
-                <>{!isSmartPanelMode && <PenPaperAnimation size={20} />} {isGenerating ? 'Background Generating...' : 'Processing...'}</>
+              {isSearching || isExtracting ? (
+                <><PenPaperAnimation size={20} /> Processing...</>
               ) : (
                 <><Search className="w-5 h-5" /> Discover PYQs</>
               )}
@@ -808,16 +767,16 @@ export default function PYQEngine() {
         </motion.form>
 
         {/* Pipeline Status */}
-        {(isSearching || isExtracting || isGenerating || searchQueries.length > 0) && (
+        {(isSearching || isExtracting || searchQueries.length > 0) && (
           <motion.div 
-            initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+            initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             className="max-w-4xl mx-auto space-y-4"
           >
             <div className="flex items-center gap-4 text-sm">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching || isGenerating ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
-                {isSearching || isGenerating ? (!isSmartPanelMode ? <PenPaperAnimation /> : <Loader2 className="w-4 h-4 animate-spin" />) : <CheckCircle className="w-4 h-4" />}
-                {isGenerating ? 'AI Background Generation' : 'Generating Queries'}
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isSearching ? 'bg-[#00F0FF]/10 text-[#00F0FF] border-[#00F0FF]/30' : searchQueries.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
+                {isSearching ? <PenPaperAnimation /> : <CheckCircle className="w-4 h-4" />}
+                Generating Queries
               </div>
               <ArrowRight className="w-4 h-4 text-gray-600" />
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${isExtracting ? 'bg-[#B026FF]/10 text-[#B026FF] border-[#B026FF]/30' : results.length > 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-white/5 text-gray-500 border-white/10'}`}>
@@ -905,9 +864,9 @@ export default function PYQEngine() {
                 return (
                 <motion.div 
                   key={uniqueKey}
-                  initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: isSmartPanelMode ? 0 : index * 0.1 }}
+                  transition={{ delay: index * 0.1 }}
                   className="glass-panel rounded-3xl border border-white/10 overflow-hidden"
                 >
                   {/* Card Header */}
@@ -999,9 +958,9 @@ export default function PYQEngine() {
                   <AnimatePresence>
                     {activeSolution === q.question_id && (
                       <motion.div 
-                        initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                        exit={{ opacity: 0, height: 0 }}
                         className="border-t border-[#00F0FF]/20 bg-[#00F0FF]/5 p-6"
                       >
                         <h4 className="text-[#00F0FF] font-bold mb-4 flex items-center gap-2">
@@ -1022,9 +981,9 @@ export default function PYQEngine() {
 
                     {activeSimilar === q.question_id && (
                       <motion.div 
-                        initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                        initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                        exit={{ opacity: 0, height: 0 }}
                         className="border-t border-[#B026FF]/20 bg-[#B026FF]/5 p-6"
                       >
                         <h4 className="text-[#B026FF] font-bold mb-4 flex items-center gap-2">

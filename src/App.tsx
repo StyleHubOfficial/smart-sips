@@ -1,40 +1,34 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import { ArrowUp, Zap } from "lucide-react";
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { HelmetProvider, Helmet } from "react-helmet-async";
-import { useAppStore } from "./store/useAppStore";
-import { useThemeStore } from "./store/useThemeStore";
-
+import Home from "./pages/Home";
+import Courses from "./pages/Courses";
+import QuestionsArena from "./pages/QuestionsArena";
+import AIGenerators from "./pages/AIGenerators";
+import Upload from "./pages/Upload";
+import Analytics from "./pages/Analytics";
 import Header from "./components/Header";
 import Navigation from "./components/Navigation";
 import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
 import GlobalUploadProgress from "./components/GlobalUploadProgress";
+import { useState, useEffect, useRef } from "react";
+import { useAppStore } from "./store/useAppStore";
+import { useThemeStore } from "./store/useThemeStore";
+
+import Practice from "./pages/Practice";
+import Simulator from "./pages/Simulator";
+import FlowChart from "./pages/FlowChart";
+import ConceptVisualizer from "./pages/ConceptVisualizer";
+import AIDeveloperPanel from "./pages/AIDeveloperPanel";
+import Teacher from "./pages/Teacher";
+import PYQEngine from "./pages/PYQEngine";
 import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
 import DeveloperCredit from "./components/DeveloperCredit";
 import { PageTransition } from "./components/PageTransition";
 import AutoSuggestModal from "./components/AutoSuggestModal";
-import { SkeletonCard } from "./components/LazySection";
-
-import { usePracticeStore } from "./store/usePracticeStore";
-
-// Lazy load pages
-const Home = lazy(() => import("./pages/Home"));
-const Courses = lazy(() => import("./pages/Courses"));
-const QuestionsArena = lazy(() => import("./pages/QuestionsArena"));
-const AIGenerators = lazy(() => import("./pages/AIGenerators"));
-const Upload = lazy(() => import("./pages/Upload"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Practice = lazy(() => import("./pages/Practice"));
-const Simulator = lazy(() => import("./pages/Simulator"));
-const FlowChart = lazy(() => import("./pages/FlowChart"));
-const ConceptVisualizer = lazy(() => import("./pages/ConceptVisualizer"));
-const AIDeveloperPanel = lazy(() => import("./pages/AIDeveloperPanel"));
-const Teacher = lazy(() => import("./pages/Teacher"));
-const PYQEngine = lazy(() => import("./pages/PYQEngine"));
 
 function AppContent({ 
   isSmartPanelMode, 
@@ -47,19 +41,27 @@ function AppContent({
 }: any) {
   const location = useLocation();
   const { isGlowEnabled } = useAppStore();
+  const mainRef = useRef<HTMLElement>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
+  // Scroll to top on route change natively for the window
   useEffect(() => {
-    let ticking = false;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (isSmartPanelMode) {
+      document.body.classList.add('smart-panel-mode');
+    } else {
+      document.body.classList.remove('smart-panel-mode');
+    }
+  }, [isSmartPanelMode]);
+
+  useEffect(() => {
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          setShowBackToTop(window.scrollY > 300);
-          ticking = false;
-        });
-        ticking = true;
-      }
+      setShowBackToTop(window.scrollY > 300);
     };
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -71,26 +73,19 @@ function AppContent({
   };
 
   return (
-    <div className={`min-h-screen bg-[var(--color-background)] text-[var(--color-text)] relative ${isSmartPanelMode ? 'text-lg' : ''} ${isGlowEnabled && !isSmartPanelMode ? 'glow-enabled' : ''}`}>
-      <Helmet>
-        <title>Smart Sunrise | Smart Classroom Platform</title>
-        <meta name="description" content="The ultimate smart classroom management and learning platform for modern educators and students." />
-        <link rel="canonical" href={window.location.origin + location.pathname} />
-      </Helmet>
-      {/* Animated background grid lines - disabled in smart panel mode */}
-      {!isSmartPanelMode && (
-        <div className="fixed inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none z-0"></div>
-      )}
+    <div className={`min-h-[100dvh] bg-[var(--color-background)] text-[var(--color-text)] relative overflow-x-hidden ${isSmartPanelMode ? 'text-lg' : ''} ${isGlowEnabled ? 'glow-enabled' : ''}`}>
+      {/* Animated background grid lines */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none fixed"></div>
       
-      {/* Subtle glowing dots - disabled in smart panel mode */}
-      {isGlowEnabled && !isSmartPanelMode && (
-        <>
-          <div className="fixed top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse z-0"></div>
-          <div className="fixed bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none animate-pulse z-0" style={{ animationDelay: '2s' }}></div>
-        </>
+      {/* Subtle glowing dots */}
+      {isGlowEnabled && (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00F0FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#B026FF] rounded-full mix-blend-screen filter blur-[150px] opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
       )}
 
-      <div className="relative z-10 flex flex-col min-h-screen">
+      <div className="relative z-10 flex flex-col min-h-[100dvh]">
         <Header 
           isSmartPanelMode={isSmartPanelMode} 
           setIsSmartPanelMode={setIsSmartPanelMode}
@@ -98,36 +93,27 @@ function AppContent({
           isNotificationsOpen={isNotificationsOpen}
           setIsNotificationsOpen={setIsNotificationsOpen}
           isRevealing={isRevealing}
+          containerRef={mainRef}
         />
         
-        <main className="flex-1 relative">
-          <Suspense fallback={
-            <div className="p-6 space-y-6 max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
-            </div>
-          }>
-            <AnimatePresence mode="wait">
-              <Routes location={location} key={location.pathname}>
-                <Route path="/" element={<PageTransition><Home /></PageTransition>} />
-                <Route path="/courses" element={<PageTransition><Courses /></PageTransition>} />
-                <Route path="/questions" element={<PageTransition><QuestionsArena /></PageTransition>} />
-                <Route path="/ai-generators" element={<PageTransition><AIGenerators /></PageTransition>} />
-                <Route path="/upload" element={<PageTransition><Upload onOpenLogin={() => setIsLoginModalOpen(true)} /></PageTransition>} />
-                <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
-                <Route path="/practice" element={<PageTransition><Practice /></PageTransition>} />
-                <Route path="/pyq" element={<PageTransition><PYQEngine /></PageTransition>} />
-                <Route path="/simulator" element={<PageTransition><Simulator /></PageTransition>} />
-                <Route path="/flowchart" element={<PageTransition><FlowChart /></PageTransition>} />
-                <Route path="/visualizer" element={<PageTransition><ConceptVisualizer /></PageTransition>} />
-                <Route path="/ai-developer" element={<PageTransition><AIDeveloperPanel /></PageTransition>} />
-                <Route path="/teacher" element={<PageTransition><Teacher /></PageTransition>} />
-              </Routes>
-            </AnimatePresence>
-          </Suspense>
+        <main ref={mainRef} className="flex-1 w-full relative">
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+              <Route path="/courses" element={<PageTransition><Courses /></PageTransition>} />
+              <Route path="/questions" element={<PageTransition><QuestionsArena /></PageTransition>} />
+              <Route path="/ai-generators" element={<PageTransition><AIGenerators /></PageTransition>} />
+              <Route path="/upload" element={<PageTransition><Upload onOpenLogin={() => setIsLoginModalOpen(true)} /></PageTransition>} />
+              <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
+              <Route path="/practice" element={<PageTransition><Practice /></PageTransition>} />
+              <Route path="/pyq" element={<PageTransition><PYQEngine /></PageTransition>} />
+              <Route path="/simulator" element={<PageTransition><Simulator /></PageTransition>} />
+              <Route path="/flowchart" element={<PageTransition><FlowChart /></PageTransition>} />
+              <Route path="/visualizer" element={<PageTransition><ConceptVisualizer /></PageTransition>} />
+              <Route path="/ai-developer" element={<PageTransition><AIDeveloperPanel /></PageTransition>} />
+              <Route path="/teacher" element={<PageTransition><Teacher /></PageTransition>} />
+            </Routes>
+          </AnimatePresence>
         </main>
 
         <Navigation />
@@ -135,7 +121,7 @@ function AppContent({
         <AIHelper />
         <GlobalUploadProgress />
         <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
-        {location.pathname === "/" && <Tutorial />}
+        <Tutorial />
         <AutoSuggestModal />
 
         <AnimatePresence>
@@ -158,7 +144,7 @@ function AppContent({
 }
 
 export default function App() {
-  const { isSmartPanelMode, setIsSmartPanelMode } = usePracticeStore();
+  const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [showEntryAnimation, setShowEntryAnimation] = useState(() => {
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
     return !isPermanentlySkipped;
@@ -185,32 +171,6 @@ export default function App() {
     }
   }, [theme]);
 
-  useEffect(() => {
-    if (isSmartPanelMode) {
-      document.documentElement.classList.add('smart-panel-mode');
-    } else {
-      document.documentElement.classList.remove('smart-panel-mode');
-    }
-  }, [isSmartPanelMode]);
-
-  // Automatic Smart Panel Mode detection for large screens
-  useEffect(() => {
-    const checkScreenSize = () => {
-      // If screen is large (>= 1280px) and smart panel mode is not explicitly set in this session
-      // We check if it's the first time or if it's false but the screen is huge
-      const isLargeScreen = window.innerWidth >= 1280;
-      const hasManuallyToggled = localStorage.getItem('sunrise_manual_smart_panel') === 'true';
-      
-      if (isLargeScreen && !isSmartPanelMode && !hasManuallyToggled) {
-        setIsSmartPanelMode(true);
-      }
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, [isSmartPanelMode, setIsSmartPanelMode]);
-
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (accessCode === "smart@sunrise" || accessCode === "ss123") {
@@ -233,72 +193,70 @@ export default function App() {
   };
 
   return (
-    <HelmetProvider>
-      <MotionConfig reducedMotion={(!isGlowEnabled || isSmartPanelMode) ? "always" : "never"}>
-        <AnimatePresence>
-          {showEntryAnimation && <IntroSequence key="intro" onComplete={handleIntroComplete} />}
-        </AnimatePresence>
-        <AnimatePresence>
-          {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
-        </AnimatePresence>
-        
-        <motion.div
-          initial={showEntryAnimation ? { clipPath: 'circle(0% at 0% 100%)' } : { clipPath: 'circle(150% at 0% 100%)' }}
-          animate={isRevealed ? { clipPath: 'circle(150% at 0% 100%)' } : {}}
-          transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
-          className="relative z-10"
-        >
-          {isUnlocked && (
-            <BrowserRouter>
-              <AppContent 
-                isSmartPanelMode={isSmartPanelMode}
-                setIsSmartPanelMode={setIsSmartPanelMode}
-                isLoginModalOpen={isLoginModalOpen}
-                setIsLoginModalOpen={setIsLoginModalOpen}
-                isNotificationsOpen={isNotificationsOpen}
-                setIsNotificationsOpen={setIsNotificationsOpen}
-                isRevealing={false}
-              />
-            </BrowserRouter>
-          )}
-        </motion.div>
-        {!isUnlocked && (
-          <div className="fixed inset-0 z-[10000] bg-[#0a0a0a] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00F0FF10_0%,transparent_70%)]"></div>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="glass-panel p-8 rounded-3xl border border-white/10 w-full max-w-md relative z-10 text-center"
-            >
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] mx-auto mb-6">
-                <div className="w-full h-full bg-[#0a0a0a] rounded-2xl flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-[#00F0FF]" />
-                </div>
-              </div>
-              <h2 className="text-3xl font-display font-bold text-white mb-2">Access Restricted</h2>
-              <p className="text-gray-400 mb-8 text-sm">Please enter the website access code to continue.</p>
-              
-              <form onSubmit={handleUnlock} className="space-y-4">
-                <input 
-                  type="password"
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  placeholder="Enter Access Code"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-6 text-white text-center focus:outline-none focus:border-[#00F0FF]/50 transition-all"
-                  autoFocus
-                />
-                <button 
-                  type="submit"
-                  className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
-                >
-                  Unlock Platform
-                </button>
-              </form>
-              <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
-            </motion.div>
-          </div>
+    <MotionConfig reducedMotion={isGlowEnabled ? "never" : "always"}>
+      <AnimatePresence>
+        {showEntryAnimation && <IntroSequence key="intro" onComplete={handleIntroComplete} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showDeveloperCredit && <DeveloperCredit key="credit" onComplete={() => setShowDeveloperCredit(false)} />}
+      </AnimatePresence>
+      
+      <motion.div
+        initial={showEntryAnimation ? { clipPath: 'circle(0% at 0% 100%)' } : { clipPath: 'circle(150% at 0% 100%)' }}
+        animate={isRevealed ? { clipPath: 'circle(150% at 0% 100%)' } : {}}
+        transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
+        className="relative z-10"
+      >
+        {isUnlocked && (
+          <BrowserRouter>
+            <AppContent 
+              isSmartPanelMode={isSmartPanelMode}
+              setIsSmartPanelMode={setIsSmartPanelMode}
+              isLoginModalOpen={isLoginModalOpen}
+              setIsLoginModalOpen={setIsLoginModalOpen}
+              isNotificationsOpen={isNotificationsOpen}
+              setIsNotificationsOpen={setIsNotificationsOpen}
+              isRevealing={false}
+            />
+          </BrowserRouter>
         )}
-      </MotionConfig>
-    </HelmetProvider>
+      </motion.div>
+      {!isUnlocked && (
+        <div className="fixed inset-0 z-[10000] bg-[#0a0a0a] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#00F0FF10_0%,transparent_70%)]"></div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-panel p-8 rounded-3xl border border-white/10 w-full max-w-md relative z-10 text-center"
+          >
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#B026FF] p-[1px] mx-auto mb-6">
+              <div className="w-full h-full bg-[#0a0a0a] rounded-2xl flex items-center justify-center">
+                <Zap className="w-10 h-10 text-[#00F0FF]" />
+              </div>
+            </div>
+            <h2 className="text-3xl font-display font-bold text-white mb-2">Access Restricted</h2>
+            <p className="text-gray-400 mb-8 text-sm">Please enter the website access code to continue.</p>
+            
+            <form onSubmit={handleUnlock} className="space-y-4">
+              <input 
+                type="password"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                placeholder="Enter Access Code"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-4 px-6 text-white text-center focus:outline-none focus:border-[#00F0FF]/50 transition-all"
+                autoFocus
+              />
+              <button 
+                type="submit"
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all"
+              >
+                Unlock Platform
+              </button>
+            </form>
+            <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
+          </motion.div>
+        </div>
+      )}
+    </MotionConfig>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useLocation } from 'react-router-dom';
 import { X, ChevronRight, ChevronLeft, Sparkles, BrainCircuit, MonitorPlay, Zap, HelpCircle, Lock, Rocket, LayoutGrid, GitGraph, Eye, EyeOff } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const steps = [
   {
@@ -233,6 +233,10 @@ export default function Tutorial() {
 
   const StepIcon = steps[currentStep].icon;
 
+  if (location.pathname !== '/') {
+    return null;
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -436,7 +440,7 @@ export default function Tutorial() {
         </div>
       )}
       
-      {!isOpen && location.pathname === '/' && (
+      {!isOpen && (
         <motion.button
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

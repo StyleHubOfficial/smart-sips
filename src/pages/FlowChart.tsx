@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Helmet } from 'react-helmet-async';
-import { LazySection } from '../components/LazySection';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { Search, Loader2, Sparkles, Zap, Download, Save, Trash2, History, ChevronRight, Share2, GitGraph, Maximize2, Minimize2, Copy, Check, FileText, X, Plus, BrainCircuit, Wand2, Database, Upload } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
@@ -16,7 +14,6 @@ import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
-import { usePracticeStore } from '../store/usePracticeStore';
 
 mermaid.initialize({
   startOnLoad: true,
@@ -26,7 +23,6 @@ mermaid.initialize({
 });
 
 export default function FlowChart() {
-  const { isSmartPanelMode } = usePracticeStore();
   const { 
     query, generatedCode, interactiveData, loading, model, chartType, savedCharts, sourceFile,
     setQuery, setGeneratedCode, setModel, setChartType, generateFlowChart, saveCurrentChart, deleteChart, loadChart, setSourceFile
@@ -49,18 +45,14 @@ export default function FlowChart() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
-  const isGenerating = tasks.some(t => (t.toolId === 'flowchart' || t.toolId === 'diagram') && t.status === 'generating');
 
   useEffect(() => {
     // Check if there's a background generation task for FlowChart
-    const flowChartTask = tasks.find(t => (t.toolId === 'flowchart' || t.toolId === 'diagram'));
-    if (flowChartTask) {
-      if (flowChartTask.status === 'completed' && !generatedCode) {
-        useFlowChartStore.getState().setGeneratedCode(flowChartTask.result);
-        if (flowChartTask.query) setQuery(flowChartTask.query);
-      }
+    const flowChartTask = tasks.find(t => t.toolId === 'flowchart' && t.status === 'completed');
+    if (flowChartTask && !generatedCode) {
+      useFlowChartStore.getState().setGeneratedCode(flowChartTask.result);
     }
-  }, [tasks, generatedCode, setQuery]);
+  }, [tasks, generatedCode]);
 
   useEffect(() => {
     if (location.state?.sourceContent) {
@@ -285,32 +277,24 @@ export default function FlowChart() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-      <Helmet>
-        <title>AI Diagram & Concept Map | Smart Sunrise</title>
-        <meta name="description" content="Generate interactive diagrams, concept maps, and flowcharts from any topic or document with our AI tool." />
-      </Helmet>
-      <motion.div 
-        initial={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={isSmartPanelMode ? { opacity: 1, y: 0 } : { opacity: 0, y: -20 }}
-        className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
-      >
-        <LazySection>
-          <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="p-6 md:p-10 max-w-7xl mx-auto pb-32"
+    >
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border ${isSmartPanelMode ? 'bg-[#00F0FF]/20 border-[#00F0FF]/30' : 'bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]'}`}>
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00F0FF]/20 to-[#B026FF]/20 flex items-center justify-center border border-[#00F0FF]/30 shadow-[0_0_30px_rgba(0,240,255,0.2)]">
             <GitGraph className="w-8 h-8 text-[#00F0FF]" />
           </div>
           <div>
             <h2 className="text-3xl md:text-5xl font-display font-bold">
-              AI Diagram <span className={isSmartPanelMode ? "text-[#00F0FF]" : "text-gradient"}>& Concept Map</span>
+              AI Diagram <span className="text-gradient">& Concept Map</span>
             </h2>
             <p className="text-gray-400">Transform complex concepts into logical AI-powered diagrams, mind maps, and interactive concept maps</p>
           </div>
         </div>
-      </div>
-      </LazySection>
 
         <div className="flex items-center gap-3">
           <button 
@@ -327,6 +311,7 @@ export default function FlowChart() {
             History
           </button>
         </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Sidebar Controls */}
@@ -339,9 +324,10 @@ export default function FlowChart() {
                 onChange={(e) => setModel(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all appearance-none cursor-pointer"
               >
-                <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
-                <option value="gemini-3.1-flash-lite-preview">Medium Quality (G3.1 Lite)</option>
-                <option value="gemini-2.5-flash">Fast (G2.5 Flash)</option>
+                <option value="gemma-2-2b-it">Gemma 4 (New & Smart) ✨</option>
+              <option value="gemini-3-flash-preview">High Quality (G3 Flash)</option>
+              <option value="gemini-2.5-flash">Medium Quality (G2.5 Flash)</option>
+              <option value="gemini-3.1-flash-lite-preview">Fast (G3.1 Lite)</option>
               </select>
             </div>
 
@@ -379,7 +365,7 @@ export default function FlowChart() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="e.g. Photosynthesis process, How a computer boots up, The water cycle..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-48"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-[#00F0FF]/50 transition-all resize-none h-32"
                 />
                 <button 
                   onClick={handlePromptBuild}
@@ -420,11 +406,11 @@ export default function FlowChart() {
               
               <button 
                 onClick={handleGenerate}
-                disabled={loading || isGenerating || (!query.trim() && !sourceFile)}
-                className={`w-full py-4 rounded-xl text-white font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF] hover:shadow-[0_0_20px_rgba(0,240,255,0.4)]'}`}
+                disabled={loading || (!query.trim() && !sourceFile)}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white font-bold hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading || isGenerating ? <Loader2 className={`w-5 h-5 ${isSmartPanelMode ? '' : 'animate-spin'}`} /> : <Sparkles className="w-5 h-5" />}
-                {loading || isGenerating ? (isGenerating ? 'Background Generating...' : 'Generating...') : `Generate ${chartType}`}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                {loading ? 'Generating...' : `Generate ${chartType}`}
               </button>
             </div>
           </div>
@@ -433,9 +419,9 @@ export default function FlowChart() {
           <AnimatePresence>
             {showHistory && (
               <motion.div 
-                initial={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                exit={isSmartPanelMode ? { opacity: 1, height: 'auto' } : { opacity: 0, height: 0 }}
+                exit={{ opacity: 0, height: 0 }}
                 className="glass-panel rounded-2xl border border-white/10 overflow-hidden"
               >
                 <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center">
@@ -519,20 +505,20 @@ export default function FlowChart() {
 
             {/* Content */}
             <div className="flex-1 relative bg-[#050505] overflow-auto p-6 md:p-10 custom-scrollbar">
-              {loading || isGenerating ? (
+              {loading ? (
                 <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center h-full space-y-8">
                   <CinematicLoader />
                   <div className="w-full max-w-md space-y-2">
                     <div className="flex justify-between text-xs font-mono text-[#00F0FF]">
                       <span>Synthesizing Knowledge Structure...</span>
-                      <span>{isGenerating ? 'Background Task' : (query ? 'Analyzing Topic' : 'Processing Source')}</span>
+                      <span>{query ? 'Analyzing Topic' : 'Processing Source'}</span>
                     </div>
                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: '100%' }}
-                        transition={{ duration: isSmartPanelMode ? 0 : 10, ease: "linear" }}
-                        className={`h-full ${isSmartPanelMode ? 'bg-[#00F0FF]' : 'bg-gradient-to-r from-[#00F0FF] to-[#B026FF]'}`}
+                        transition={{ duration: 10, ease: "linear" }}
+                        className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF]"
                       />
                     </div>
                   </div>
@@ -579,6 +565,5 @@ export default function FlowChart() {
         onUpload={handleUploadToCourses}
       />
     </motion.div>
-    </div>
   );
 }

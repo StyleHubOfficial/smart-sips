@@ -1,10 +1,11 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { GrammarTextarea } from "../components/GrammarTextarea";
-import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2, PlayCircle, Eye, Lock } from "lucide-react";
+import { UploadCloud, CheckCircle, XCircle, File as FileIcon, Loader2, PlayCircle, Eye, Lock, Database } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useAuthStore } from "../store/useAuthStore";
 import { useUploadStore } from "../store/useUploadStore";
+import { DashboardFileSelector } from "../components/DashboardFileSelector";
 
 interface UploadProps {
   onOpenLogin: () => void;
@@ -13,6 +14,7 @@ interface UploadProps {
 export default function Upload({ onOpenLogin }: UploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
   const { isAuthenticated, role } = useAuthStore();
   const { addUpload, uploads } = useUploadStore();
   
@@ -201,15 +203,25 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-300 uppercase tracking-wider">File Upload</label>
-              {file && (
-                <button 
-                  type="button" 
-                  onClick={() => setFile(null)}
-                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDashboardSelector(true)}
+                  className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                 >
-                  Remove File
+                  <Database className="w-3.5 h-3.5" />
+                  Select from Dashboard
                 </button>
-              )}
+                {file && (
+                  <button 
+                    type="button" 
+                    onClick={() => setFile(null)}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Remove File
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -320,6 +332,28 @@ export default function Upload({ onOpenLogin }: UploadProps) {
           </button>
         </form>
       </div>
+
+      <DashboardFileSelector
+        isOpen={showDashboardSelector}
+        onClose={() => setShowDashboardSelector(false)}
+        onSelect={async (selectedFile) => {
+          try {
+            const proxyUrl = `/api/proxy?url=${encodeURIComponent(selectedFile.url || selectedFile.fileUrl)}`;
+            const res = await fetch(proxyUrl);
+            if (!res.ok) throw new Error(`Proxy fetch failed: ${res.statusText}`);
+            
+            const blob = await res.blob();
+            const fileObj = new File([blob], selectedFile.name || 'document.pdf', { type: blob.type });
+            onDrop([fileObj]);
+          } catch (error) {
+            console.error("Failed to load file from dashboard:", error);
+            alert("Failed to load file from dashboard.");
+          } finally {
+            setShowDashboardSelector(false);
+          }
+        }}
+        allowMultiple={false}
+      />
     </motion.div>
   );
 }

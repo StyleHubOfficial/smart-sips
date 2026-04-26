@@ -39,13 +39,72 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
-  overscroll-behavior-y: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
-#root {
-  /* Removed transform to avoid breaking fixed positioning */
+/* Base interactive elements animation for mobile */
+@media (max-width: 768px) {
+  a, button, .glass-panel, .card-interactive {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease, border-color 0.2s ease !important;
+  }
+  
+  a:active, button:active, .card-interactive:active {
+    transform: scale(0.96) translateY(-4px) !important;
+    opacity: 0.9;
+    border-color: var(--color-border-hover) !important;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.15) !important;
+  }
+}
+
+/* Stylish Premium Skeleton Loaders */
+@keyframes shimmer-colorful {
+  0% { transform: translateX(-150%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(150%); }
+}
+
+.skeleton-base {
+  background: rgba(255, 255, 255, 0.03);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-base::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 240, 255, 0.05) 20%,
+    rgba(176, 38, 255, 0.1) 50%,
+    rgba(0, 240, 255, 0.05) 80%,
+    transparent 100%
+  );
+  animation: shimmer-colorful 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.skeleton-text {
+  border-radius: 4px;
+}
+
+.skeleton-card {
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.skeleton-green::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(52, 211, 153, 0.05) 20%, rgba(52, 211, 153, 0.15) 50%, transparent 100%);
+}
+.skeleton-yellow::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(250, 204, 21, 0.05) 20%, rgba(250, 204, 21, 0.15) 50%, transparent 100%);
 }
 
 /* Custom Scrollbar */
@@ -66,37 +125,10 @@ body {
 /* Glassmorphism utilities */
 .glass-panel {
   background: var(--color-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-glass-border);
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Smart Panel Mode Overrides */
-.smart-panel-mode .glass-panel {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  background: var(--color-background) !important;
-  border: 1px solid var(--color-glass-border) !important;
-  box-shadow: none !important;
-  transition: none !important;
-}
-
-.smart-panel-mode * {
-  /* Reduce heavy shadows */
-  box-shadow: none !important;
-  /* Disable heavy text shadows */
-  text-shadow: none !important;
-  /* Disable heavy filters */
-  filter: none !important;
-  /* Disable mix-blend-mode which is heavy for rendering */
-  mix-blend-mode: normal !important;
-  /* Disable animations that might still be running */
-  animation: none !important;
-}
-
-.smart-panel-mode .glow-enabled .glow-border {
-  box-shadow: none !important;
 }
 
 .glass-solid {
@@ -185,52 +217,272 @@ body {
   animation: gradient-xy 3s ease infinite;
 }
 
-/* Force hover state on tap/click for mobile */
-.is-pressed.glass-panel {
+/* SMART PANEL PERFORMANCE OPTIMIZATIONS for Low-End WebViews */
+body.smart-panel-mode * {
+  /* Disable hardware intensive filters */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.smart-panel-mode .glass-panel {
+  background-color: var(--color-glass-solid) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.smart-panel-mode .blur,
+body.smart-panel-mode .blur-sm,
+body.smart-panel-mode .blur-md,
+body.smart-panel-mode .blur-lg,
+body.smart-panel-mode .blur-xl,
+body.smart-panel-mode .blur-2xl,
+body.smart-panel-mode .blur-\[\50px\],
+body.smart-panel-mode .blur-\[\150px\] {
+  display: none !important;
+  opacity: 0 !important;
+}
+
+body.smart-panel-mode .animate-pulse,
+body.smart-panel-mode .animate-pulse-slow,
+body.smart-panel-mode .animate-bounce,
+body.smart-panel-mode .animate-spin,
+body.smart-panel-mode .animate-gradient-xy {
+  animation: none !important;
+  transform: none !important;
+}
+
+body.smart-panel-mode .shadow-\[0_0_15px_rgba\(0\,240\,255\,0\.3\)\],
+body.smart-panel-mode .shadow-\[0_20px_50px_rgba\(0\,0\,0\,0\.5\)\],
+body.smart-panel-mode .shadow-lg,
+body.smart-panel-mode .drop-shadow-lg,
+body.smart-panel-mode .drop-shadow-2xl,
+body.smart-panel-mode [class*="drop-shadow-"] {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+body.smart-panel-mode .truncate {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+body.smart-panel-mode .glow-enabled .glow-border {
+  box-shadow: none !important;
+}
+
+body.smart-panel-mode .mix-blend-screen,
+body.smart-panel-mode .mix-blend-overlay,
+body.smart-panel-mode .mix-blend-multiply {
+  mix-blend-mode: normal !important;
+}
+
+body.smart-panel-mode .bg-\[linear-gradient\(to_right\,\#ffffff05_1px\,transparent_1px\)\,linear-gradient\(to_bottom\,\#ffffff05_1px\,transparent_1px\)\] {
+  display: none !important;
+}
+
+body.smart-panel-mode {
+  overflow-x: hidden !important;
+}
+
+/* High-Performance Hardware Accelerated Wallpapers */
+@keyframes bubble-float {
+  0% { transform: translateY(10vh) translateX(0) scale(0.5); opacity: 0; }
+  20% { transform: translateY(-10vh) translateX(-20px) scale(0.8); opacity: 1; }
+  50% { transform: translateY(-40vh) translateX(20px) scale(1); opacity: 0.8; }
+  80% { transform: translateY(-70vh) translateX(-15px) scale(1.2); opacity: 0.5; }
+  100% { transform: translateY(-100vh) translateX(0) scale(1.5); opacity: 0; }
+}
+.bubble-anim {
+  animation: bubble-float var(--duration) ease-in-out var(--delay) infinite;
+  will-change: transform, opacity;
+  bottom: -50px;
+}
+
+@keyframes twinkle-star {
+  0%, 100% { opacity: 0.1; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.5); box-shadow: 0 0 10px rgba(255,255,255,0.8); }
+}
+.star-anim {
+  animation: twinkle-star var(--duration) ease-in-out var(--delay) infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes neon-cycle {
+  0% { filter: hue-rotate(0deg) saturate(2) brightness(1.2); background-color: rgba(255, 0, 255, 0.1); }
+  20% { filter: hue-rotate(72deg) saturate(2.5) brightness(1.5); background-color: rgba(0, 255, 255, 0.1); }
+  40% { filter: hue-rotate(144deg) saturate(2) brightness(1.3); background-color: rgba(0, 255, 0, 0.1); }
+  60% { filter: hue-rotate(216deg) saturate(2.5) brightness(1.4); background-color: rgba(255, 255, 0, 0.1); }
+  80% { filter: hue-rotate(288deg) saturate(2) brightness(1.5); background-color: rgba(255, 0, 128, 0.1); }
+  100% { filter: hue-rotate(360deg) saturate(2) brightness(1.2); background-color: rgba(255, 0, 255, 0.1); }
+}
+.neon-cycle {
+  animation: neon-cycle 15s linear infinite;
+  will-change: filter, background-color;
+}
+
+@keyframes grid-perspective {
+  0% { transform: perspective(600px) rotateX(60deg) translateY(0); }
+  100% { transform: perspective(600px) rotateX(60deg) translateY(50px); }
+}
+.skeleton-perspective-grid {
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.4) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.4) 2px, transparent 2px);
+  background-size: 50px 50px;
+  animation: grid-perspective 3s linear infinite;
+  will-change: transform;
+  box-shadow: inset 0 0 100px rgba(0,0,0,1);
+}
+@keyframes scanning-laser {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; box-shadow: 0 0 20px 4px rgba(176,38,255,0.6); }
+  90% { opacity: 1; box-shadow: 0 0 20px 4px rgba(176,38,255,0.6); }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+.skeleton-laser {
+  animation: scanning-laser 4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes cyber-pulse {
+  0%, 100% { opacity: 0.05; transform: scale(0.9); }
+  50% { opacity: 0.2; transform: scale(1.1); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); }
+}
+.cyber-pulse-grid {
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+  background-size: 30px 30px;
+  animation: cyber-pulse 4s ease-in-out infinite;
+}
+
+.mobile-force-active {
+  transform: scale(0.96) translateY(-4px) !important;
   border-color: var(--color-border-hover) !important;
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.2) !important;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.4) !important;
+  opacity: 0.9;
 }
 
-.is-pressed .group-hover\:opacity-100 {
-  opacity: 1 !important;
+/* =========================================
+   GLOBAL LIGHT MODE TAILWIND CSS OVERRIDES
+   Ensures perfect light mode across all hardcoded UI sections
+   ========================================= */
+
+:root.light-mode body {
+  background-color: var(--color-background);
+  color: var(--color-text);
 }
 
-.is-pressed .group-hover\:opacity-5 {
-  opacity: 0.05 !important;
+/* Base transparent backgrounds to light glass */
+:root.light-mode .bg-black\/40,
+:root.light-mode .bg-black\/50,
+:root.light-mode .bg-black\/60,
+:root.light-mode .bg-black\/80,
+:root.light-mode .bg-black\/90,
+:root.light-mode .bg-white\/5,
+:root.light-mode .bg-white\/10 {
+  background-color: var(--color-glass) !important;
 }
 
-.is-pressed .group-hover\:translate-y-0 {
-  transform: translateY(0) !important;
+/* Base pure blacks to light background */
+:root.light-mode .bg-\[\#0a0a0a\],
+:root.light-mode .bg-\[\#0E0E12\],
+:root.light-mode .bg-\[\#111\],
+:root.light-mode .bg-\[\#1a1a1a\],
+:root.light-mode .bg-black {
+  background-color: var(--color-background) !important;
 }
 
-.is-pressed .group-hover\:scale-110 {
-  transform: scale(1.1) !important;
+/* Base text overrides */
+:root.light-mode .text-white {
+  color: var(--color-text);
+}
+:root.light-mode .text-gray-200,
+:root.light-mode .text-gray-300,
+:root.light-mode .text-gray-400,
+:root.light-mode .text-gray-500 {
+  color: var(--color-text-muted) !important;
 }
 
-.is-pressed .group-hover\:scale-105 {
-  transform: scale(1.05) !important;
+/* Exceptions: Gradient buttons remain white text */
+:root.light-mode button.bg-gradient-to-r .text-white,
+:root.light-mode button.bg-gradient-to-br .text-white,
+:root.light-mode .bg-blue-600 .text-white,
+:root.light-mode .bg-red-500 .text-white,
+:root.light-mode .bg-green-500 .text-white {
+  color: #fff !important;
 }
 
-.is-pressed .group-hover\:translate-x-1 {
-  transform: translateX(0.25rem) !important;
+/* Borders */
+:root.light-mode .border-white\/5,
+:root.light-mode .border-white\/10,
+:root.light-mode .border-white\/20,
+:root.light-mode .border-white\/30 {
+  border-color: var(--color-glass-border) !important;
 }
 
-.is-pressed .group-hover\:text-\[\#00F0FF\] {
-  color: #00F0FF !important;
+/* Glass Panels specifically */
+:root.light-mode .glass-panel {
+  background-color: var(--color-glass) !important;
+  border-color: var(--color-glass-border) !important;
 }
 
-.is-pressed .group-hover\:text-gray-200 {
-  color: #e5e7eb !important;
+/* Blurs and other overlays */
+:root.light-mode .backdrop-blur-sm,
+:root.light-mode .backdrop-blur-md,
+:root.light-mode .backdrop-blur-lg,
+:root.light-mode .backdrop-blur-xl,
+:root.light-mode .backdrop-blur-2xl {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+:root.light-mode .bg-\[\#0a0a0a\]\/95 {
+  background-color: var(--color-glass-solid) !important;
 }
 
-.is-pressed .group-hover\:text-gray-300 {
-  color: #d1d5db !important;
+/* Colors Accent Mapping */
+:root.light-mode .text-\[\#00F0FF\] {
+  color: var(--color-accent-1) !important;
+}
+:root.light-mode .text-\[\#B026FF\] {
+  color: var(--color-accent-3) !important;
+}
+:root.light-mode .border-\[\#00F0FF\]\/30,
+:root.light-mode .border-\[\#00F0FF\]\/50 {
+  border-color: rgba(14, 165, 233, 0.3) !important;
+}
+:root.light-mode .border-\[\#B026FF\]\/30,
+:root.light-mode .border-\[\#B026FF\]\/50 {
+  border-color: rgba(139, 92, 246, 0.3) !important;
 }
 
-.is-pressed .group-hover\:animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+/* Inputs and Forms */
+:root.light-mode input.bg-black\/40,
+:root.light-mode select.bg-black\/40,
+:root.light-mode textarea.bg-black\/40,
+:root.light-mode input.bg-white\/5,
+:root.light-mode select.bg-white\/5,
+:root.light-mode textarea.bg-white\/5 {
+  background-color: transparent !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-glass-border) !important;
+}
+:root.light-mode input::placeholder,
+:root.light-mode textarea::placeholder {
+  color: var(--color-text-muted) !important;
+}
+:root.light-mode input:focus,
+:root.light-mode select:focus,
+:root.light-mode textarea:focus {
+  border-color: var(--color-accent-1) !important;
 }
 
-.is-pressed .group-hover\:translate-x-\[200\%\] {
-  transform: translateX(200%) !important;
+/* Hover exceptions */
+:root.light-mode .hover\:bg-white\/10:hover {
+  background-color: rgba(0,0,0,0.05) !important;
+}
+:root.light-mode .hover\:bg-white\/5:hover {
+  background-color: rgba(0,0,0,0.02) !important;
+}
+:root.light-mode .hover\:text-white:hover {
+  color: var(--color-text) !important;
 }
