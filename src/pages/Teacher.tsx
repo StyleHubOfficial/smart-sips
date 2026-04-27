@@ -67,6 +67,9 @@ export default function Teacher() {
               imageUrl: canvas.toDataURL('image/png'),
               whiteboardData: '',
             });
+            
+            // Yield to main thread to prevent lag and allow progress bar to animate
+            await new Promise(resolve => setTimeout(resolve, 5));
           }
           setProcessProgress(i);
         }
@@ -304,7 +307,7 @@ export default function Teacher() {
                 <input {...getInputProps()} />
                 
                 <div className="relative mb-8">
-                  <div className="absolute inset-0 bg-indigo-500 blur-[60px] opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-30 transform-gpu group-hover:opacity-50 transition-opacity"></div>
                   <div className="relative w-24 h-24 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
                     <Upload className="w-10 h-10 text-indigo-400" />
                   </div>
@@ -367,7 +370,7 @@ export default function Teacher() {
                     }`}
                     onClick={() => setCurrentSlideIndex(index)}
                   >
-                    <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" />
+                    <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Play className="w-8 h-8 text-white" />
                     </div>

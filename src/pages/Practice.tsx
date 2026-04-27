@@ -1990,7 +1990,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                            animate={{ opacity: 1, x: 0, scale: 1 }}
                            exit={{ opacity: 0, x: -50, scale: 0.95 }}
                            transition={{ duration: 0.4, type: "spring", bounce: 0.2 }}
-                           className="w-full h-full max-w-full touch-pan-y"
+                           className="w-full h-full max-w-full touch-pan-y transform-gpu" style={{ willChange: "transform" }}
                            drag="x"
                            dragConstraints={{ left: 0, right: 0 }}
                            dragElastic={0.2}

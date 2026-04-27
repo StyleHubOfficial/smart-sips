@@ -173,7 +173,8 @@ export default function AIHelper() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow cursor-move"
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow cursor-move transform-gpu"
+          style={{ willChange: "transform" }}
         >
           <MessageSquare className="w-6 h-6" />
         </motion.button>
@@ -187,7 +188,8 @@ export default function AIHelper() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[420px] h-full sm:h-[650px] sm:max-h-[85vh] bg-transparent border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden"
+            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[420px] h-full sm:h-[650px] sm:max-h-[85vh] bg-transparent border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden transform-gpu"
+            style={{ willChange: "transform, opacity" }}
           >
             {/* Background Layer */}
             <div className="absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-2xl z-[-1] rounded-3xl" />

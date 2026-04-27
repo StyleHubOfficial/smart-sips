@@ -1304,7 +1304,8 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         dragControls={dragControls}
         dragListener={false}
         dragMomentum={false}
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group"
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col p-3 bg-black/80 border border-white/20 backdrop-blur-xl rounded-2xl z-[60] pointer-events-auto shadow-[0_10px_40px_rgba(0,0,0,0.5)] group transform-gpu"
+        style={{ willChange: "transform" }}
       >
         <div 
             onPointerDown={(e) => dragControls.start(e)}

@@ -115,16 +115,16 @@ export const ContentCard = React.memo(({
     
     if (isPdf) {
       const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
     }
 
     if (isImage) {
-      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
     }
     
     if (isVideo) {
       const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" />;
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
     }
 
     const getNeonGradient = (subject?: string) => {
@@ -219,8 +219,8 @@ export const ContentCard = React.memo(({
       <motion.div 
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
-        viewport={{ once: false, amount: 0.05, margin: "50px" }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        viewport={{ once: true, amount: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
         whileHover={{ scale: 1.01 }}
         className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''}`}
         onClick={(e) => {
@@ -307,8 +307,8 @@ export const ContentCard = React.memo(({
     <motion.div 
       initial={{ opacity: 0, y: 30, scale: 0.95 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: false, amount: 0.05, margin: "50px" }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
+      viewport={{ once: true, amount: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
       whileHover={{ y: -8, scale: 1.02 }}
       className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''}`}
       onClick={(e) => {

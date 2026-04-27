@@ -73,7 +73,7 @@ function AppContent({
   };
 
   return (
-    <div className={`min-h-[100dvh] bg-[var(--color-background)] text-[var(--color-text)] relative overflow-x-hidden ${isSmartPanelMode ? 'text-lg' : ''} ${isGlowEnabled ? 'glow-enabled' : ''}`}>
+    <div className={`min-h-[100dvh] bg-[var(--color-background)] text-[var(--color-text)] relative w-full ${isSmartPanelMode ? 'text-lg' : ''} ${isGlowEnabled ? 'glow-enabled' : ''}`}>
       {/* Animated background grid lines */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none fixed"></div>
       

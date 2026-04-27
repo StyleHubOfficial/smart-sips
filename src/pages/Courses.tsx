@@ -238,7 +238,7 @@ export default function Courses() {
       </div>
 
       <div className="relative">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {!selectedClass && !showAllContent && !showAIGenerated && (
             <motion.div
               key="classes"
@@ -267,8 +267,7 @@ export default function Courses() {
                     <motion.button
                       key={cls}
                       initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true, amount: 0.1 }}
+                      animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
                       onClick={() => setSelectedClass(cls)}
                       className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#00F0FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(0,240,255,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
@@ -317,8 +316,7 @@ export default function Courses() {
                   return (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true, amount: 0.1 }}
+                      animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: (CLASSES.length + 1) * 0.05 }}
                       onClick={() => setShowAIGenerated(true)}
                       className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-emerald-400/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(52,211,153,0.15)] relative overflow-hidden flex flex-col items-center justify-center text-center"
@@ -425,8 +423,7 @@ export default function Courses() {
                     <motion.button
                       key={sub}
                       initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true, amount: 0.1 }}
+                      animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
                       onClick={() => setSelectedSubject(sub)}
                       className="glass-panel p-8 rounded-2xl border border-white/10 hover:border-[#B026FF]/50 transition-all duration-300 group hover:-translate-y-2 hover:shadow-[0_10px_30px_rgba(176,38,255,0.15)] relative overflow-hidden text-left"
