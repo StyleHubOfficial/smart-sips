@@ -154,7 +154,7 @@ export default function Teacher() {
   if (showWhiteboard) {
     return (
       <div className="fixed inset-0 z-[60] bg-black">
-        <div className="absolute bottom-4 left-4 z-[70] flex items-center gap-2 bg-black/50 backdrop-blur-xl px-4 py-2 rounded-2xl border border-white/10">
+        <div className="absolute bottom-4 left-4 z-[70] flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/10">
           <button 
             onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
             disabled={currentSlideIndex === 0}
@@ -213,7 +213,7 @@ export default function Teacher() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-20 left-4 z-[70] bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex gap-4 overflow-x-auto max-w-[calc(100vw-2rem)] shadow-2xl"
+              className="absolute bottom-20 left-4 z-[70] bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 flex gap-4 overflow-x-auto max-w-[calc(100vw-2rem)] shadow-2xl"
             >
               {slides.map((slide, idx) => (
                 <div 
@@ -374,7 +374,7 @@ export default function Teacher() {
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <Play className="w-8 h-8 text-white" />
                     </div>
-                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-md text-[10px] font-bold text-white border border-white/10">
+                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-[#111] text-[10px] font-bold text-white border border-white/10">
                       Page {index + 1}
                     </div>
                   </motion.div>

@@ -1788,7 +1788,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   </div>
                 </div>
                 <div className="space-y-6 flex-1">
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence mode="wait">
                     {questions.map((q, index) => (
                       <div key={`list-item-${q.id}-${index}`} className="animate-fade-in-up" style={{ animationDelay: `${index * 0.1}s` }}>
                         {renderQuestionCard(q, index, true)}
@@ -1833,7 +1833,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
               {/* Right side: Whiteboard */}
               <div className="h-full flex flex-col relative" style={{ width: `${sideWhiteboardWidth}%` }}>
                 <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-                  <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
+                  <div className="bg-[#111] px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
                     Side Whiteboard Mode
                   </div>
                   <button 
@@ -1858,7 +1858,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
               className="flex flex-col h-[85vh] min-h-[700px] bg-[#0f172a] rounded-3xl border border-white/10 overflow-hidden shadow-2xl relative"
             >
               {/* Slide Navigation Bar */}
-              <div className="flex items-center justify-between p-4 bg-black/60 border-b border-white/10 backdrop-blur-xl z-20">
+              <div className="flex items-center justify-between p-4 bg-[#111] border-b border-white/10 z-20">
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <div className="w-10 h-10 rounded-xl bg-[#B026FF]/20 flex items-center justify-center border border-[#B026FF]/30">
@@ -1969,7 +1969,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                     onSave={(data) => setSlideWhiteboardData(prev => ({ ...prev, [currentSlide]: data }))}
                   />
                   <div className="absolute top-4 right-4 pointer-events-none z-10">
-                    <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
+                    <div className="bg-[#111] px-4 py-2 rounded-full border border-white/10 text-[10px] text-white/40 uppercase tracking-widest">
                       {slideModeConfig.overlay ? 'Overlay Annotation Active' : 'Side-by-Side Mode'}
                     </div>
                   </div>
@@ -1982,7 +1982,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                 // Carousel Mode for List View
                 <div className="flex flex-col gap-6 relative">
                    <div className="overflow-hidden relative w-full h-full flex flex-col items-center justify-center min-h-[400px]">
-                     <AnimatePresence mode="popLayout">
+                     <AnimatePresence mode="wait">
                        {questions.length > 0 && (
                          <motion.div
                            key={`carousel-item-${questions[currentSlide]?.id || currentSlide}`}
@@ -2041,7 +2041,7 @@ ${analysis ? `## AI Analysis\n${JSON.stringify(analysis, null, 2)}` : ''}
                   viewMode === 'triple' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4' : 
                   'flex flex-col gap-6'
                 }>
-                  <AnimatePresence mode="popLayout">
+                  <AnimatePresence mode="wait">
                     {questions.map((q, index) => (
                       <motion.div 
                         key={`main-list-${q.id}-${index}`} 

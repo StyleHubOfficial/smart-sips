@@ -31,7 +31,7 @@ export default function Navigation() {
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
       className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] sm:w-auto overflow-visible select-none"
     >
-      <div className="bg-black/60 backdrop-blur-2xl sm:bg-[#0E0E12]/80 rounded-[2.5rem] p-2 flex items-center justify-between sm:justify-center gap-1 sm:gap-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/10 ring-1 ring-white/5 overflow-x-auto hide-scrollbar touch-pan-x">
+      <div className="bg-[#0e0e12] sm:bg-[#0e0e12]/90 rounded-[2.5rem] p-2 flex items-center justify-between sm:justify-center gap-1 sm:gap-2 shadow-[0_8px_32px_rgba(0,0,0,0.8)] border border-white/10 ring-1 ring-white/5 overflow-x-auto hide-scrollbar touch-pan-x">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
           

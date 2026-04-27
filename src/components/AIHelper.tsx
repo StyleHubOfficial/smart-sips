@@ -188,11 +188,11 @@ export default function AIHelper() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[420px] h-full sm:h-[650px] sm:max-h-[85vh] bg-transparent border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden transform-gpu"
+            className="fixed bottom-0 sm:bottom-24 right-0 sm:right-6 w-full sm:w-[420px] h-full sm:h-[650px] sm:max-h-[85vh] bg-[#0a0a0a] border-t sm:border border-white/10 sm:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)] z-[100] flex flex-col overflow-hidden transform-gpu"
             style={{ willChange: "transform, opacity" }}
           >
             {/* Background Layer */}
-            <div className="absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-2xl z-[-1] rounded-3xl" />
+            <div className="absolute inset-0 bg-[#0a0a0a]/95 z-[-1] rounded-3xl" />
 
             {/* Header */}
             <div className="p-5 border-b border-white/10 bg-gradient-to-r from-[#00F0FF]/10 to-[#B026FF]/10 flex items-center justify-between relative z-20">
@@ -269,7 +269,7 @@ export default function AIHelper() {
               {wallpaper === 'bubbles' && bubblesData.map((b, i) => (
                 <div
                   key={i}
-                  className="absolute rounded-full border border-[#00F0FF]/40 shadow-[inset_0_0_20px_rgba(0,240,255,0.3),_0_0_15px_rgba(0,240,255,0.2)] bg-gradient-to-tr from-[#00F0FF]/30 to-transparent backdrop-blur-sm bubble-anim"
+                  className="absolute rounded-full border border-[#00F0FF]/40 shadow-[inset_0_0_20px_rgba(0,240,255,0.3),_0_0_15px_rgba(0,240,255,0.2)] bg-gradient-to-tr from-[#00F0FF]/30 to-transparent bubble-anim"
                   style={{ width: b.size, height: b.size, left: b.left, '--duration': `${b.duration}s`, '--delay': `${b.delay}s` } as React.CSSProperties}
                 />
               ))}
@@ -299,7 +299,7 @@ export default function AIHelper() {
             <div className="absolute top-16 right-4 z-30">
               <button 
                 onClick={() => setShowWallpaperMenu(!showWallpaperMenu)}
-                className="bg-black/50 backdrop-blur-md border border-white/10 rounded-full p-1.5 text-white/50 hover:text-white transition-colors"
+                className="bg-[#1a1a1a] border border-white/10 rounded-full p-1.5 text-white/50 hover:text-white transition-colors"
               >
                 <Zap className="w-3 h-3" />
               </button>
@@ -307,7 +307,7 @@ export default function AIHelper() {
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="absolute right-0 mt-2 flex flex-col gap-1 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-2 w-32 shadow-2xl"
+                  className="absolute right-0 mt-2 flex flex-col gap-1 bg-[#151515] border border-white/10 rounded-xl p-2 w-32 shadow-2xl"
                 >
                    {['default', 'bubbles', 'stars', 'neon', 'skeleton'].map(t => (
                      <button
@@ -348,7 +348,7 @@ export default function AIHelper() {
                   <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-xl ${
                     msg.role === 'user' 
                       ? 'bg-gradient-to-br from-[#00F0FF]/15 to-[#B026FF]/15 border border-[#00F0FF]/30 text-white rounded-tr-none' 
-                      : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-none backdrop-blur-md'
+                      : 'bg-[#151515] border border-white/10 text-gray-200 rounded-tl-none'
                   }`}>
                     {msg.role === 'user' ? (
                       msg.text
@@ -398,7 +398,7 @@ export default function AIHelper() {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-white/5 border border-white/10 p-5 rounded-2xl rounded-tl-none flex flex-col gap-3 min-w-[200px] backdrop-blur-md">
+                  <div className="bg-[#151515] border border-white/10 p-5 rounded-2xl rounded-tl-none flex flex-col gap-3 min-w-[200px]">
                     <div className="flex items-center gap-2">
                        <span className="text-xl animate-bounce">🤔</span>
                        <div className="flex flex-col">
@@ -420,7 +420,7 @@ export default function AIHelper() {
             </div>
 
             {/* Input Area */}
-            <div className="p-5 border-t border-white/10 bg-black/40 backdrop-blur-xl">
+            <div className="p-5 border-t border-white/10 bg-[#111]">
               <div className="relative flex items-center gap-3">
                 <div className="relative flex-1">
                   <input 

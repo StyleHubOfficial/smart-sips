@@ -238,7 +238,7 @@ export default function Courses() {
       </div>
 
       <div className="relative">
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait">
           {!selectedClass && !showAllContent && !showAIGenerated && (
             <motion.div
               key="classes"
