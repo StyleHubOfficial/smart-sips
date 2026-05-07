@@ -162,23 +162,19 @@ export default function AIHelper() {
   return (
     <>
       {/* Floating Button */}
-      <motion.div
-        drag
-        dragMomentum={false}
-        className="fixed bottom-20 sm:bottom-6 right-6 z-[100]"
-      >
+      <div className="fixed bottom-20 sm:bottom-6 right-6 z-[100]">
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsOpen(true)}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow cursor-move transform-gpu"
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] text-white shadow-[0_0_20px_rgba(0,240,255,0.4)] flex items-center justify-center hover:shadow-[0_0_30px_rgba(176,38,255,0.6)] transition-shadow cursor-pointer transform-gpu"
           style={{ willChange: "transform" }}
         >
           <MessageSquare className="w-6 h-6" />
         </motion.button>
-      </motion.div>
+      </div>
 
       {/* Chat Window */}
       <AnimatePresence>

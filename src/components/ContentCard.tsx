@@ -217,12 +217,12 @@ export const ContentCard = React.memo(({
   if (viewMode === 'list') {
     return (
       <motion.div 
-        initial={{ opacity: 0, y: 30, scale: 0.95 }}
-        whileInView={{ opacity: 1, y: 0, scale: 1 }}
-        viewport={{ once: true, amount: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
+        initial={{ opacity: 0, y: 15, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         whileHover={{ scale: 1.01 }}
-        className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''}`}
+        className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''} transform-gpu`}
+        style={{ willChange: "transform, opacity" }}
         onClick={(e) => {
           // If clicked anywhere on the card area in mobile, treat as view click (if not on a specific button)
           if ((e.target as HTMLElement).closest('button')) return;
@@ -305,12 +305,12 @@ export const ContentCard = React.memo(({
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 30, scale: 0.95 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, amount: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      whileHover={{ y: -8, scale: 1.02 }}
-      className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''}`}
+      initial={{ opacity: 0, y: 15, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''} transform-gpu`}
+      style={{ willChange: "transform, opacity" }}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('button')) return;
         handleLinkClick(e as any, item.secure_url, false);
