@@ -58,7 +58,6 @@ export default function PYQEngine() {
   });
 
   const [showHistory, setShowHistory] = useState(false);
-  const [showSavedQuestions, setShowSavedQuestions] = useState(false);
   const [activeWhiteboard, setActiveWhiteboard] = useState<string | null>(null);
   const dragControls = useDragControls();
 
@@ -83,12 +82,12 @@ export default function PYQEngine() {
     if (pyqTask && results.length === 0) {
       const parsedResults = typeof pyqTask.result === 'string' ? JSON.parse(pyqTask.result) : pyqTask.result;
       setResults(parsedResults);
-      localStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
+      sessionStorage.setItem('pyq_generated_results', JSON.stringify(parsedResults));
     }
   }, [tasks, results]);
 
   useEffect(() => {
-    const savedResults = localStorage.getItem('pyq_generated_results');
+    const savedResults = sessionStorage.getItem('pyq_generated_results');
     if (savedResults) {
       setResults(JSON.parse(savedResults));
     }
@@ -336,7 +335,7 @@ export default function PYQEngine() {
       }));
 
       setResults(enrichedResults);
-      localStorage.setItem('pyq_generated_results', JSON.stringify(enrichedResults));
+      sessionStorage.setItem('pyq_generated_results', JSON.stringify(enrichedResults));
 
     } catch (error) {
       console.error("Error in PYQ pipeline:", error);
@@ -817,17 +816,26 @@ export default function PYQEngine() {
                 />
                 <button 
                   onClick={() => {
-                    localStorage.setItem('pyq_generated_results', JSON.stringify(results));
-                    alert("Results saved to local storage!");
+                    const newSaved = [...savedQuestions];
+                    let added = 0;
+                    results.forEach(q => {
+                      if (!newSaved.some(sq => sq.question_id === q.question_id)) {
+                        newSaved.push(q);
+                        added++;
+                      }
+                    });
+                    setSavedQuestions(newSaved);
+                    localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
+                    alert(`Saved ${added} new questions to your collection!`);
                   }}
                   className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-sm font-medium transition-colors border border-emerald-500/20"
                 >
-                  Save Results
+                  Save All Results
                 </button>
                 <button 
                   onClick={() => {
                     setResults([]);
-                    localStorage.removeItem('pyq_generated_results');
+                    sessionStorage.removeItem('pyq_generated_results');
                   }}
                   className="px-4 py-2 rounded-xl bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
                 >

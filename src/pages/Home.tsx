@@ -127,7 +127,7 @@ export default function Home() {
             { icon: BrainCircuit, title: "Practice Arena", desc: "Dynamic DPPs and interactive practice modes.", color: "from-yellow-400 to-orange-500", delay: 0.2, link: "/practice" },
             { icon: FileSearch, title: "PYQ System", desc: "Smart previous year question engine with AI analysis.", color: "from-emerald-400 to-green-600", delay: 0.3, link: "/pyq" },
             { icon: MonitorPlay, title: "Whiteboard", desc: "Integrated digital canvas with Smart Pen & AI OCR.", color: "from-[#B026FF] to-purple-600", delay: 0.4, link: "/flowchart" },
-            { icon: BookOpen, title: "SBoard", desc: "Convert PDFs into interactive slides.", color: "from-indigo-500 to-blue-700", delay: 0.5, link: "/teacher" },
+            { icon: BookOpen, title: "SBoard", desc: "Convert PDFs into interactive slides.", color: "from-indigo-500 to-blue-700", delay: 0.5, link: "/sboard" },
             { icon: Bot, title: "AI Simulator", desc: "Interactive AI-powered simulations for complex concepts.", color: "from-blue-400 to-indigo-600", delay: 0.6, link: "/simulator" },
             { icon: Zap, title: "Concept Visualizer", desc: "Visualize abstract concepts with interactive AI tools.", color: "from-orange-400 to-red-600", delay: 0.7, link: "/visualizer" },
             { icon: CheckCircle2, title: "Grammar Assistant", desc: "Real-time grammatical error suggestion and correction.", color: "from-green-400 to-teal-600", delay: 0.8, link: "/grammar" },

@@ -114,17 +114,18 @@ export const ContentCard = React.memo(({
     const neonBorderClass = size === 'lg' ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
     
     if (isPdf) {
-      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_400,h_600,c_fill,g_north,pg_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
+      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_200,h_300,c_fill,g_north,pg_1,q_auto,f_auto/');
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
     }
 
     if (isImage) {
-      return <img src={item.secure_url} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
+      const thumbUrl = item.secure_url.replace('/upload/', '/upload/w_400,c_limit,q_auto,f_auto/');
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
     }
     
     if (isVideo) {
-      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" />;
+      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1,q_auto,f_auto/');
+      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
     }
 
     const getNeonGradient = (subject?: string) => {
@@ -221,7 +222,8 @@ export const ContentCard = React.memo(({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
         whileHover={{ scale: 1.01 }}
-        className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''}`}
+        className={`glass-panel card-interactive rounded-xl overflow-hidden border border-white/10 group hover:border-[#00F0FF]/50 hover:shadow-[0_0_30px_rgba(0,240,255,0.15)] transition-all duration-300 relative flex flex-col sm:flex-row items-start sm:items-center p-4 gap-4 ${isNavigating ? 'mobile-force-active' : ''} transform-gpu`}
+        style={{ willChange: "transform, opacity" }}
         onClick={(e) => {
           // If clicked anywhere on the card area in mobile, treat as view click (if not on a specific button)
           if ((e.target as HTMLElement).closest('button')) return;
@@ -308,7 +310,8 @@ export const ContentCard = React.memo(({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       whileHover={{ y: -4, scale: 1.02 }}
-      className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''}`}
+      className={`glass-panel card-interactive rounded-2xl overflow-hidden border border-white/10 group hover:border-transparent hover:shadow-[0_0_30px_rgba(0,240,255,0.2)] transition-all duration-300 relative flex flex-col ${isNavigating ? 'mobile-force-active' : ''} transform-gpu`}
+      style={{ willChange: "transform, opacity" }}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('button')) return;
         handleLinkClick(e as any, item.secure_url, false);

@@ -12,7 +12,7 @@ export default function Navigation() {
     { path: "/courses", id: "courses", label: "Courses", icon: BookOpen, color: "#B026FF" },
     { path: "/questions", id: "arena", label: "Arena", icon: BrainCircuit, color: "#facc15" },
     { path: "/ai-generators", id: "ai", label: "AI Gen", icon: Sparkles, color: "#34d399" },
-    { path: "/teacher", id: "teacher", label: "SBoard", icon: Presentation, color: "#818cf8", hasDot: true },
+    { path: "/sboard", id: "sboard", label: "SBoard", icon: Presentation, color: "#818cf8", hasDot: true },
   ];
 
   if (role === 'admin' || role === 'developer' || role === 'teacher') {

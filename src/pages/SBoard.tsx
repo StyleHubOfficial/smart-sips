@@ -154,18 +154,29 @@ export default function Teacher() {
   if (showWhiteboard) {
     return (
       <div className="fixed inset-0 z-[60] bg-black">
-        <div className="absolute bottom-4 left-4 z-[70] flex items-center gap-2 bg-[#1a1a1a] px-4 py-2 rounded-2xl border border-white/10">
+        <Whiteboard 
+          key={slides[currentSlideIndex].id}
+          initialData={slides[currentSlideIndex].whiteboardData}
+          onSave={handleSaveWhiteboard}
+          onClose={() => setShowWhiteboard(false)}
+          className="h-full w-full"
+          theme="dark"
+          backgroundImage={slides[currentSlideIndex].imageUrl}
+        >
+          {/* Inline SBoard Controls */}
           <button 
             onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
             disabled={currentSlideIndex === 0}
             className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
+            title="Previous Slide"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           
           <button 
             onClick={() => setShowSlidePreview(!showSlidePreview)}
-            className="px-4 py-2 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors"
+            className="px-3 py-1 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors"
+            title="Show Slides"
           >
             {currentSlideIndex + 1} / {slides.length}
           </button>
@@ -174,11 +185,12 @@ export default function Teacher() {
             onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))}
             disabled={currentSlideIndex === slides.length - 1}
             className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
+            title="Next Slide"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
           
-          <div className="w-[1px] h-6 bg-white/20 mx-2" />
+          <div className="w-[1px] h-4 bg-white/20 mx-1" />
           
           <button 
             onClick={() => {
@@ -197,15 +209,24 @@ export default function Teacher() {
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
 
-          <div className="w-[1px] h-6 bg-white/20 mx-2" />
-          
           <button 
-            onClick={() => setShowWhiteboard(false)}
-            className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg uppercase tracking-wider transition-colors"
+            onClick={() => {
+              const newSlides = [...slides];
+              newSlides.splice(currentSlideIndex, 1);
+              setSlides(newSlides);
+              if (newSlides.length === 0) {
+                 setShowWhiteboard(false);
+              } else if (currentSlideIndex >= newSlides.length) {
+                 setCurrentSlideIndex(newSlides.length - 1);
+              }
+            }}
+            className="p-2 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors"
+            title="Delete Slide"
           >
-            Exit
+            <Trash2 className="w-5 h-5" />
           </button>
-        </div>
+
+        </Whiteboard>
 
         <AnimatePresence>
           {showSlidePreview && (
@@ -241,16 +262,6 @@ export default function Teacher() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <Whiteboard 
-          key={slides[currentSlideIndex].id}
-          initialData={slides[currentSlideIndex].whiteboardData}
-          onSave={handleSaveWhiteboard}
-          onClose={() => setShowWhiteboard(false)}
-          className="h-full w-full"
-          theme="dark"
-          backgroundImage={slides[currentSlideIndex].imageUrl}
-        />
       </div>
     );
   }

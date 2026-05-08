@@ -39,9 +39,10 @@ interface WhiteboardProps {
   onSave?: (data: string, imageData?: string) => void;
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
   backgroundImage?: string;
+  children?: React.ReactNode;
 }
 
-export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage }: WhiteboardProps) {
+export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage, children }: WhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -140,12 +141,12 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     return () => window.removeEventListener('resize', handleResize);
   }, [isFullscreen]);
 
-  const getPos = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
+  const getPos = (e: React.PointerEvent | PointerEvent | React.MouseEvent | MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+    const clientX = 'clientX' in e ? e.clientX : 0;
+    const clientY = 'clientY' in e ? e.clientY : 0;
     
     // Coordinates relative to the canvas element
     const x = clientX - rect.left;
@@ -840,19 +841,23 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     }
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if ('touches' in e) {
-      // Prevent scrolling while drawing
-      e.preventDefault();
+  const [activePointerId, setActivePointerId] = useState<number | null>(null);
+
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Only accept primary pointer or first touch to avoid multi-touch chaos
+    if (activePointerId !== null) return;
+    setActivePointerId(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
+
+    if (e.pointerType === 'touch') {
+      // Prevent scrolling while drawing is implicitly handled by touch-action: none
     }
 
     if (tool === 'pan') {
       setIsPanning(true);
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-        setLastPanPos({ x: clientX, y: clientY });
+        setLastPanPos({ x: e.clientX, y: e.clientY });
       }
       return;
     }
@@ -985,20 +990,20 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
     setCurrentStroke(newStroke);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if ('touches' in e) {
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === 'touch') {
       e.preventDefault();
     }
+    
+    // Ignore updates from other pointers
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
 
     if (isPanning) {
-      const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-      const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-      
-      const dx = clientX - lastPanPos.x;
-      const dy = clientY - lastPanPos.y;
+      const dx = e.clientX - lastPanPos.x;
+      const dy = e.clientY - lastPanPos.y;
       
       setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-      setLastPanPos({ x: clientX, y: clientY });
+      setLastPanPos({ x: e.clientX, y: e.clientY });
       return;
     }
 
@@ -1012,7 +1017,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         const newStrokes = strokes.filter(s => s.id !== stroke.id);
         if (newStrokes.length !== strokes.length) {
           setStrokes(newStrokes);
-          // Only save to history when a stroke is actually removed
           saveToHistory(newStrokes);
         }
       }
@@ -1043,7 +1047,6 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             const dx = pos.x - center.x;
             const dy = pos.y - center.y;
             
-            // Calculate scale based on distance from center
             const initialBounds = getStrokeBounds(s);
             const initialWidth = Math.max(20, initialBounds.maxX - initialBounds.minX);
             const initialHeight = Math.max(20, initialBounds.maxY - initialBounds.minY);
@@ -1051,11 +1054,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             const scaleX = Math.abs(dx * 2) / initialWidth;
             const scaleY = Math.abs(dy * 2) / initialHeight;
             
-            return {
-              ...s,
-              scale: { x: scaleX, y: scaleY },
-              center
-            };
+            return { ...s, scale: { x: scaleX, y: scaleY }, center };
           }
           return s;
         }));
@@ -1064,11 +1063,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
           if (selectedStrokeIds.includes(s.id)) {
             const center = s.center || getStrokeCenter(s);
             const angle = Math.atan2(pos.y - center.y, pos.x - center.x) + Math.PI / 2;
-            return {
-              ...s,
-              rotation: angle,
-              center
-            };
+            return { ...s, rotation: angle, center };
           }
           return s;
         }));
@@ -1078,10 +1073,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     if (tool === 'lasso' || tool === 'ai-ocr' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
       if (currentStroke) {
-        setCurrentStroke({
-          ...currentStroke,
-          points: [...currentStroke.points, pos]
-        });
+        setCurrentStroke({ ...currentStroke, points: [...currentStroke.points, pos] });
       }
       return;
     }
@@ -1093,28 +1085,37 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
     if (tool === 'eraser' && eraserMode === 'stroke') {
       const stroke = findStrokeAt(pos);
-      if (stroke) {
-        setStrokes(prev => prev.filter(s => s.id !== stroke.id));
-      }
+      if (stroke) setStrokes(prev => prev.filter(s => s.id !== stroke.id));
       return;
     }
 
     if (!currentStroke) return;
 
     if (currentStroke.type === 'path') {
+      // Use getCoalescedEvents for much smoother writing on high-frequency / low-end panels
+      let newPoints = [];
+      if (e.nativeEvent && typeof e.nativeEvent.getCoalescedEvents === 'function') {
+        const events = e.nativeEvent.getCoalescedEvents();
+        newPoints = events.map(ev => getPos(ev));
+      } else {
+        newPoints = [pos];
+      }
+      
       setCurrentStroke({
         ...currentStroke,
-        points: [...currentStroke.points, pos]
+        points: [...currentStroke.points, ...newPoints]
       });
     } else {
-      setCurrentStroke({
-        ...currentStroke,
-        endPos: pos
-      });
+      setCurrentStroke({ ...currentStroke, endPos: pos });
     }
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e && activePointerId !== null && e.pointerId !== activePointerId) return;
+    if (e && e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    setActivePointerId(null);
     setIsPanning(false);
     if (!isDrawing) return;
     setIsDrawing(false);
@@ -1255,13 +1256,11 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
           <canvas
             ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseOut={() => { stopDrawing(); setCursorPos({x: -100, y: -100}); }}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerCancel={stopDrawing}
+            onPointerOut={() => { setCursorPos({x: -100, y: -100}); }}
             className="absolute inset-0 w-full h-full"
           />
 
@@ -1581,6 +1580,15 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
               </div>
 
               <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+              {children && (
+                <>
+                  <div className="flex items-center gap-1 pl-1">
+                    {children}
+                  </div>
+                  <div className="w-px h-6 bg-white/10 mx-1"></div>
+                </>
+              )}
 
               <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 py-1 border border-white/10">
                 <button 

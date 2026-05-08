@@ -22,7 +22,7 @@ import Simulator from "./pages/Simulator";
 import FlowChart from "./pages/FlowChart";
 import ConceptVisualizer from "./pages/ConceptVisualizer";
 import AIDeveloperPanel from "./pages/AIDeveloperPanel";
-import Teacher from "./pages/Teacher";
+import SBoard from "./pages/SBoard";
 import PYQEngine from "./pages/PYQEngine";
 import Tutorial from "./components/Tutorial";
 import { IntroSequence } from "./components/IntroSequence";
@@ -111,7 +111,7 @@ function AppContent({
               <Route path="/flowchart" element={<PageTransition><FlowChart /></PageTransition>} />
               <Route path="/visualizer" element={<PageTransition><ConceptVisualizer /></PageTransition>} />
               <Route path="/ai-developer" element={<PageTransition><AIDeveloperPanel /></PageTransition>} />
-              <Route path="/teacher" element={<PageTransition><Teacher /></PageTransition>} />
+              <Route path="/sboard" element={<PageTransition><SBoard /></PageTransition>} />
             </Routes>
           </AnimatePresence>
         </main>
@@ -253,7 +253,7 @@ export default function App() {
                 Unlock Platform
               </button>
             </form>
-            <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise Security</p>
+            <p className="mt-6 text-[10px] text-gray-500 uppercase tracking-widest">Smart Sunrise v3.0 Security</p>
           </motion.div>
         </div>
       )}
