@@ -13,6 +13,7 @@ import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
 import GlobalUploadProgress from "./components/GlobalUploadProgress";
+import { GoogleAd } from "./components/GoogleAd";
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useThemeStore } from "./store/useThemeStore";
@@ -97,6 +98,8 @@ function AppContent({
         />
         
         <main ref={mainRef} className="flex-1 w-full relative">
+          <GoogleAd slot="6686680500" />
+          <GoogleAd slot="1615756616" format="autorelaxed" />
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<PageTransition><Home /></PageTransition>} />
@@ -149,11 +152,11 @@ export default function App() {
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
     return !isPermanentlySkipped;
   });
-  const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    return localStorage.getItem('sunrise_unlocked_v6') === 'true';
+    return sessionStorage.getItem('sunrise_unlocked_v6') === 'true';
   });
   const [accessCode, setAccessCode] = useState("");
+  const [showDeveloperCredit, setShowDeveloperCredit] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { isGlowEnabled } = useAppStore();
@@ -171,16 +174,6 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleUnlock = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (accessCode === "smart@sunrise" || accessCode === "ss123") {
-      setIsUnlocked(true);
-      localStorage.setItem('sunrise_unlocked_v6', 'true');
-    } else {
-      alert("Invalid Access Code");
-    }
-  };
-
   const handleIntroComplete = (skipped?: boolean) => {
     setShowEntryAnimation(false);
     setTimeout(() => {
@@ -189,6 +182,16 @@ export default function App() {
     
     if (!skipped) {
       setShowDeveloperCredit(true);
+    }
+  };
+
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (accessCode === "smart@sunrise" || accessCode === "ss123") {
+      setIsUnlocked(true);
+      sessionStorage.setItem('sunrise_unlocked_v6', 'true');
+    } else {
+      alert("Invalid Access Code");
     }
   };
 
