@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
+import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Trash2, Settings, Sparkles, Database, Download, Plus, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Image as ImageIcon, Sparkles as MagicWand, LayoutTemplate, Layers, Info } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { useTeacherStore } from '../store/useTeacherStore';
@@ -20,6 +20,17 @@ export default function SBoard() {
   const { slides, currentSlideIndex, setSlides: storeSetSlides, setCurrentSlideIndex, updateSlideWhiteboardData: storeUpdateSlideWhiteboardData, clearSlides: storeClearSlides } = useTeacherStore();
   const { user } = useAuthStore();
   const { setIsGeneratingContent } = useAppStore();
+  
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processProgress, setProcessProgress] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
+  const [importSettings, setImportSettings] = useState({ quality: 2, renderAnnotations: true });
+
+  // Sidebar Layout States
+  const [showLeftSidebar, setShowLeftSidebar] = useState(true);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
+
   useEffect(() => {
     const fetchSlides = async () => {
       if (!user) return;
@@ -53,7 +64,6 @@ export default function SBoard() {
     if (!user) return;
 
     try {
-      // Chunk up batch writes to 500 at a time
       const chunks = [];
       for(let i = 0; i < newSlides.length; i += 500) {
         chunks.push(newSlides.slice(i, i + 500));
@@ -112,15 +122,6 @@ export default function SBoard() {
        handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/slides/${currentSlide.id}`);
     }
   };
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processProgress, setProcessProgress] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [showWhiteboard, setShowWhiteboard] = useState(false);
-  const [showDashboardSelector, setShowDashboardSelector] = useState(false);
-  const [importSettings, setImportSettings] = useState({
-    quality: 2, // Scale factor
-    renderAnnotations: true,
-  });
 
   useEffect(() => {
     setIsGeneratingContent(isProcessing);
@@ -140,22 +141,17 @@ export default function SBoard() {
       }
       
       if (file.type === 'application/pdf') {
-        await clearSlides();
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        const newSlides = [];
+        const newSlides = [...slides];
         setTotalItems(pdf.numPages);
 
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
-          
-          // Calculate scale to fit a standard HD resolution if needed, 
-          // but we use the quality setting as base scale.
           const viewport = page.getViewport({ scale: importSettings.quality });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
           
-          // We want to ensure the canvas is large enough for high quality
           canvas.height = viewport.height;
           canvas.width = viewport.width;
 
@@ -171,23 +167,21 @@ export default function SBoard() {
               imageUrl: canvas.toDataURL('image/jpeg', 0.8),
               whiteboardData: '',
             });
-            
-            // Yield to main thread to prevent lag and allow progress bar to animate
             await new Promise(resolve => setTimeout(resolve, 5));
           }
           setProcessProgress(i);
         }
         setSlides(newSlides);
       } else if (file.type.startsWith('image/')) {
-        await clearSlides();
         setTotalItems(1);
         const reader = new FileReader();
         reader.onload = (e) => {
-          setSlides([{
+          const newSlides = [...slides, {
             id: `slide-${Date.now()}`,
             imageUrl: e.target?.result as string,
             whiteboardData: '',
-          }]);
+          }];
+          setSlides(newSlides);
           setProcessProgress(1);
         };
         reader.readAsDataURL(file);
@@ -207,14 +201,9 @@ export default function SBoard() {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp'],
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx']
     },
-    multiple: false
+    multiple: false,
+    noClick: slides.length > 0 // Don't trigger on click if workspace is active
   });
-
-  const handleStartTeaching = () => {
-    if (slides.length > 0) {
-      setShowWhiteboard(true);
-    }
-  };
 
   const handleExportAllPDF = async () => {
     if (slides.length === 0) return;
@@ -238,7 +227,12 @@ export default function SBoard() {
           pdf.addPage([1920, 1080], 'landscape');
         }
 
-        pdf.addImage(imgData, 'PNG', 0, 0, 1920, 1080);
+        if (imgData) {
+            pdf.addImage(imgData, 'PNG', 0, 0, 1920, 1080);
+        } else {
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(0, 0, 1920, 1080, "F");
+        }
       }
 
       pdf.save(`presentation-${Date.now()}.pdf`);
@@ -254,331 +248,394 @@ export default function SBoard() {
     updateSlideWhiteboardData(currentSlideIndex, data, imageData);
   };
 
-  const [showSlidePreview, setShowSlidePreview] = useState(false);
+  const addBlankSlide = () => {
+    const newSlides = [...slides];
+    const index = currentSlideIndex >= 0 ? currentSlideIndex + 1 : newSlides.length;
+    newSlides.splice(index, 0, {
+      id: `slide-blank-${Date.now()}`,
+      imageUrl: '', 
+      whiteboardData: ''
+    });
+    setSlides(newSlides);
+    setCurrentSlideIndex(index);
+  };
 
-  if (showWhiteboard) {
-    return (
-      <div className="fixed inset-0 z-[60] bg-black">
-        <Whiteboard 
-          key={slides[currentSlideIndex].id}
-          initialData={slides[currentSlideIndex].whiteboardData}
-          onSave={handleSaveWhiteboard}
-          onClose={() => setShowWhiteboard(false)}
-          className="h-full w-full"
-          theme="dark"
-          backgroundImage={slides[currentSlideIndex].imageUrl}
-        >
-          {/* Inline SBoard Controls */}
-          <button 
-            onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
-            disabled={currentSlideIndex === 0}
-            className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
-            title="Previous Slide"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          
-          <button 
-            onClick={() => setShowSlidePreview(!showSlidePreview)}
-            className="px-3 py-1 text-white font-mono text-sm hover:bg-white/10 rounded-xl transition-colors"
-            title="Show Slides"
-          >
-            {currentSlideIndex + 1} / {slides.length}
-          </button>
+  const deleteSlide = async (idx: number) => {
+    const slideToDelete = slides[idx];
+    const newSlides = [...slides];
+    newSlides.splice(idx, 1);
+    setSlides(newSlides);
+    if (user && slideToDelete) {
+      try {
+          await deleteDoc(doc(db, `users/${user.uid}/slides`, slideToDelete.id));
+      } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/slides/${slideToDelete.id}`);
+      }
+    }
+    if (currentSlideIndex >= newSlides.length) {
+        setCurrentSlideIndex(Math.max(0, newSlides.length - 1));
+    }
+  };
 
+  return (
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-[#0a0a0a] text-white overflow-hidden font-sans pt-14">
+      {/* Top Application Bar */}
+      <header className="fixed top-14 left-0 right-0 h-14 bg-[#111] border-b border-white/10 flex items-center justify-between px-4 z-40 shadow-sm backdrop-blur-md">
+        <div className="flex items-center gap-4">
           <button 
-            onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))}
-            disabled={currentSlideIndex === slides.length - 1}
-            className="p-2 text-white hover:bg-white/10 rounded-xl disabled:opacity-30 transition-colors"
-            title="Next Slide"
+            onClick={() => setShowLeftSidebar(!showLeftSidebar)} 
+            className="p-2 -ml-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
           >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-          
-          <div className="w-[1px] h-4 bg-white/20 mx-1" />
-          
-          <button 
-            onClick={() => {
-              const newSlides = [...slides];
-              newSlides.splice(currentSlideIndex + 1, 0, {
-                id: `slide-blank-${Date.now()}`,
-                imageUrl: '', // Blank slide
-                whiteboardData: ''
-              });
-              setSlides(newSlides);
-              setCurrentSlideIndex(currentSlideIndex + 1);
-            }}
-            className="p-2 text-indigo-400 hover:bg-indigo-500/20 rounded-xl transition-colors"
-            title="Add Blank Slide"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            {showLeftSidebar ? <PanelLeftClose className="w-5 h-5" /> : <PanelLeftOpen className="w-5 h-5" />}
           </button>
 
-          <button 
-            onClick={async () => {
-              const slideToDelete = slides[currentSlideIndex];
-              const newSlides = [...slides];
-              newSlides.splice(currentSlideIndex, 1);
-              setSlides(newSlides); // Update store and sync remaining
-              if (user && slideToDelete) {
-                try {
-                   await deleteDoc(doc(db, `users/${user.uid}/slides`, slideToDelete.id));
-                } catch (err) {
-                   handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/slides/${slideToDelete.id}`);
-                }
-              }
-              if (newSlides.length === 0) {
-                 setShowWhiteboard(false);
-              } else if (currentSlideIndex >= newSlides.length) {
-                 setCurrentSlideIndex(newSlides.length - 1);
-              }
-            }}
-            className="p-2 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors"
-            title="Delete Slide"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
+          <div className="w-px h-6 bg-white/10" />
 
-        </Whiteboard>
-
-        <AnimatePresence>
-          {showSlidePreview && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-20 left-4 z-[70] bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 flex gap-4 overflow-x-auto max-w-[calc(100vw-2rem)] shadow-2xl"
+          {/* File Operations */}
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => {
+                const el = document.getElementById("sboard-file-upload");
+                if(el) el.click();
+              }} 
+              className="px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"
             >
-              {slides.map((slide, idx) => (
-                <div 
-                  key={slide.id}
-                  onClick={() => {
-                    setCurrentSlideIndex(idx);
-                    setShowSlidePreview(false);
-                  }}
-                  className={`relative shrink-0 w-32 aspect-[16/9] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
-                    idx === currentSlideIndex ? 'border-indigo-500' : 'border-transparent hover:border-white/20'
-                  }`}
+              <Plus className="w-4 h-4" /> Import Content
+              <input id="sboard-file-upload" type="file" className="hidden" accept=".pdf,image/*,.pptx" onChange={(e) => { if(e.target.files) onDrop(Array.from(e.target.files)); }} />
+            </button>
+            <button 
+              onClick={() => setShowDashboardSelector(true)}
+              className="hidden sm:flex px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-gray-300 hover:text-white transition-colors items-center gap-2"
+            >
+              <Database className="w-4 h-4" /> From Dashboard
+            </button>
+            {slides.length > 0 && (
+              <button 
+                onClick={handleExportAllPDF} 
+                className="px-3 py-1.5 rounded-lg hover:bg-white/5 text-sm font-medium text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" /> Export PDF
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Slide Navigation (Center) */}
+        {slides.length > 0 && (
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center bg-[#1a1a1a] border border-white/10 rounded-xl p-1 shadow-inner">
+            <button 
+              onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))} 
+              disabled={currentSlideIndex === 0} 
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-all"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div className="px-4 text-sm font-mono text-gray-300 cursor-pointer hover:text-white">
+              {currentSlideIndex + 1} <span className="opacity-50">/ {slides.length}</span>
+            </div>
+            <button 
+              onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))} 
+              disabled={currentSlideIndex === slides.length - 1} 
+              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-all"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
+        {/* Right Tools */}
+        <div className="flex items-center gap-3">
+          <button className="hidden sm:flex px-4 py-1.5 rounded-lg bg-[#b026ff]/10 border border-[#b026ff]/30 text-[#b026ff] hover:bg-[#b026ff]/20 text-sm font-bold transition-all items-center gap-2 shadow-[0_0_15px_rgba(176,38,255,0.15)]">
+            <MagicWand className="w-4 h-4" /> Slide AI
+          </button>
+          <div className="w-px h-6 bg-white/10" />
+          <button 
+            onClick={() => setShowRightSidebar(!showRightSidebar)} 
+            className={`p-2 rounded-lg transition-colors ${showRightSidebar ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+          >
+            {showRightSidebar ? <PanelRightClose className="w-5 h-5" /> : <PanelRightOpen className="w-5 h-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Area */}
+      <div className="flex-1 flex overflow-hidden relative mt-14">
+        
+        {/* Left Sidebar - Slides Thumbnails */}
+        <AnimatePresence>
+          {showLeftSidebar && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 220, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#111] border-r border-white/5 flex flex-col shrink-0 z-30 overflow-hidden shadow-2xl relative"
+            >
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar flex flex-col relative" {...getRootProps()}>
+                {/* Enable drag-and-drop on the sidebar too */}
+                <input {...getInputProps()} />
+
+                {slides.map((slide, idx) => (
+                  <div 
+                    key={slide.id}
+                    onClick={() => setCurrentSlideIndex(idx)}
+                    className={`relative group shrink-0 aspect-[16/9] bg-[#1a1a1a] rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200 ${
+                      currentSlideIndex === idx ? 'border-[#00F0FF] shadow-[0_0_15px_rgba(0,240,255,0.2)]' : 'border-transparent hover:border-white/20'
+                    }`}
+                  >
+                     <img src={slide.imageUrl || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='} alt={`Slide ${idx + 1}`} className="w-full h-full object-contain" />
+                     <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center gap-2 ${currentSlideIndex === idx ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'}`}>
+                        <button 
+                          className="p-1.5 bg-red-500/80 hover:bg-red-500 text-white rounded-lg shadow-lg transform active:scale-95 transition-all" 
+                          onClick={(e) => { e.stopPropagation(); deleteSlide(idx); }}
+                          title="Delete Slide"
+                        >
+                          <Trash2 className="w-4 h-4"/>
+                        </button>
+                     </div>
+                     <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${currentSlideIndex === idx ? 'bg-[#00f0ff] text-black' : 'bg-black/60 text-white'}`}>
+                       {idx + 1}
+                     </div>
+                  </div>
+                ))}
+
+                <button 
+                  onClick={addBlankSlide} 
+                  className="w-full shrink-0 aspect-[16/9] border-2 border-dashed border-white/10 hover:border-white/30 rounded-xl flex flex-col items-center justify-center text-gray-500 hover:text-white hover:bg-white/5 transition-all"
                 >
-                  {slide.imageUrl ? (
-                    <img src={slide.imageUrl} className="w-full h-full object-cover" alt={`Slide ${idx + 1}`} />
-                  ) : (
-                    <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                      <span className="text-white/30 text-xs">Blank</span>
-                    </div>
-                  )}
-                  <div className="absolute bottom-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white">
-                    {idx + 1}
+                  <Plus className="w-6 h-6 mb-1" />
+                  <span className="text-[10px] uppercase tracking-widest font-bold">New Slide</span>
+                </button>
+              </div>
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* Central Whiteboard Canvas */}
+        <main className="flex-1 relative bg-[#0a0a0a] outline-none overflow-hidden flex items-center justify-center">
+          {isDragActive && (
+            <div className="absolute inset-0 z-50 bg-[#00F0FF]/10 backdrop-blur-sm border-2 border-[#00F0FF] border-dashed rounded-3xl m-4 flex flex-col items-center justify-center pointer-events-none">
+              <Upload className="w-20 h-20 text-[#00F0FF] mb-6 animate-bounce" />
+              <h2 className="text-4xl font-display font-bold text-white tracking-widest text-center uppercase mb-2">Drop to Import</h2>
+              <p className="text-[#00F0FF] text-xl">Instantly convert PDFs and Images into interactive slides</p>
+            </div>
+          )}
+
+          {slides.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center p-8 max-w-2xl w-full" {...getRootProps()}>
+              <input {...getInputProps()} />
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full bg-[#111] border border-white/5 rounded-3xl p-12 shadow-2xl relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#00F0FF] to-transparent opacity-50" />
+                
+                <div className="w-24 h-24 bg-gradient-to-br from-[#00f0ff]/20 to-[#b026ff]/20 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-white/10">
+                  <Presentation className="w-12 h-12 text-white" />
+                </div>
+                
+                <h1 className="text-4xl font-display font-bold text-white mb-4">Classroom Workspace</h1>
+                <p className="text-gray-400 text-lg mb-10 leading-relaxed">
+                  A premium environment for interactive teaching. Drag and drop your PDFs, PPTXs or images to instantly create a fully feature-rich presentation board.
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <button 
+                    onClick={() => {
+                        const el = document.getElementById("sboard-file-upload");
+                        if(el) el.click();
+                    }}
+                    className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-gray-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-5 h-5" /> Upload File
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); addBlankSlide(); }}
+                    className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                  >
+                    <LayoutTemplate className="w-5 h-5" /> Blank Canvas
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+             <div className="w-full h-full relative" {...getRootProps()}>
+               {/* We don't want click on the canvas to trigger dropzone, so we use noClick: true */}
+               <Whiteboard 
+                  key={slides[currentSlideIndex].id}
+                  initialData={slides[currentSlideIndex].whiteboardData}
+                  onSave={handleSaveWhiteboard}
+                  className="h-full w-full !border-0 !rounded-none !shadow-none"
+                  theme="dark"
+                  backgroundImage={slides[currentSlideIndex].imageUrl}
+                />
+             </div>
+          )}
+
+          {/* Processing Overlay */}
+          <AnimatePresence>
+            {isProcessing && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center"
+              >
+                <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                       <Sparkles className="w-5 h-5 text-[#00F0FF] animate-pulse" /> Processing Content
+                    </h3>
+                    <span className="text-[#00F0FF] font-mono font-bold">{Math.round((processProgress / Math.max(1, totalItems)) * 100)}%</span>
+                  </div>
+                  <div className="h-3 w-full bg-black rounded-full overflow-hidden border border-white/5">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-[#00F0FF] to-[#b026ff]"
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${(processProgress / Math.max(1, totalItems)) * 100}%` }}
+                      transition={{ bounce: 0, duration: 0.2 }}
+                    />
+                  </div>
+                  <p className="text-center text-gray-500 text-sm mt-4 font-medium uppercase tracking-widest">
+                    Page {processProgress} of {totalItems}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
+        {/* Right Sidebar - Properties & Tools */}
+        <AnimatePresence>
+          {showRightSidebar && (
+            <motion.aside
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 280, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#111] border-l border-white/5 flex flex-col shrink-0 z-30 overflow-hidden shadow-2xl"
+            >
+              <div className="p-4 border-b border-white/5">
+                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Properties</h3>
+              </div>
+              <div className="p-4 space-y-6">
+                
+                {/* Advanced Features */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <MagicWand className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Dashboard Controls</span>
+                  </div>
+                  <div className="bg-black/50 rounded-xl p-3 border border-white/5 space-y-3">
+                    <button className="w-full flex items-center justify-between px-2 py-2 hover:bg-white/5 rounded-lg transition-colors group">
+                      <div className="flex items-center gap-2">
+                        <LayoutTemplate className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                        <span className="text-sm text-gray-300 group-hover:text-white">Smart Auto-Layout</span>
+                      </div>
+                      <div className="w-8 h-4 rounded-full bg-[#00F0FF]/20 relative">
+                        <div className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-[#00F0FF]" />
+                      </div>
+                    </button>
+                    <button className="w-full flex items-center justify-between px-2 py-2 hover:bg-white/5 rounded-lg transition-colors group">
+                      <div className="flex items-center gap-2">
+                        <Presentation className="w-4 h-4 text-gray-400 group-hover:text-white" />
+                        <span className="text-sm text-gray-300 group-hover:text-white">Classroom Mode</span>
+                      </div>
+                      <div className="w-8 h-4 rounded-full bg-white/10 relative">
+                        <div className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-gray-400" />
+                      </div>
+                    </button>
                   </div>
                 </div>
-              ))}
-            </motion.div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">AI Assistant</span>
+                  </div>
+                  <div className="bg-gradient-to-br from-[#00f0ff]/10 to-[#b026ff]/10 rounded-xl p-3 border border-white/10 space-y-2">
+                    <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+                      Use AI to analyze this slide, suggest diagrams, or automatically clean up messy annotations.
+                    </p>
+                    <button className="w-full py-2 bg-black/40 hover:bg-black/60 border border-white/5 text-sm font-medium rounded-lg text-gray-300 hover:text-white transition-colors">
+                      Clean Up Strokes
+                    </button>
+                    <button className="w-full py-2 bg-black/40 hover:bg-black/60 border border-white/5 text-sm font-medium rounded-lg text-gray-300 hover:text-white transition-colors">
+                      Suggest Diagram
+                    </button>
+                  </div>
+                </div>
+
+                {/* Import Quality Settings */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Settings className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Asset Resolution</span>
+                  </div>
+                  <div className="bg-black/50 rounded-xl p-3 border border-white/5 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-400">Render Quality</span>
+                      <span className="text-sm font-mono text-[#00F0FF]">{importSettings.quality}x</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="4" 
+                      step="0.5"
+                      value={importSettings.quality}
+                      onChange={(e) => setImportSettings(prev => ({ ...prev, quality: parseFloat(e.target.value) }))}
+                      className="w-full accent-[#00F0FF]"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                      <span>SD</span>
+                      <span>4K Ultra</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <Info className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Slide Info</span>
+                  </div>
+                  {slides.length > 0 ? (
+                    <div className="bg-black/50 rounded-xl p-3 border border-white/5 space-y-2">
+                       <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                         <span className="text-xs text-gray-500">Current Slide</span>
+                         <span className="text-xs font-medium text-white">{currentSlideIndex + 1}</span>
+                       </div>
+                       <div className="flex justify-between items-center border-b border-white/5 pb-2 pt-1">
+                         <span className="text-xs text-gray-500">Total Slides</span>
+                         <span className="text-xs font-medium text-white">{slides.length}</span>
+                       </div>
+                       <div className="flex justify-between items-center pt-1">
+                         <span className="text-xs text-gray-500">Auto-saved</span>
+                         <span className="text-xs font-medium text-emerald-400 flex items-center gap-1">
+                           <Database className="w-3 h-3" /> Synced
+                         </span>
+                       </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-4">No active presentation.</p>
+                  )}
+                </div>
+
+                {slides.length > 0 && (
+                  <button 
+                    onClick={clearSlides}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-sm font-bold mt-8"
+                  >
+                    <Trash2 className="w-4 h-4" /> Force Clear Workspace
+                  </button>
+                )}
+                
+              </div>
+            </motion.aside>
           )}
         </AnimatePresence>
       </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen pt-24 pb-32 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl sm:text-5xl font-display font-bold text-white">SBoard</h1>
-              <span className="px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest">Smart Board</span>
-            </div>
-            <p className="text-gray-400 text-lg">Convert your teaching materials into interactive AI slides.</p>
-          </div>
-          
-          {slides.length > 0 && (
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={clearSlides}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all font-bold"
-              >
-                <Trash2 className="w-5 h-5" />
-                Clear All
-              </button>
-              <button 
-                onClick={handleExportAllPDF}
-                disabled={isProcessing}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all font-bold disabled:opacity-50"
-              >
-                <FileText className="w-5 h-5" />
-                Export PDF
-              </button>
-              <button 
-                onClick={handleStartTeaching}
-                className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-all font-bold shadow-[0_0_20px_rgba(99,102,241,0.4)]"
-              >
-                <Play className="w-5 h-5" />
-                Start Teaching
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            {slides.length === 0 ? (
-              <div 
-                {...getRootProps()} 
-                className={`relative group cursor-pointer rounded-[2rem] border-2 border-dashed transition-all duration-500 min-h-[400px] flex flex-col items-center justify-center p-12 text-center ${
-                  isDragActive ? 'border-indigo-500 bg-indigo-500/5' : 'border-white/10 hover:border-white/20 bg-white/5'
-                }`}
-              >
-                <input {...getInputProps()} />
-                
-                <div className="relative mb-8">
-                  <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-30 transform-gpu group-hover:opacity-50 transition-opacity"></div>
-                  <div className="relative w-24 h-24 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center">
-                    <Upload className="w-10 h-10 text-indigo-400" />
-                  </div>
-                </div>
-
-                <h3 className="text-2xl font-bold text-white mb-4">
-                  {isProcessing ? 'Processing your file...' : 'Upload Teaching Material'}
-                </h3>
-                <p className="text-gray-400 max-w-md mx-auto mb-6">
-                  Drag and drop your PDF or images here. We'll convert them into high-quality interactive slides. (For PPTX, please save as PDF first).
-                </p>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDashboardSelector(true);
-                  }}
-                  className="mb-8 flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 hover:text-indigo-200 transition-all font-medium z-10 relative"
-                >
-                  <Database className="w-5 h-5" />
-                  Select from Dashboard
-                </button>
-
-                <div className="flex flex-wrap justify-center gap-4">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
-                    <FileText className="w-4 h-4" /> PDF
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-400">
-                    <Sparkles className="w-4 h-4" /> Images
-                  </div>
-                </div>
-
-                {isProcessing && (
-                  <div className="absolute inset-x-0 bottom-0 p-8">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Processing Pages</span>
-                      <span className="text-xs font-mono text-indigo-400">{processProgress} / {totalItems}</span>
-                    </div>
-                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/10">
-                      <motion.div 
-                        className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${(processProgress / totalItems) * 100}%` }}
-                        transition={{ type: "spring", bounce: 0, duration: 0.5 }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {slides.map((slide, index) => (
-                  <motion.div 
-                    key={slide.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.05 }}
-                    className={`relative aspect-[16/9] rounded-2xl overflow-hidden border-2 transition-all cursor-pointer group ${
-                      currentSlideIndex === index ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-white/10 hover:border-white/20'
-                    }`}
-                    onClick={() => setCurrentSlideIndex(index)}
-                  >
-                    <img src={slide.imageUrl} alt={`Slide ${index + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded-lg bg-[#111] text-[10px] font-bold text-white border border-white/10">
-                      Page {index + 1}
-                    </div>
-                  </motion.div>
-                ))}
-                
-                <div 
-                  {...getRootProps()}
-                  className="aspect-[16/9] rounded-2xl border-2 border-dashed border-white/10 hover:border-white/20 bg-white/5 flex flex-col items-center justify-center cursor-pointer transition-all"
-                >
-                  <input {...getInputProps()} />
-                  <Upload className="w-6 h-6 text-gray-500 mb-2" />
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Add More</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-6">
-            <div className="glass-panel rounded-3xl p-6 border border-white/10">
-              <div className="flex items-center gap-3 mb-6">
-                <Settings className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-lg font-bold text-white">Import Settings</h3>
-              </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-sm text-gray-400">Render Quality (HD)</label>
-                    <span className="text-sm font-mono text-indigo-400">{importSettings.quality}x</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="4" 
-                    step="0.5"
-                    value={importSettings.quality}
-                    onChange={(e) => setImportSettings(prev => ({ ...prev, quality: parseFloat(e.target.value) }))}
-                    className="w-full accent-indigo-500"
-                  />
-                  <div className="flex justify-between mt-1 text-[10px] text-gray-600 font-bold uppercase tracking-widest">
-                    <span>Standard</span>
-                    <span>Ultra HD</span>
-                  </div>
-                </div>
-
-                <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-sm text-gray-400 group-hover:text-white transition-colors">Render Annotations</span>
-                  <div 
-                    onClick={() => setImportSettings(prev => ({ ...prev, renderAnnotations: !prev.renderAnnotations }))}
-                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${importSettings.renderAnnotations ? 'bg-indigo-500' : 'bg-white/10'}`}
-                  >
-                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 ${importSettings.renderAnnotations ? 'left-6' : 'left-1'}`} />
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div className="glass-panel rounded-3xl p-6 border border-white/10 bg-indigo-500/5">
-              <div className="flex items-center gap-3 mb-4">
-                <Info className="w-5 h-5 text-indigo-400" />
-                <h3 className="text-lg font-bold text-white">Pro Tips</h3>
-              </div>
-              <ul className="space-y-3">
-                {[
-                  "Use 2x or higher quality for 4K writing experience.",
-                  "PDFs work best for multi-page slide conversion.",
-                  "Your whiteboard annotations are saved per slide.",
-                  "Use the Smart Pen in whiteboard for perfect shapes."
-                ].map((tip, i) => (
-                  <li key={i} className="flex gap-3 text-sm text-gray-400">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-      
       <DashboardFileSelector
         isOpen={showDashboardSelector}
         onClose={() => setShowDashboardSelector(false)}
