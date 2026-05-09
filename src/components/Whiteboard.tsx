@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useImperativeHandle } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { 
   Pen, Eraser, Undo, Redo, Square, Circle, Minus, Type, Download, Trash2, X, Highlighter, 
@@ -32,6 +32,31 @@ interface Stroke {
   startTime?: number;
 }
 
+export interface WhiteboardRef {
+  setTool: (t: 'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan') => void;
+  getTool: () => string;
+  setEraserMode: (m: 'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel') => void;
+  setColor: (c: string) => void;
+  getColor: () => string;
+  setLineWidth: (w: number) => void;
+  getLineWidth: () => number;
+  undo: () => void;
+  redo: () => void;
+  clear: () => void;
+  downloadAsImage: () => void;
+  downloadAsPDF: () => void;
+  toggleFullscreen: () => void;
+  setScale: (s: number) => void;
+  getScale: () => number;
+  setOffset: (o: {x: number, y: number}) => void;
+  historyStep: number;
+  historyLength: number;
+  setBackgroundType: (type: 'none' | 'grid' | 'dots' | 'lines') => void;
+  selectedStrokeIds: string[];
+  deleteSelected: () => void;
+  scaleSelected: (factor: number) => void;
+}
+
 interface WhiteboardProps {
   onClose?: () => void;
   className?: string;
@@ -40,9 +65,10 @@ interface WhiteboardProps {
   theme?: 'dark' | 'light' | 'grid' | 'transparent';
   backgroundImage?: string;
   children?: React.ReactNode;
+  hideToolbar?: boolean;
 }
 
-export default function Whiteboard({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage, children }: WhiteboardProps) {
+export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage, children, hideToolbar }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1244,6 +1270,44 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
 
   const gridBg = `bg-[#1a1b26] bg-[url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0L0 0 0 20' fill='none' stroke='%23ffffff' stroke-width='0.5' stroke-opacity='0.1'/%3E%3C/svg%3E")]`;
 
+  useImperativeHandle(ref, () => ({
+    setTool,
+    getTool: () => tool,
+    setEraserMode,
+    setColor,
+    getColor: () => color,
+    setLineWidth,
+    getLineWidth: () => lineWidth,
+    undo,
+    redo,
+    clear,
+    downloadAsImage,
+    downloadAsPDF,
+    toggleFullscreen,
+    setScale: (s) => { setScale(s); redraw(); },
+    getScale: () => scale,
+    setOffset: (o) => { setOffset(o); redraw(); },
+    historyStep,
+    historyLength: history.length,
+    setBackgroundType,
+    selectedStrokeIds,
+    deleteSelected: () => {
+      const newStrokes = strokes.filter(s => !selectedStrokeIds.includes(s.id));
+      setStrokes(newStrokes);
+      saveToHistory(newStrokes);
+      setSelectedStrokeIds([]);
+    },
+    scaleSelected: (factor: number) => {
+      const newStrokes = strokes.map(s => {
+        if (!selectedStrokeIds.includes(s.id)) return s;
+        const scaleAmount = (s.scale?.x || 1) * factor;
+        return { ...s, scale: { x: scaleAmount, y: scaleAmount } };
+      });
+      setStrokes(newStrokes);
+      saveToHistory(newStrokes);
+    }
+  }), [tool, color, lineWidth, historyStep, history, scale, offset, selectedStrokeIds, strokes]);
+
   return (
     <>
       <div 
@@ -1298,6 +1362,7 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
       </div>
 
       {/* Floating Draggable Toolbar */}
+      {!hideToolbar && (
       <motion.div 
         drag
         dragControls={dragControls}
@@ -1619,7 +1684,10 @@ export default function Whiteboard({ onClose, className = '', initialData, onSav
             </div>
         </div>
       </motion.div>
+      )}
     </>
   );
-}
+});
+
+export default Whiteboard;
 
