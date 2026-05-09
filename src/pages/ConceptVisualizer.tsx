@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import CinematicLoader from '../components/CinematicLoader';
 import { useLocation } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
+import { useAppStore } from '../store/useAppStore';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -35,10 +36,21 @@ export default function ConceptVisualizer() {
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
+  const { setIsGeneratingContent } = useAppStore();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
+  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
+  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
+  const [fetchingFiles, setFetchingFiles] = useState(false);
+
+  useEffect(() => {
+    setIsGeneratingContent(isPromptBuilding);
+  }, [isPromptBuilding, setIsGeneratingContent]);
 
   useEffect(() => {
     // Check if there's a background generation task for Concept Visualizer
@@ -47,12 +59,6 @@ export default function ConceptVisualizer() {
       useConceptVisualizerStore.getState().setVisualizerData(visualizerTask.result);
     }
   }, [tasks, visualizerData]);
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isFileSelectorOpen, setIsFileSelectorOpen] = useState(false);
-  const [isPromptBuilding, setIsPromptBuilding] = useState(false);
-  const [dashboardFiles, setDashboardFiles] = useState<any[]>([]);
-  const [fetchingFiles, setFetchingFiles] = useState(false);
 
   const fetchDashboardFiles = async () => {
     try {

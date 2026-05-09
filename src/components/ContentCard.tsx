@@ -113,21 +113,7 @@ export const ContentCard = React.memo(({
     
     const neonBorderClass = size === 'lg' ? 'shadow-[0_0_20px_rgba(0,240,255,0.2)] border-[#00F0FF]/40' : 'border-white/10';
     
-    if (isPdf) {
-      const thumbUrl = item.secure_url.replace(/\.pdf$/, '.jpg').replace('/upload/', '/upload/w_200,h_300,c_fill,g_north,pg_1,q_auto,f_auto/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
-    }
-
-    if (isImage) {
-      const thumbUrl = item.secure_url.replace('/upload/', '/upload/w_400,c_limit,q_auto,f_auto/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
-    }
-    
-    if (isVideo) {
-      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1,q_auto,f_auto/');
-      return <img src={thumbUrl} alt={title} className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" />;
-    }
-
+    // Fallback gradient logic
     const getNeonGradient = (subject?: string) => {
       const s = subject?.toLowerCase() || '';
       if (s.includes('physic')) return 'from-[#00F0FF] to-[#0066FF]';
@@ -139,11 +125,10 @@ export const ContentCard = React.memo(({
 
     const neonGradient = getNeonGradient(meta.subject);
 
-    return (
+    const FallbackDisplay = () => (
       <div className={`w-full h-full bg-gradient-to-br ${neonGradient} p-4 flex flex-col items-center justify-center text-center relative overflow-hidden group border ${neonBorderClass}`}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
         
-        {/* Futuristic Grid for AI Content */}
         {isAiGenerated && (
           <>
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]"></div>
@@ -167,6 +152,28 @@ export const ContentCard = React.memo(({
         )}
       </div>
     );
+
+    if (isImage) {
+      const thumbUrl = item.secure_url.replace('/upload/', '/upload/w_400,c_limit,q_auto:low,f_auto/');
+      return (
+        <div className="w-full h-full relative">
+          <img src={thumbUrl} alt={title} className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block'; }} />
+          <div style={{display: 'none'}} className="absolute inset-0"><FallbackDisplay /></div>
+        </div>
+      );
+    }
+    
+    if (isVideo) {
+      const thumbUrl = item.secure_url.replace(/\.[^/.]+$/, '.jpg').replace('/upload/', '/upload/w_400,h_225,c_fill,so_1,q_auto:low,f_auto/');
+      return (
+        <div className="w-full h-full relative">
+          <img src={thumbUrl} alt={title} className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 border ${neonBorderClass}`} referrerPolicy="no-referrer" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block'; }} />
+          <div style={{display: 'none'}} className="absolute inset-0"><FallbackDisplay /></div>
+        </div>
+      );
+    }
+
+    return <FallbackDisplay />;
   };
 
   const [isNavigating, setIsNavigating] = useState(false);

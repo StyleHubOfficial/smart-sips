@@ -14,6 +14,11 @@ import { BackButton } from '../components/BackButton';
 import { QuestionExporter } from '../components/QuestionExporter';
 import { useNavigate } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useAppStore } from '../store/useAppStore';
+import { db } from '../lib/firebase';
+import { doc, getDocs, setDoc, deleteDoc, collection } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 
 interface PYQ {
   question_id: string;
@@ -27,9 +32,14 @@ interface PYQ {
   source_url: string;
   frequency?: number;
   importance?: string;
+  options?: string[];
+  correctAnswer?: string;
+  explanation?: string;
 }
 
 export default function PYQEngine() {
+  const { user } = useAuthStore();
+  const { setIsGeneratingContent } = useAppStore();
   const [exam, setExam] = useState('');
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
@@ -57,6 +67,59 @@ export default function PYQEngine() {
     return saved ? JSON.parse(saved) : [];
   });
 
+  useEffect(() => {
+    const fetchSavedQuestions = async () => {
+      if (!user) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, `users/${user.uid}/saved_questions`));
+        const userSavedQuestions: PYQ[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.questionText) {
+            userSavedQuestions.push(JSON.parse(data.questionText));
+          }
+        });
+        setSavedQuestions(userSavedQuestions);
+      } catch (error) {
+         handleFirestoreError(error, OperationType.GET, `users/${user.uid}/saved_questions`);
+      }
+    };
+    fetchSavedQuestions();
+  }, [user]);
+
+  const handleSaveQuestion = async (q: PYQ) => {
+    if (!user) {
+      alert("Please login to save questions to your account.");
+      return;
+    }
+
+    const isSaved = savedQuestions.some(sq => sq.question_id === q.question_id);
+    if (isSaved) {
+      const newSaved = savedQuestions.filter(sq => sq.question_id !== q.question_id);
+      setSavedQuestions(newSaved);
+      localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/saved_questions`, q.question_id));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/saved_questions/${q.question_id}`);
+      }
+    } else {
+      const newSaved = [...savedQuestions, q];
+      setSavedQuestions(newSaved);
+      localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
+      try {
+        await setDoc(doc(db, `users/${user.uid}/saved_questions`, q.question_id), {
+          userId: user.uid,
+          questionId: q.question_id,
+          questionText: JSON.stringify(q),
+          createdAt: Date.now()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/saved_questions/${q.question_id}`);
+      }
+    }
+  };
+
   const [showHistory, setShowHistory] = useState(false);
   const [activeWhiteboard, setActiveWhiteboard] = useState<string | null>(null);
   const dragControls = useDragControls();
@@ -75,6 +138,10 @@ export default function PYQEngine() {
   const [similarContent, setSimilarContent] = useState<string>('');
   const [isGeneratingSimilar, setIsGeneratingSimilar] = useState(false);
   const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    setIsGeneratingContent(isSearching || isExtracting || isGeneratingSolution || isGeneratingSimilar);
+  }, [isSearching, isExtracting, isGeneratingSolution, isGeneratingSimilar, setIsGeneratingContent]);
 
   useEffect(() => {
     // Check if there's a background generation task for PYQ Engine
@@ -448,19 +515,6 @@ export default function PYQEngine() {
     }
   };
 
-  const handleSaveQuestion = (q: PYQ) => {
-    const isSaved = savedQuestions.some(sq => sq.question_id === q.question_id);
-    if (isSaved) {
-      const newSaved = savedQuestions.filter(sq => sq.question_id !== q.question_id);
-      setSavedQuestions(newSaved);
-      localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
-    } else {
-      const newSaved = [...savedQuestions, q];
-      setSavedQuestions(newSaved);
-      localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
-    }
-  };
-
   const getDifficultyColor = (diff: string) => {
     switch (diff?.toLowerCase()) {
       case 'easy': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
@@ -815,15 +869,29 @@ export default function PYQEngine() {
                   title={`${exam} ${subject} ${topic} PYQs`}
                 />
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
+                    if (!user) {
+                      alert("Please login to save questions to your account.");
+                      return;
+                    }
                     const newSaved = [...savedQuestions];
                     let added = 0;
-                    results.forEach(q => {
+                    for (const q of results) {
                       if (!newSaved.some(sq => sq.question_id === q.question_id)) {
                         newSaved.push(q);
                         added++;
+                        try {
+                          await setDoc(doc(db, `users/${user.uid}/saved_questions`, q.question_id), {
+                            userId: user.uid,
+                            questionId: q.question_id,
+                            questionText: JSON.stringify(q),
+                            createdAt: Date.now()
+                          });
+                        } catch (error) {
+                          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}/saved_questions/${q.question_id}`);
+                        }
                       }
-                    });
+                    }
                     setSavedQuestions(newSaved);
                     localStorage.setItem('pyq_saved_questions', JSON.stringify(newSaved));
                     alert(`Saved ${added} new questions to your collection!`);

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
@@ -6,13 +6,112 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { useTeacherStore } from '../store/useTeacherStore';
 import Whiteboard from '../components/Whiteboard';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
+import { db } from '../lib/firebase';
+import { collection, doc, setDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useAppStore } from '../store/useAppStore';
+import { OperationType, handleFirestoreError } from '../lib/firestoreErrorHandler';
 
 // Set up PDF.js worker
 import pdfWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-export default function Teacher() {
-  const { slides, currentSlideIndex, setSlides, setCurrentSlideIndex, updateSlideWhiteboardData, clearSlides } = useTeacherStore();
+export default function SBoard() {
+  const { slides, currentSlideIndex, setSlides: storeSetSlides, setCurrentSlideIndex, updateSlideWhiteboardData: storeUpdateSlideWhiteboardData, clearSlides: storeClearSlides } = useTeacherStore();
+  const { user } = useAuthStore();
+  const { setIsGeneratingContent } = useAppStore();
+  useEffect(() => {
+    const fetchSlides = async () => {
+      if (!user) return;
+      try {
+        const querySnapshot = await getDocs(collection(db, `users/${user.uid}/slides`));
+        const userSlides: any[] = [];
+        querySnapshot.forEach((doc) => {
+          userSlides.push(doc.data());
+        });
+        
+        userSlides.sort((a, b) => a.id?.localeCompare(b.id) || 0);
+        
+        if (userSlides.length > 0) {
+          const formattedSlides = userSlides.map(s => ({
+            id: s.slideId,
+            imageUrl: s.imageUrl,
+            whiteboardData: s.whiteboardData,
+            annotatedImageUrl: s.annotatedImageUrl
+          }));
+          storeSetSlides(formattedSlides);
+        }
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}/slides`);
+      }
+    };
+    fetchSlides();
+  }, [user, storeSetSlides]);
+
+  const setSlides = async (newSlides: any[]) => {
+    storeSetSlides(newSlides);
+    if (!user) return;
+
+    try {
+      // Chunk up batch writes to 500 at a time
+      const chunks = [];
+      for(let i = 0; i < newSlides.length; i += 500) {
+        chunks.push(newSlides.slice(i, i + 500));
+      }
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach(data => {
+            const ref = doc(db, `users/${user.uid}/slides`, data.id);
+            const slideData: any = {
+              userId: user.uid,
+              slideId: data.id,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+            if(data.imageUrl) slideData.imageUrl = data.imageUrl;
+            if(data.whiteboardData) slideData.whiteboardData = data.whiteboardData;
+            if(data.annotatedImageUrl) slideData.annotatedImageUrl = data.annotatedImageUrl;
+            
+            batch.set(ref, slideData);
+        });
+        await batch.commit();
+      }
+    } catch(err) {
+      handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}/slides`);
+    }
+  };
+
+  const clearSlides = async () => {
+    storeClearSlides();
+    if (!user) return;
+    try {
+      const querySnapshot = await getDocs(collection(db, `users/${user.uid}/slides`));
+      const batch = writeBatch(db);
+      querySnapshot.forEach((document) => {
+        batch.delete(document.ref);
+      });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/slides`);
+    }
+  };
+
+  const updateSlideWhiteboardData = async (index: number, data: string, dataUrl: string) => {
+    storeUpdateSlideWhiteboardData(index, data, dataUrl);
+    if (!user || slides.length === 0) return;
+    const currentSlide = slides[index];
+    if(!currentSlide) return;
+    try {
+      await setDoc(doc(db, `users/${user.uid}/slides`, currentSlide.id), {
+        whiteboardData: data,
+        annotatedImageUrl: dataUrl,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (error) {
+       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}/slides/${currentSlide.id}`);
+    }
+  };
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
@@ -22,6 +121,10 @@ export default function Teacher() {
     quality: 2, // Scale factor
     renderAnnotations: true,
   });
+
+  useEffect(() => {
+    setIsGeneratingContent(isProcessing);
+  }, [isProcessing, setIsGeneratingContent]);
 
   const onDrop = async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -37,6 +140,7 @@ export default function Teacher() {
       }
       
       if (file.type === 'application/pdf') {
+        await clearSlides();
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
         const newSlides = [];
@@ -64,7 +168,7 @@ export default function Teacher() {
 
             newSlides.push({
               id: `slide-${Date.now()}-${i}`,
-              imageUrl: canvas.toDataURL('image/png'),
+              imageUrl: canvas.toDataURL('image/jpeg', 0.8),
               whiteboardData: '',
             });
             
@@ -75,6 +179,7 @@ export default function Teacher() {
         }
         setSlides(newSlides);
       } else if (file.type.startsWith('image/')) {
+        await clearSlides();
         setTotalItems(1);
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -210,10 +315,18 @@ export default function Teacher() {
           </button>
 
           <button 
-            onClick={() => {
+            onClick={async () => {
+              const slideToDelete = slides[currentSlideIndex];
               const newSlides = [...slides];
               newSlides.splice(currentSlideIndex, 1);
-              setSlides(newSlides);
+              setSlides(newSlides); // Update store and sync remaining
+              if (user && slideToDelete) {
+                try {
+                   await deleteDoc(doc(db, `users/${user.uid}/slides`, slideToDelete.id));
+                } catch (err) {
+                   handleFirestoreError(err, OperationType.DELETE, `users/${user.uid}/slides/${slideToDelete.id}`);
+                }
+              }
               if (newSlides.length === 0) {
                  setShowWhiteboard(false);
               } else if (currentSlideIndex >= newSlides.length) {

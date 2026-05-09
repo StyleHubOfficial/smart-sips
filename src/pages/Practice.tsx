@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { usePracticeStore, Question } from '../store/usePracticeStore';
 import { useUploadStore } from '../store/useUploadStore';
+import { useAppStore } from '../store/useAppStore';
 import CinematicLoader from '../components/CinematicLoader';
 import Whiteboard from '../components/Whiteboard';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -32,6 +33,7 @@ export default function Practice() {
   const { role } = useAuthStore();
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload, uploads } = useUploadStore();
+  const { setIsGeneratingContent } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -63,6 +65,10 @@ export default function Practice() {
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
   const [version] = useState("Advance 2.5x");
   const [practiceFinished, setPracticeFinished] = useState(false);
+
+  useEffect(() => {
+    setIsGeneratingContent(isGeneratingSimilar || isGeneratingNext);
+  }, [isGeneratingSimilar, isGeneratingNext, setIsGeneratingContent]);
   const [showCelebration, setShowCelebration] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const { tasks } = useGenerationStore();

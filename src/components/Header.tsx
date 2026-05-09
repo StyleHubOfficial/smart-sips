@@ -6,6 +6,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useNotificationStore } from "../store/useNotificationStore";
 import { useThemeStore } from "../store/useThemeStore";
 import { useAppStore } from "../store/useAppStore";
+import { logout as authLogout } from "../lib/authFunctions";
 
 interface HeaderProps {
   isSmartPanelMode: boolean;
@@ -28,7 +29,7 @@ export default function Header({
 }: HeaderProps) {
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const { isAuthenticated, logout } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const { theme, toggleTheme } = useThemeStore();
   const { isGlowEnabled, toggleGlow, notifications } = useAppStore();
@@ -127,10 +128,17 @@ export default function Header({
 
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
-            <div className="relative group">
+            <div className="relative group flex items-center gap-2">
+              {user?.photoURL && (
+                <img src={user.photoURL} alt="Profile" referrerPolicy="no-referrer" className="w-8 h-8 rounded-full border border-white/10" />
+              )}
               <button 
-                onClick={() => {
-                  logout();
+                onClick={async () => {
+                  if (user) {
+                    await authLogout();
+                  } else {
+                    logout();
+                  }
                   addNotification('info', 'Logged out successfully');
                 }}
                 className="p-2.5 rounded-xl bg-white/5 text-[var(--color-text-muted)] hover:bg-red-500/20 hover:text-red-400 transition-all duration-300 flex items-center gap-2"
@@ -138,9 +146,6 @@ export default function Header({
                 <LogOut className="w-5 h-5" />
                 <span className="text-sm font-medium hidden sm:block">Logout</span>
               </button>
-              <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-black/80 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                Logout
-              </div>
             </div>
           ) : (
             <div className="relative group">

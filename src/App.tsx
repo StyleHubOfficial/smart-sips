@@ -13,7 +13,7 @@ import Notifications from "./components/Notifications";
 import LoginModal from "./components/LoginModal";
 import AIHelper from "./components/AIHelper";
 import GlobalUploadProgress from "./components/GlobalUploadProgress";
-import { GoogleAd } from "./components/GoogleAd";
+import { AdOverlay } from "./components/AdOverlay";
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useThemeStore } from "./store/useThemeStore";
@@ -98,8 +98,7 @@ function AppContent({
         />
         
         <main ref={mainRef} className="flex-1 w-full relative">
-          <GoogleAd slot="6686680500" />
-          <GoogleAd slot="1615756616" format="autorelaxed" />
+          <AdOverlay />
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<PageTransition><Home /></PageTransition>} />

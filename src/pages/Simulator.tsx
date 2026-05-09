@@ -5,6 +5,7 @@ import { Search, Loader2, Sparkles, Zap, Maximize, Minimize, Code, RotateCcw, Do
 import UploadToCoursesModal from '../components/UploadToCoursesModal';
 import { useUploadStore } from '../store/useUploadStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useAppStore } from '../store/useAppStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import SimLoader from '../components/SimLoader';
@@ -21,6 +22,7 @@ export default function Simulator() {
     setQuery, setGeneratedCode, setModel, setMode, generateSimulation, clearSimulation, saveCurrentSimulation, deleteSimulation, loadSimulation, setSubject, setSourceFile
   } = useSimulatorStore();
   
+  const { setIsGeneratingContent } = useAppStore();
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
@@ -63,6 +65,10 @@ export default function Simulator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    setIsGeneratingContent(isPromptBuilding || explainerLoading);
+  }, [isPromptBuilding, explainerLoading, setIsGeneratingContent]);
 
   useEffect(() => {
     // Check if there's a background generation task for Simulator

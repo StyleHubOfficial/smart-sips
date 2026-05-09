@@ -22,7 +22,9 @@ interface AppState {
   onlineTimes: Record<string, string>;
   isGlowEnabled: boolean;
   viewedContent: string[];
+  isGeneratingContent: boolean;
   
+  setIsGeneratingContent: (isGenerating: boolean) => void;
   addSiteNotification: (notif: Omit<SiteNotification, 'id' | 'timestamp'>) => void;
   deleteSiteNotification: (id: string) => void;
   
@@ -43,7 +45,9 @@ export const useAppStore = create<AppState>()(
       onlineTimes: {},
       isGlowEnabled: false,
       viewedContent: [],
+      isGeneratingContent: false,
       
+      setIsGeneratingContent: (isGenerating) => set({ isGeneratingContent: isGenerating }),
       addSiteNotification: (notif) => set((state) => ({
         notifications: [{
           ...notif,
@@ -87,11 +91,19 @@ export const useAppStore = create<AppState>()(
         maintenanceAlerts: [],
         onlineTimes: {},
         isGlowEnabled: false,
-        viewedContent: []
+        viewedContent: [],
+        isGeneratingContent: false,
       })
     }),
     {
       name: 'sunrise-app-storage',
+      partialize: (state) => ({ 
+        notifications: state.notifications,
+        maintenanceAlerts: state.maintenanceAlerts,
+        onlineTimes: state.onlineTimes,
+        isGlowEnabled: state.isGlowEnabled,
+        viewedContent: state.viewedContent
+      }),
     }
   )
 );

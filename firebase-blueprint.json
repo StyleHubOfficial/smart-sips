@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "photoURL": { "type": "string", "description": "User's photo URL" },
+        "role": { "type": "string", "enum": ["guest", "teacher", "admin", "developer"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "SavedQuestion": {
+      "title": "Saved Question",
+      "description": "A question saved by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "questionText": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["userId", "questionId", "questionText", "createdAt"]
+    },
+    "Slide": {
+      "title": "SBoard Slide",
+      "description": "A whiteboard slide belonging to a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "slideId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "whiteboardData": { "type": "string" },
+        "annotatedImageUrl": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["userId", "slideId", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles"
+    },
+    "/users/{userId}/saved_questions/{questionId}": {
+      "schema": { "$ref": "#/entities/SavedQuestion" },
+      "description": "User's saved PYQ questions"
+    },
+    "/users/{userId}/slides/{slideId}": {
+      "schema": { "$ref": "#/entities/Slide" },
+      "description": "User's SBoard slides"
+    }
+  }
+}

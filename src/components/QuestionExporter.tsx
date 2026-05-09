@@ -59,12 +59,19 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
       
       let heightLeft = pdfHeight;
       let position = 0;
+
+      // Fill background
+      doc.setFillColor(10, 10, 10);
+      doc.rect(0, 0, pdfWidth, doc.internal.pageSize.getHeight(), 'F');
+      
       doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
       heightLeft -= doc.internal.pageSize.getHeight();
       
       while (heightLeft >= 0) {
         position = heightLeft - pdfHeight;
         doc.addPage();
+        doc.setFillColor(10, 10, 10);
+        doc.rect(0, 0, pdfWidth, doc.internal.pageSize.getHeight(), 'F');
         doc.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
         heightLeft -= doc.internal.pageSize.getHeight();
       }
@@ -230,8 +237,11 @@ export const QuestionExporter: React.FC<QuestionExporterProps> = ({ questions, t
       <div 
         ref={exportRef} 
         style={{ 
-          position: 'absolute', 
-          left: '-9999px', 
+          position: 'fixed', 
+          zIndex: -100,
+          opacity: 0,
+          pointerEvents: 'none',
+          left: 0,
           top: 0, 
           width: '900px',
           padding: '40px',

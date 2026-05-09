@@ -8,6 +8,7 @@ interface GoogleAdProps {
 export const GoogleAd: React.FC<GoogleAdProps> = ({ slot, format = "auto" }) => {
   useEffect(() => {
     try {
+      // @ts-ignore
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (e) {
       console.error("AdSense error: ", e);

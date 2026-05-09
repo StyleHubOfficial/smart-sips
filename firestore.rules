@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() <= 200 &&
+        data.role in ['guest', 'teacher', 'admin', 'developer'] &&
+        data.createdAt == request.time.toMillis();
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidId(userId) && userId == request.auth.uid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'role']) &&
+        incoming().uid == existing().uid && incoming().createdAt == existing().createdAt;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+
+      match /saved_questions/{questionId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && isValidId(questionId) && request.auth.uid == userId &&
+          incoming().keys().hasAll(['userId', 'questionId', 'questionText', 'createdAt']) &&
+          incoming().userId == userId &&
+          incoming().questionId == questionId &&
+          incoming().questionText is string && incoming().questionText.size() <= 10000 &&
+          incoming().createdAt == request.time.toMillis();
+        allow update: if isSignedIn() && isValidId(questionId) && request.auth.uid == userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['options', 'correctAnswer', 'explanation']) &&
+          incoming().userId == existing().userId && incoming().questionId == existing().questionId && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      match /slides/{slideId} {
+        allow read: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && isValidId(slideId) && request.auth.uid == userId &&
+          incoming().keys().hasAll(['userId', 'slideId', 'createdAt', 'updatedAt']) &&
+          incoming().userId == userId &&
+          incoming().slideId == slideId &&
+          incoming().createdAt == request.time.toMillis() &&
+          incoming().updatedAt == request.time.toMillis();
+        allow update: if isSignedIn() && isValidId(slideId) && request.auth.uid == userId &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['imageUrl', 'whiteboardData', 'annotatedImageUrl', 'updatedAt']) &&
+          incoming().updatedAt == request.time.toMillis() &&
+          incoming().userId == existing().userId && incoming().slideId == existing().slideId && incoming().createdAt == existing().createdAt;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+  }
+}

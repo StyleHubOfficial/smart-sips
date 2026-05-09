@@ -13,6 +13,7 @@ import CinematicLoader from '../components/CinematicLoader';
 import mermaid from 'mermaid';
 import { useLocation } from 'react-router-dom';
 import { useGenerationStore } from '../store/useGenerationStore';
+import { useAppStore } from '../store/useAppStore';
 import { DashboardFileSelector } from '../components/DashboardFileSelector';
 
 mermaid.initialize({
@@ -31,6 +32,7 @@ export default function FlowChart() {
   const addNotification = useNotificationStore(state => state.addNotification);
   const { addUpload } = useUploadStore();
   const { role } = useAuthStore();
+  const { setIsGeneratingContent } = useAppStore();
   const [showUploadModal, setShowUploadModal] = useState(false);
   
   const [showHistory, setShowHistory] = useState(false);
@@ -45,6 +47,10 @@ export default function FlowChart() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const { tasks } = useGenerationStore();
+
+  useEffect(() => {
+    setIsGeneratingContent(isPromptBuilding);
+  }, [isPromptBuilding, setIsGeneratingContent]);
 
   useEffect(() => {
     // Check if there's a background generation task for FlowChart

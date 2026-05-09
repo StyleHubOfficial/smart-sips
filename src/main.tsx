@@ -2,9 +2,12 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { FirebaseAuthProvider } from './components/FirebaseAuthProvider';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <FirebaseAuthProvider>
+      <App />
+    </FirebaseAuthProvider>
   </StrictMode>,
 );
