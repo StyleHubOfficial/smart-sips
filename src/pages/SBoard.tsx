@@ -297,7 +297,7 @@ export default function SBoard() {
                   <div 
                     key={slide.id}
                     onClick={() => setCurrentSlideIndex(idx)}
-                    className={`relative w-full aspect-[16/9] rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                    className={`relative w-full aspect-[16/9] rounded-lg overflow-hidden cursor-pointer border-2 transition-all group ${
                       idx === currentSlideIndex ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)]' : 'border-transparent hover:border-white/20'
                     }`}
                   >
@@ -305,12 +305,24 @@ export default function SBoard() {
                       <img src={slide.imageUrl} className="w-full h-full object-cover" alt={`Slide ${idx + 1}`} />
                     ) : (
                       <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                        <span className="text-white/30 text-xs text-center font-mono">Blank Slide</span>
+                        <span className="text-white/30 text-xs text-center font-mono">Blank</span>
                       </div>
                     )}
-                    <div className="absolute top-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] text-white backdrop-blur-sm">
+                    <div className="absolute top-1 left-1 bg-black/60 w-5 h-5 flex items-center justify-center rounded text-[10px] text-white backdrop-blur-sm font-bold">
                       {idx + 1}
                     </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newSlides = [...slides];
+                        newSlides.splice(idx + 1, 0, { id: `slide-copy-${Date.now()}`, imageUrl: slide.imageUrl, whiteboardData: slide.whiteboardData });
+                        setSlides(newSlides);
+                      }}
+                      className="absolute top-1 right-1 bg-black/80 p-1.5 opacity-0 group-hover:opacity-100 hover:bg-indigo-500/80 rounded text-white backdrop-blur-sm transition-all"
+                      title="Duplicate Slide"
+                    >
+                      <Layers className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -363,39 +375,21 @@ export default function SBoard() {
                 <Sparkles className="w-4 h-4 text-indigo-400" />
                 SBoard
               </h1>
-              
-              <div className="w-px h-5 bg-white/10 mx-2 hidden sm:block"></div>
-              
-              <div className="hidden sm:flex items-center bg-black/40 rounded-lg border border-white/5">
-                 <button onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))} disabled={currentSlideIndex === 0} className="p-2 text-gray-400 hover:text-white disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
-                 <span className="text-xs font-mono px-3 text-gray-400">Slide {currentSlideIndex + 1} / {slides.length}</span>
-                 <button onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))} disabled={currentSlideIndex === slides.length - 1} className="p-2 text-gray-400 hover:text-white disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
-              </div>
             </div>
 
-            {/* Smart Panel Toggle & Tools */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              <button onClick={() => whiteboardRef.current?.undo()} className="p-2 text-gray-400 hover:bg-white/10 rounded-lg" title="Undo">
-                <Undo className="w-4 h-4" />
+            {/* Download & Zoom Tools */}
+            <div className="flex items-center gap-2">
+              <button onClick={() => whiteboardRef.current?.setScale((whiteboardRef.current.getScale() || 1) - 0.1)} className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10" title="Zoom Out">
+                 <ZoomOut className="w-4 h-4" />
               </button>
-              <button onClick={() => whiteboardRef.current?.redo()} className="p-2 text-gray-400 hover:bg-white/10 rounded-lg" title="Redo">
-                <Redo className="w-4 h-4" />
+              <button onClick={() => whiteboardRef.current?.setScale((whiteboardRef.current.getScale() || 1) + 0.1)} className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-white/10" title="Zoom In">
+                 <ZoomIn className="w-4 h-4" />
               </button>
               <div className="w-px h-5 bg-white/10 mx-1 sm:mx-2"></div>
-              
-              <div className="hidden md:flex items-center bg-white/5 rounded-lg p-1 border border-white/5">
-                <span className="text-[10px] px-2 text-gray-500 font-bold uppercase">Mode</span>
-                <button onClick={() => setIsSmartPanelMode(false)} className={`px-3 py-1 text-xs rounded-md transition-all ${!isSmartPanelMode ? 'bg-indigo-500 text-white' : 'text-gray-400 hover:text-white'}`}>Advanced</button>
-                <button onClick={() => setIsSmartPanelMode(true)} className={`px-3 py-1 text-xs rounded-md transition-all ${isSmartPanelMode ? 'bg-[#00F0FF] text-black font-bold' : 'text-gray-400 hover:text-white'}`}>Smart Panel</button>
-              </div>
-
-              <div className="w-px h-5 bg-white/10 mx-1 sm:mx-2"></div>
-              
               <button onClick={handleExportAllPDF} className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-2 text-xs font-bold px-3">
                  <Download className="w-4 h-4" />
                  <span className="hidden sm:inline">Export</span>
               </button>
-              
               <button onClick={() => setShowWhiteboard(false)} className="p-2 text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors ml-2 font-bold text-xs px-4 border border-red-400/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
                  Quit
               </button>
@@ -405,199 +399,184 @@ export default function SBoard() {
           {/* INNER WORKSPACE CONTAINER */}
           <div className="flex-1 flex overflow-hidden">
             {/* CANVAS WRAPPER */}
-            <div className="flex-1 relative bg-black/50">
+            <div 
+              className="flex-1 relative bg-[#0e0e12]"
+              onPointerDown={() => {
+                if (showLeftSidebar) setShowLeftSidebar(false);
+                if (showRightSidebar) setShowRightSidebar(false);
+              }}
+            >
                <Whiteboard 
                   ref={whiteboardRef}
                   key={slides[currentSlideIndex].id}
                   initialData={slides[currentSlideIndex].whiteboardData}
                   onSave={handleSaveWhiteboard}
-                  className="h-full w-full border-none rounded-none"
+                  className="h-full w-full border-none rounded-none outline-none"
                   theme="dark"
                   backgroundImage={slides[currentSlideIndex].imageUrl}
                   hideToolbar={true}
                 />
 
-                {/* Floating Quick Actions (Smart Panel Mode) */}
-                {(isSmartPanelMode || !showRightSidebar) && (
-                  <motion.div 
+                {/* FLOATING BOTTOM TOOLBAR */}
+                <motion.div 
                     initial={{ y: 50, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-3xl border border-white/10 p-3 rounded-2xl flex items-center gap-2 sm:gap-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50"
+                    className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#1A1A1A]/95 backdrop-blur-3xl border border-white/10 p-2 rounded-2xl flex items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 pointer-events-auto"
                   >
-                    {[
-                      { id: 'select', icon: MousePointer2, color: '#ffffff' },
-                      { id: 'pen', icon: Pen, color: '#00F0FF' },
-                      { id: 'highlighter', icon: Highlighter, color: '#EAB308' },
-                      { id: 'eraser', icon: Eraser, color: '#EC4899' },
-                    ].map(t => (
-                      <button 
-                        key={t.id}
-                        onClick={() => setTool(t.id)} 
-                        className={`p-4 rounded-xl transition-all hover:scale-105 active:scale-95 ${tool === t.id ? 'bg-white/20 shadow-inner' : 'bg-transparent text-white/70 hover:text-white hover:bg-white/10'}`}
-                      >
-                         <t.icon className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: tool === t.id ? t.color : undefined }} />
-                      </button>
-                    ))}
-                    
-                    <div className="w-px h-12 bg-white/10 mx-2"></div>
-                    
-                    <button 
-                      onClick={() => setTool('smart-pen')} 
-                      className={`p-4 rounded-xl transition-all hover:scale-105 ${tool === 'smart-pen' ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)] border border-purple-500/30' : 'text-gray-400 hover:text-white bg-transparent'}`}
-                    >
-                      <Wand2 className="w-8 h-8 sm:w-10 sm:h-10" />
-                    </button>
-                    <button 
-                      onClick={() => setTool('pan')} 
-                      className={`p-4 rounded-xl transition-all hover:scale-105 ${tool === 'pan' ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.3)] border border-emerald-500/30' : 'text-gray-400 hover:text-white bg-transparent'}`}
-                    >
-                      <Hand className="w-8 h-8 sm:w-10 sm:h-10" />
-                    </button>
+                     {/* Colors & Thickness */}
+                     <div className="flex items-center gap-2 pr-4 border-r border-white/10">
+                        {['#ef4444', '#3b82f6', '#ffffff'].map(c => (
+                          <button 
+                            key={c}
+                            onClick={() => setColor(c)}
+                            style={{ backgroundColor: c }}
+                            className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? 'border-gray-900 scale-110 ring-2 ring-white' : 'border-transparent hover:scale-110'}`}
+                          />
+                        ))}
+                        <button className="w-6 h-6 rounded-full border-2 border-dashed border-gray-500 flex items-center justify-center hover:border-white transition-colors relative overflow-hidden">
+                           <Plus className="w-3 h-3 text-gray-400" />
+                           <input type="color" value={color} onChange={e => setColor(e.target.value)} className="absolute inset-[-10px] w-[200%] h-[200%] opacity-0 cursor-pointer" />
+                        </button>
+                        
+                        <div className="w-px h-6 bg-white/10 mx-1"></div>
+                        <div className="flex items-center gap-1">
+                          {[2, 4, 8, 16].map(w => (
+                            <button 
+                              key={w}
+                              onClick={() => setLineWidth(w)}
+                              className={`w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors ${lineWidth === w ? 'bg-white/20' : ''}`}
+                            >
+                              <div className="bg-white rounded-full bg-current text-white" style={{ width: Math.max(3, w/1.5), height: Math.max(3, w/1.5) }} />
+                            </button>
+                          ))}
+                        </div>
+                     </div>
+
+                     {/* Main Tools */}
+                     <div className="flex items-center gap-1 px-4 relative">
+                        {[
+                          { id: 'select', icon: Sparkles, iconClass: 'rotate-180 -scale-x-100', title: 'Neon Pointer' },
+                          { id: 'pen', icon: Pen, title: 'Pen' },
+                          { id: 'eraser', icon: Eraser, title: 'Eraser' },
+                          { id: 'highlighter', icon: Highlighter, title: 'Highlighter' },
+                          { id: 'line', icon: Minus, title: 'Lines & Arrows' },
+                          { id: 'rect', icon: Square, title: 'Shapes' },
+                          { id: 'pan', icon: Hand, title: 'Pan Canvas' },
+                        ].map(t => (
+                          <button 
+                            key={t.id}
+                            onClick={() => {
+                              setTool(t.id);
+                              // We could toggle expandable sub-menus here if needed
+                            }} 
+                            className={`relative p-3 rounded-xl transition-all hover:scale-105 active:scale-95 group ${tool === t.id ? 'bg-white/20 shadow-inner' : 'bg-transparent text-white/70 hover:text-white hover:bg-white/10'}`}
+                            title={t.title}
+                          >
+                             <t.icon className={`w-5 h-5 ${t.iconClass || ''}`} style={{ color: tool === t.id ? color : undefined }} />
+                             {tool === t.id && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ backgroundColor: color }}></div>}
+                          </button>
+                        ))}
+                     </div>
+
+                     {/* Expandable Tools Placeholder */}
+                     <div className="pl-4 border-l border-white/10 flex items-center gap-2">
+                        <button onClick={() => setTool('text')} className={`p-3 rounded-xl transition-all hover:scale-105 ${tool === 'text' ? 'bg-white/20' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>
+                           <Type className="w-5 h-5" />
+                        </button>
+                        <button className="p-3 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"><MoreVertical className="w-5 h-5" /></button>
+                     </div>
                   </motion.div>
-                )}
+
+                  {/* BOTTOM LEFT: Undo, Redo, Sidebar Toggle */}
+                  <div className="absolute bottom-6 left-4 flex items-center gap-2 z-50">
+                     <button onClick={() => setShowLeftSidebar(!showLeftSidebar)} className="p-3 bg-[#111]/90 backdrop-blur-md border border-white/10 hover:bg-white/10 rounded-xl text-gray-400 transition-colors shadow-lg">
+                        <List className="w-5 h-5" />
+                     </button>
+                     <div className="flex bg-[#111]/90 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-lg">
+                        <button onClick={() => whiteboardRef.current?.undo()} className="p-3 hover:bg-white/10 text-gray-400 transition-colors border-r border-white/10"><Undo className="w-5 h-5" /></button>
+                        <button onClick={() => whiteboardRef.current?.redo()} className="p-3 hover:bg-white/10 text-gray-400 transition-colors"><Redo className="w-5 h-5" /></button>
+                     </div>
+                  </div>
+
+                  {/* BOTTOM RIGHT: Slide Navigation & Settings Toggle */}
+                  <div className="absolute bottom-6 right-4 flex items-center gap-2 z-50">
+                     <div className="flex flex-row items-center bg-[#111]/90 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-lg h-[46px]">
+                        <button onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))} disabled={currentSlideIndex === 0} className="px-3 h-full text-gray-400 hover:bg-white/10 disabled:opacity-30 border-r border-white/10 flex items-center"><ChevronLeft className="w-5 h-5" /></button>
+                        <div className="px-4 text-sm font-mono text-gray-300 font-bold flex items-center">{currentSlideIndex + 1} / {slides.length}</div>
+                        <button onClick={() => setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1))} disabled={currentSlideIndex === slides.length - 1} className="px-3 h-full text-gray-400 hover:bg-white/10 disabled:opacity-30 border-l border-white/10 flex items-center"><ChevronRight className="w-5 h-5" /></button>
+                     </div>
+                     <button onClick={() => setShowRightSidebar(!showRightSidebar)} className="p-3 bg-[#111]/90 backdrop-blur-md border border-white/10 hover:bg-white/10 rounded-xl text-gray-400 transition-colors shadow-lg">
+                        <Settings className="w-5 h-5" />
+                     </button>
+                  </div>
             </div>
 
             {/* RIGHT SIDEBAR - Tools & Properties */}
             <AnimatePresence>
-               {showRightSidebar && !isSmartPanelMode && (
+               {showRightSidebar && (
                  <motion.div
                    initial={{ width: 0, opacity: 0 }}
-                   animate={{ width: 280, opacity: 1 }}
+                   animate={{ width: 260, opacity: 1 }}
                    exit={{ width: 0, opacity: 0 }}
                    className="h-full bg-[#111] border-l border-white/10 flex flex-col shrink-0"
                  >
                     <div className="h-14 border-b border-white/10 flex items-center justify-between px-4">
-                      <span className="font-bold text-sm tracking-wide">PROPERTIES</span>
+                      <span className="font-bold text-sm tracking-wide">SETTINGS</span>
                       <button onClick={() => setShowRightSidebar(false)} className="p-2 text-gray-500 hover:text-white transition-colors">
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-8 custom-scrollbar">
-                       {/* Tools Section */}
-                       <div className="space-y-4">
-                          <div className="flex items-center gap-2 text-gray-500">
-                             <div className="w-3 h-3 rounded-sm bg-indigo-500/20 border border-indigo-500/50 flex items-center justify-center">
-                               <Plus className="w-2 h-2 text-indigo-400" />
-                             </div>
-                             <span className="text-[10px] font-bold uppercase tracking-widest">Draw & Select</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2">
-                             {[
-                               { id: 'select', icon: MousePointer2, label: 'Select' },
-                               { id: 'pen', icon: Pen, label: 'Pen' },
-                               { id: 'laser', icon: Zap, label: 'Laser Pointer' },
-                               { id: 'highlighter', icon: Highlighter, label: 'Highlighter' },
-                               { id: 'eraser', icon: Eraser, label: 'Eraser' },
-                               { id: 'text', icon: Type, label: 'Text' },
-                               { id: 'rect', icon: Square, label: 'Rectangle' },
-                               { id: 'circle', icon: Circle, label: 'Circle' },
-                               { id: 'arrow', icon: ArrowUpRight, label: 'Arrow' },
-                               { id: 'lasso', icon: ScanText, label: 'Lasso' },
-                               { id: 'pan', icon: Hand, label: 'Pan' },
-                             ].map(t => (
-                               <button 
-                                 key={t.id}
-                                 onClick={() => setTool(t.id)}
-                                 className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${tool === t.id ? 'bg-[#00F0FF]/10 border border-[#00F0FF]/30 text-[#00F0FF] shadow-[0_0_10px_rgba(0,240,255,0.1)]' : 'bg-black border border-white/5 text-gray-400 hover:bg-white/5 hover:text-white'}`}
-                                 title={t.label}
-                               >
-                                 <t.icon className="w-5 h-5 pointer-events-none" />
-                               </button>
-                             ))}
-                          </div>
-                       </div>
-
-                       {/* Advanced AI Tools */}
-                       <div className="space-y-4">
-                          <div className="flex items-center gap-2 text-purple-400/70">
-                             <Sparkles className="w-3 h-3" />
-                             <span className="text-[10px] font-bold uppercase tracking-widest">AI & Smart</span>
-                          </div>
-                          <div className="space-y-2">
-                            <button 
-                              onClick={() => setTool('smart-pen')}
-                              className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${tool === 'smart-pen' ? 'bg-purple-500/20 border border-purple-500/50 text-purple-300' : 'bg-black border border-white/5 text-gray-400 hover:bg-white/5'}`}
-                            >
-                               <Wand2 className={`w-5 h-5 shrink-0 ${tool === 'smart-pen' ? 'text-purple-400' : ''}`} />
-                               <div className="text-left leading-tight">
-                                 <div className="text-sm font-bold text-white">Smart Shapes</div>
-                                 <div className="text-[10px] text-gray-500 font-medium">Auto-perfects hand-drawn shapes</div>
-                               </div>
-                            </button>
-
-                            <button 
-                              onClick={() => setTool('ai-ocr')}
-                              className={`w-full p-3 rounded-xl flex items-center gap-3 transition-all ${tool === 'ai-ocr' ? 'bg-purple-500/20 border border-purple-500/50 text-purple-300' : 'bg-black border border-white/5 text-gray-400 hover:bg-white/5'}`}
-                            >
-                               <ScanText className={`w-5 h-5 shrink-0 ${tool === 'ai-ocr' ? 'text-purple-400' : ''}`} />
-                               <div className="text-left leading-tight">
-                                 <div className="text-sm font-bold text-white">Extract AI Text</div>
-                                 <div className="text-[10px] text-gray-500 font-medium">Draw Lasso to extract via AI</div>
-                               </div>
-                            </button>
-                          </div>
-                       </div>
-
-                       <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-
-                       {/* Appearance / Stroke Settings */}
-                       <div className="space-y-5">
-                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Appearance</span>
-                          
-                          <div className="space-y-3 bg-black/40 p-4 rounded-2xl border border-white/5">
-                            <label className="text-xs text-gray-400 flex justify-between items-center">
-                               <span className="font-medium">Stroke Thickness</span>
-                               <span className="text-white font-mono bg-white/10 px-2 py-0.5 rounded text-[10px]">{lineWidth}px</span>
-                            </label>
-                            <input 
-                              type="range" min="1" max="30" 
-                              value={lineWidth} onChange={e => setLineWidth(parseInt(e.target.value))}
-                              className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-[#00F0FF]"
-                            />
-                          </div>
-
-                          <div className="space-y-3 bg-black/40 p-4 rounded-2xl border border-white/5">
-                             <label className="text-xs text-gray-400 font-medium">Color Palette</label>
-                             <div className="flex flex-wrap gap-2">
-                               {['#00F0FF', '#ef4444', '#10b981', '#f59e0b', '#a855f7', '#ffffff', '#1f2937'].map(c => (
-                                 <button 
-                                   key={c}
-                                   onClick={() => setColor(c)}
-                                   className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent'}`}
-                                   style={{ backgroundColor: c }}
-                                 />
-                               ))}
-                               <div className="relative w-7 h-7 rounded-full border-2 border-dashed border-gray-500 overflow-hidden cursor-pointer hover:border-white transition-colors flex items-center justify-center bg-gray-800">
-                                  <Plus className="w-3 h-3 text-gray-400" />
-                                  <input 
-                                    type="color" 
-                                    value={color} 
-                                    onChange={e => setColor(e.target.value)}
-                                    className="absolute inset-[0px] w-20 h-20 opacity-0 cursor-pointer -translate-x-2 -translate-y-2"
-                                  />
-                               </div>
-                             </div>
-                          </div>
-                       </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
                        
-                       <button onClick={() => whiteboardRef.current?.clear()} className="w-full py-3 mt-4 text-xs font-bold text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2">
-                          <Trash2 className="w-4 h-4" /> Clear Canvas
-                       </button>
+                       <div className="space-y-4">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Canvas Background</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                               { id: 'none', label: 'Blank', icon: Square },
+                               { id: 'grid', label: 'Grid', icon: Grid },
+                               { id: 'dots', label: 'Dots', icon: Circle },
+                               { id: 'lines', label: 'Lines', icon: FileText }
+                            ].map(bg => (
+                               <button 
+                                 key={bg.id}
+                                 onClick={() => {
+                                   whiteboardRef.current?.setBackgroundType(bg.id as any);
+                                 }}
+                                 className="flex flex-col items-center gap-2 p-3 rounded-xl bg-black border border-white/5 hover:bg-white/5 transition-colors text-gray-400 hover:text-white hover:border-white/20"
+                               >
+                                 <bg.icon className="w-5 h-5" />
+                                 <span className="text-[10px]">{bg.label}</span>
+                               </button>
+                            ))}
+                          </div>
+                          <button 
+                            onClick={() => whiteboardRef.current?.setBackgroundType('none')}
+                            className="w-full text-xs text-gray-400 hover:text-white py-2"
+                          >
+                            Reset to Default
+                          </button>
+                       </div>
+
+                       <div className="w-full h-px bg-white/10"></div>
+                       
+                       <div className="space-y-3">
+                          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest pl-1">Actions</span>
+                          <button onClick={() => {
+                            if (window.confirm("Are you sure you want to clear the canvas?")) {
+                              whiteboardRef.current?.clear()
+                            }
+                          }} className="w-full py-3 text-xs font-bold text-red-500 bg-red-500/5 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-all flex items-center justify-center gap-2">
+                             <Trash2 className="w-4 h-4" /> Clear Canvas
+                          </button>
+                          <button onClick={handleExportAllPDF} className="w-full py-3 text-xs font-bold text-indigo-400 bg-indigo-500/5 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/10 transition-all flex items-center justify-center gap-2">
+                             <Download className="w-4 h-4" /> Export Document
+                          </button>
+                       </div>
                     </div>
                  </motion.div>
                )}
             </AnimatePresence>
-
-            {/* Toggle Right Sidebar Button */}
-            {!showRightSidebar && !isSmartPanelMode && (
-              <button 
-                onClick={() => setShowRightSidebar(true)} 
-                className="absolute top-14 right-0 mt-4 bg-[#111] p-1.5 border-y border-l border-white/10 rounded-l-lg hover:bg-white/5 z-20 shadow-[-5px_0_15px_rgba(0,0,0,0.5)]"
-              >
-                <Settings className="w-5 h-5 text-gray-400" />
-              </button>
-             )}
           </div>
         </div>
       </div>

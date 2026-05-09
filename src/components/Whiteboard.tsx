@@ -30,6 +30,7 @@ interface Stroke {
   scale?: { x: number, y: number };
   center?: Point;
   startTime?: number;
+  eraserMode?: 'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel';
 }
 
 export interface WhiteboardRef {
@@ -70,7 +71,10 @@ interface WhiteboardProps {
 
 export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ onClose, className = '', initialData, onSave, theme: initialTheme = 'dark', backgroundImage, children, hideToolbar }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [activePointerId, setActivePointerId] = useState<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan'>('pen');
   const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel'>('pixel');
@@ -102,7 +106,8 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     }, 1000);
     return () => clearInterval(interval);
   }, [strokes]);
-  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+
+  const [activeStrokes, setActiveStrokes] = useState<Record<number, Stroke>>({});
   const [history, setHistory] = useState<Stroke[][]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
   
@@ -137,11 +142,13 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     }
   }, [initialData]);
 
+  // Handle Resize
   useEffect(() => {
     const handleResize = () => {
       const canvas = canvasRef.current;
+      const bgCanvas = bgCanvasRef.current;
       const container = containerRef.current;
-      if (!canvas || !container) return;
+      if (!canvas || !bgCanvas || !container) return;
 
       const rect = container.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -149,23 +156,70 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       // Set display size
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
+      bgCanvas.style.width = `${rect.width}px`;
+      bgCanvas.style.height = `${rect.height}px`;
       
       // Set actual size in memory
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
+      bgCanvas.width = rect.width * dpr;
+      bgCanvas.height = rect.height * dpr;
       
       // Scale context to match dpr
       const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-        redraw();
-      }
+      const bgCtx = bgCanvas.getContext('2d');
+      if (ctx) ctx.scale(dpr, dpr);
+      if (bgCtx) bgCtx.scale(dpr, dpr);
+      
+      drawBackground();
+      redraw();
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isFullscreen]);
+  }, [isFullscreen, backgroundImage, backgroundType]);
+
+  const drawBackground = () => {
+    const canvas = bgCanvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    ctx.translate(offset.x, offset.y);
+    ctx.scale(scale, scale);
+
+    const logicalWidth = (canvas.width / (window.devicePixelRatio || 1)) / scale;
+    const logicalHeight = (canvas.height / (window.devicePixelRatio || 1)) / scale;
+
+    renderBackground(ctx, logicalWidth, logicalHeight);
+
+    if (backgroundImage) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = backgroundImage;
+      if (img.complete) {
+        const canvasW = logicalWidth * scale; // get unscaled original width
+        const canvasH = logicalHeight * scale; // get unscaled original height
+        
+        // Wait, original logic used real width:
+        const dpr = window.devicePixelRatio || 1;
+        const cw = canvas.width / dpr;
+        const ch = canvas.height / dpr;
+        const imgScale = Math.min(cw / img.width, ch / img.height);
+        const x = (cw - img.width * imgScale) / 2;
+        const y = (ch - img.height * imgScale) / 2;
+        
+        // Since we are inside translate/scale, we need to map to world coordinates:
+        ctx.drawImage(img, (x - offset.x) / scale, (y - offset.y) / scale, (img.width * imgScale) / scale, (img.height * imgScale) / scale);
+      } else {
+        img.onload = () => drawBackground();
+      }
+    }
+    ctx.restore();
+  };
 
   const getPos = (e: React.PointerEvent | PointerEvent | React.MouseEvent | MouseEvent) => {
     const canvas = canvasRef.current;
@@ -210,33 +264,16 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     ctx.translate(offset.x, offset.y);
     ctx.scale(scale, scale);
 
-    // Render background patterns
-    renderBackground(ctx, (canvas.width / (window.devicePixelRatio || 1)) / scale, (canvas.height / (window.devicePixelRatio || 1)) / scale);
-
-    // Draw background image if exists
-    if (backgroundImage) {
-      const img = new Image();
-      img.src = backgroundImage;
-      if (img.complete) {
-        // Center and scale image to fit/fill properly
-        const canvasW = canvas.width / (window.devicePixelRatio || 1);
-        const canvasH = canvas.height / (window.devicePixelRatio || 1);
-        
-        // Calculate scale to fit the image while maintaining aspect ratio
-        const imgScale = Math.min(canvasW / img.width, canvasH / img.height);
-        const x = (canvasW - img.width * imgScale) / 2;
-        const y = (canvasH - img.height * imgScale) / 2;
-        
-        ctx.drawImage(img, x, y, img.width * imgScale, img.height * imgScale);
-      } else {
-        img.onload = () => redraw();
-      }
-    }
-
-    const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
+    const allStrokes = [...strokes, ...Object.values(activeStrokes)];
 
     allStrokes.forEach(stroke => {
       ctx.save();
+      
+      if (stroke.tool === 'eraser' && stroke.eraserMode === 'pixel') {
+        ctx.globalCompositeOperation = 'destination-out';
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+      }
       
       if (stroke.center && (stroke.rotation || stroke.scale)) {
         ctx.translate(stroke.center.x, stroke.center.y);
@@ -251,6 +288,9 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.globalAlpha = stroke.opacity || 1;
+      if (stroke.tool === 'eraser' && stroke.eraserMode === 'pixel') {
+        ctx.globalAlpha = 1;
+      }
 
       if (selectedStrokeIds.includes(stroke.id)) {
         ctx.shadowBlur = 15;
@@ -484,22 +524,24 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     let animationFrame: number;
     const animate = () => {
       const hasActiveHighlighter = strokes.some(s => s.tool === 'highlighter' && s.startTime && (Date.now() - s.startTime < 7000));
-      if (hasActiveHighlighter || currentStroke?.tool === 'highlighter') {
+      const hasDrawingHighlighter = Object.values(activeStrokes).some(s => s.tool === 'highlighter');
+      if (hasActiveHighlighter || hasDrawingHighlighter) {
         redraw();
       }
       animationFrame = requestAnimationFrame(animate);
     };
     animate();
     return () => cancelAnimationFrame(animationFrame);
-  }, [strokes, currentStroke]);
+  }, [strokes, activeStrokes]);
 
   useEffect(() => {
     redraw();
-  }, [strokes, currentStroke, laserPath, selectedStrokeIds, scale, offset]);
+  }, [strokes, activeStrokes, laserPath, selectedStrokeIds, scale, offset]);
 
   const downloadAsImage = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const bgCanvas = bgCanvasRef.current;
+    if (!canvas || !bgCanvas) return;
     
     // Create a temporary canvas to include the background
     const tempCanvas = document.createElement('canvas');
@@ -508,27 +550,15 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
 
-    // Fill background
-    tempCtx.fillStyle = theme === 'dark' ? '#0E0E12' : '#FFFFFF';
+    // Fill background color first
+    tempCtx.fillStyle = theme === 'dark' || theme === 'grid' ? '#1a1b26' : theme === 'transparent' ? 'transparent' : '#FFFFFF';
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw background image if exists
-    if (backgroundImage) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = backgroundImage;
-      img.onload = () => {
-        tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.drawImage(canvas, 0, 0);
-        const link = document.createElement('a');
-        link.download = `whiteboard-${Date.now()}.png`;
-        link.href = tempCanvas.toDataURL('image/png');
-        link.click();
-      };
-      return;
-    }
-
+    // Draw background canvas layer
+    tempCtx.drawImage(bgCanvas, 0, 0);
+    // Draw strokes layer
     tempCtx.drawImage(canvas, 0, 0);
+
     const link = document.createElement('a');
     link.download = `whiteboard-${Date.now()}.png`;
     link.href = tempCanvas.toDataURL('image/png');
@@ -538,22 +568,38 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
   const downloadAsPDF = async () => {
     const { jsPDF } = await import('jspdf');
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const bgCanvas = bgCanvasRef.current;
+    if (!canvas || !bgCanvas) return;
+    
+    // Use container dimensions for PDF logic instead of actual physical pixels 
+    // to keep the dimensions normal scaled and not massive
+    const dpr = window.devicePixelRatio || 1;
+    const logicalWidth = canvas.width / dpr;
+    const logicalHeight = canvas.height / dpr;
 
-    const imgData = canvas.toDataURL('image/png');
+    // Create a temporary canvas 
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = logicalWidth * 2; // Fixed safe multiplier for decent quality
+    tempCanvas.height = logicalHeight * 2;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    // Need to draw everything appropriately scaled
+    tempCtx.fillStyle = theme === 'dark' || theme === 'grid' ? '#1a1b26' : theme === 'transparent' ? '#FFFFFF' : '#FFFFFF';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    tempCtx.drawImage(bgCanvas, 0, 0, tempCanvas.width, tempCanvas.height);
+    tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+
+    const imgData = tempCanvas.toDataURL('image/jpeg', 0.95);
+    
     const pdf = new jsPDF({
-      orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+      orientation: logicalWidth > logicalHeight ? 'landscape' : 'portrait',
       unit: 'px',
-      format: [canvas.width, canvas.height]
+      format: [logicalWidth, logicalHeight]
     });
 
-    // If theme is dark, we should probably add a dark background to the PDF too
-    if (theme === 'dark') {
-      pdf.setFillColor(14, 14, 18); // #0E0E12
-      pdf.rect(0, 0, canvas.width, canvas.height, 'F');
-    }
-
-    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+    pdf.addImage(imgData, 'JPEG', 0, 0, logicalWidth, logicalHeight);
     pdf.save(`whiteboard-${Date.now()}.pdf`);
   };
 
@@ -867,8 +913,6 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     }
   };
 
-  const [activePointerId, setActivePointerId] = useState<number | null>(null);
-
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // Only accept primary pointer or first touch to avoid multi-touch chaos
     if (activePointerId !== null) return;
@@ -940,7 +984,7 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
         // Start lasso selection
         setTool('lasso');
         const newStroke: Stroke = {
-          id: 'lasso-' + Date.now(),
+          id: 'lasso-' + Date.now() + '-' + e.pointerId,
           tool: 'lasso',
           points: [pos],
           color: '#00F0FF',
@@ -949,14 +993,14 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
           startPos: pos,
           opacity: 0.5
         };
-        setCurrentStroke(newStroke);
+        setActiveStrokes(prev => ({ ...prev, [e.pointerId]: newStroke }));
       }
       return;
     }
 
     if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
       const newStroke: Stroke = {
-        id: 'lasso-eraser-' + Date.now(),
+        id: 'lasso-eraser-' + Date.now() + '-' + e.pointerId,
         tool: 'eraser',
         points: [pos],
         color: '#ff4444',
@@ -965,7 +1009,7 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
         startPos: pos,
         opacity: 0.5
       };
-      setCurrentStroke(newStroke);
+      setActiveStrokes(prev => ({ ...prev, [e.pointerId]: newStroke }));
       return;
     }
 
@@ -1001,7 +1045,7 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     }
 
     const newStroke: Stroke = {
-      id: Date.now().toString(),
+      id: Date.now().toString() + '-' + e.pointerId,
       tool,
       points: [pos],
       color: tool === 'eraser' ? (theme === 'light' ? '#ffffff' : '#1a1b26') : color,
@@ -1010,10 +1054,11 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       startPos: pos,
       endPos: pos,
       opacity: tool === 'highlighter' ? 0.3 : 1,
-      startTime: Date.now()
+      startTime: Date.now(),
+      eraserMode: tool === 'eraser' ? eraserMode : undefined
     };
 
-    setCurrentStroke(newStroke);
+    setActiveStrokes(prev => ({ ...prev, [e.pointerId]: newStroke }));
   };
 
   const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -1021,8 +1066,8 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       e.preventDefault();
     }
     
-    // Ignore updates from other pointers
-    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+    // Allow panning or selection only by the primary active pointer, but multi-touch for drawing
+    if ((tool === 'pan' || tool === 'select') && activePointerId !== null && e.pointerId !== activePointerId) return;
 
     if (isPanning) {
       const dx = e.clientX - lastPanPos.x;
@@ -1115,91 +1160,108 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       return;
     }
 
+    const currentStroke = activeStrokes[e.pointerId];
     if (!currentStroke) return;
 
     if (currentStroke.type === 'path') {
       // Use getCoalescedEvents for much smoother writing on high-frequency / low-end panels
       let newPoints = [];
-      if (e.nativeEvent && typeof e.nativeEvent.getCoalescedEvents === 'function') {
-        const events = e.nativeEvent.getCoalescedEvents();
-        newPoints = events.map(ev => getPos(ev));
+      if (e.nativeEvent && typeof (e.nativeEvent as any).getCoalescedEvents === 'function') {
+        const events = (e.nativeEvent as any).getCoalescedEvents();
+        newPoints = events.map((ev: any) => getPos(ev));
       } else {
         newPoints = [pos];
       }
       
-      setCurrentStroke({
-        ...currentStroke,
-        points: [...currentStroke.points, ...newPoints]
-      });
+      setActiveStrokes(prev => ({
+        ...prev,
+        [e.pointerId]: {
+          ...currentStroke,
+          points: [...currentStroke.points, ...newPoints]
+        }
+      }));
     } else {
-      setCurrentStroke({ ...currentStroke, endPos: pos });
+      setActiveStrokes(prev => ({
+        ...prev,
+        [e.pointerId]: { ...currentStroke, endPos: pos }
+      }));
     }
   };
 
   const stopDrawing = (e?: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e && activePointerId !== null && e.pointerId !== activePointerId) return;
-    if (e && e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
+    // Determine pointer id we are stopping, or clear all if e is undefined
+    const stoppingPointerId = e?.pointerId;
+    if (e && stoppingPointerId !== undefined) {
+      if (e.currentTarget.hasPointerCapture(stoppingPointerId)) {
+          e.currentTarget.releasePointerCapture(stoppingPointerId);
+      }
     }
-    setActivePointerId(null);
-    setIsPanning(false);
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    setIsDragging(false);
-    setIsResizing(false);
-    setIsRotating(false);
+    
+    // If panning/selecting, check pointerID
+    if (stoppingPointerId === activePointerId) {
+      setActivePointerId(null);
+      setIsPanning(false);
+      setIsDragging(false);
+      setIsResizing(false);
+      setIsRotating(false);
+    }
+    
+    // Only stop overall drawing if no active strokes remain
+    const remainingPointers = Object.keys(activeStrokes).filter(id => id !== String(stoppingPointerId));
+    if (remainingPointers.length === 0) {
+      setIsDrawing(false);
+    }
 
-    if (tool === 'lasso') {
-      if (currentStroke && currentStroke.points.length > 3) {
-        const lassoedIds = strokes.filter(s => isStrokeInLasso(s, currentStroke.points)).map(s => s.id);
-        if (lassoedIds.length > 0) {
-          setSelectedStrokeIds(lassoedIds);
+    // Process the stroke that just finished
+    if (stoppingPointerId !== undefined) {
+      const currentStroke = activeStrokes[stoppingPointerId];
+      if (!currentStroke) return;
+
+      if (tool === 'lasso') {
+        if (currentStroke.points.length > 3) {
+          const lassoedIds = strokes.filter(s => isStrokeInLasso(s, currentStroke.points)).map(s => s.id);
+          if (lassoedIds.length > 0) {
+            setSelectedStrokeIds(lassoedIds);
+          }
         }
+        setActiveStrokes(prev => { const next = {...prev}; delete next[stoppingPointerId]; return next; });
+        setTool('select');
+        return;
       }
-      setCurrentStroke(null);
-      setTool('select');
-      return;
-    }
 
-    if (tool === 'ai-ocr') {
-      if (currentStroke && currentStroke.points.length > 3) {
-        performOCR(currentStroke.points);
+      if (tool === 'ai-ocr') {
+        if (currentStroke.points.length > 3) {
+          performOCR(currentStroke.points);
+        }
+        setActiveStrokes(prev => { const next = {...prev}; delete next[stoppingPointerId]; return next; });
+        setTool('select');
+        return;
       }
-      setCurrentStroke(null);
-      setTool('select');
-      return;
-    }
 
-    if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
-      if (currentStroke && currentStroke.points.length > 3) {
-        const newStrokes = strokes.filter(s => !isStrokeInLasso(s, currentStroke.points));
-        setStrokes(newStrokes);
-        saveToHistory(newStrokes);
+      if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
+        if (currentStroke.points.length > 3) {
+          const newStrokes = strokes.filter(s => !isStrokeInLasso(s, currentStroke.points));
+          setStrokes(newStrokes);
+          saveToHistory(newStrokes);
+        }
+        setActiveStrokes(prev => { const next = {...prev}; delete next[stoppingPointerId]; return next; });
+        return;
       }
-      setCurrentStroke(null);
-      return;
-    }
 
-    if (tool === 'laser') {
-      if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
-      laserTimeoutRef.current = setTimeout(() => setLaserPath([]), 1000);
-      return;
-    }
+      if (tool === 'laser') {
+        if (laserTimeoutRef.current) clearTimeout(laserTimeoutRef.current);
+        laserTimeoutRef.current = setTimeout(() => setLaserPath([]), 1000);
+        return;
+      }
 
-    if (currentStroke) {
+      // Finalize drawing stroke
       let strokeToSave = currentStroke;
       
-      if (tool === 'smart-pen') {
-        const recognized = recognizeShape(currentStroke.points);
-        if (recognized) {
-          strokeToSave = recognized;
-        }
-      }
-
       const newStrokes = [...strokes, strokeToSave];
       setStrokes(newStrokes);
       saveToHistory(newStrokes);
-      setCurrentStroke(null);
+      setActiveStrokes(prev => { const next = {...prev}; delete next[stoppingPointerId]; return next; });
+
     } else if (tool === 'select' || (tool === 'eraser' && eraserMode === 'stroke')) {
       saveToHistory(strokes);
     }
@@ -1319,6 +1381,10 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
         {/* Canvas Area */}
         <div className={`flex-1 relative ${theme === 'light' ? 'bg-white' : theme === 'grid' ? gridBg : theme === 'transparent' ? 'bg-transparent' : 'bg-[#1a1b26]'}`}>
           <canvas
+            ref={bgCanvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+          />
+          <canvas
             ref={canvasRef}
             onPointerDown={startDrawing}
             onPointerMove={draw}
@@ -1339,17 +1405,6 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
               Slide from left to right to clear entire board
             </div>
           )}
-          
-            {isOCRProcessing && (
-              <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-[#00F0FF]/20 border-t-[#00F0FF] rounded-full animate-spin" />
-                    <ScanText className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-[#00F0FF] animate-pulse" />
-                </div>
-                <p className="mt-4 text-[#00F0FF] font-medium animate-pulse">AI Extracting Text...</p>
-                <p className="text-white/40 text-xs mt-1">Using Gemini 2.5 Flash Lite</p>
-              </div>
-            )}
             
             {isFullscreen && (
             <div className="absolute top-4 right-4 pointer-events-none">
@@ -1388,12 +1443,6 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
               
               <div className="w-px h-6 bg-white/10 mx-1"></div>
 
-              <button onClick={() => setTool('smart-pen')} className={`p-2 rounded-lg transition-colors ${tool === 'smart-pen' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Smart Shape Pen">
-                <Wand2 className="w-5 h-5" />
-              </button>
-              <button onClick={() => setTool('ai-ocr')} className={`p-2 rounded-lg transition-colors ${tool === 'ai-ocr' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="AI Text Recognition (Lasso)">
-                <ScanText className="w-5 h-5" />
-              </button>
               <button onClick={() => setTool('pan')} className={`p-2 rounded-lg transition-colors ${tool === 'pan' ? 'bg-[#00F0FF]/20 text-[#00F0FF]' : 'text-gray-400 hover:bg-white/5'}`} title="Pan & Zoom Tool">
                 <Hand className="w-5 h-5" />
               </button>
