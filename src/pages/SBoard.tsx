@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database, Pen, Eraser, Undo, Redo, MousePointer2, Wand2, ScanText, Crosshair, Type, Square, Circle, Minus, Download, X, Search, Maximize2, Minimize2, ZoomIn, ZoomOut, Hash, Layers, Monitor, ChevronUp, ChevronDown, List, Eye, Highlighter, Plus, ArrowUpRight, Zap, Hand } from 'lucide-react';
+import { Upload, FileText, Presentation, ChevronRight, ChevronLeft, Play, Trash2, Settings, Sparkles, Info, Database, Pen, Eraser, Undo, Redo, MousePointer2, Wand2, ScanText, Crosshair, Type, Square, Circle, Minus, Download, X, Search, Maximize2, Minimize2, ZoomIn, ZoomOut, Hash, Layers, Monitor, ChevronUp, ChevronDown, List, Eye, Highlighter, Plus, ArrowUpRight, Zap, Hand, Grid, Triangle, MoreVertical, Slash } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { useTeacherStore } from '../store/useTeacherStore';
@@ -27,17 +27,19 @@ export default function SBoard() {
   const [lineWidth, setLineWidth] = useState(3);
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
-  const [isSmartPanelMode, setIsSmartPanelMode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
+  const [activeFlyout, setActiveFlyout] = useState<string | null>(null);
+  const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'lasso-pixel' | 'lasso-stroke' | 'all'>('pixel');
+
   // Sync state to Whiteboard when it changes locally
   useEffect(() => {
     if (whiteboardRef.current) {
       whiteboardRef.current.setTool(tool as any);
       whiteboardRef.current.setColor(color);
       whiteboardRef.current.setLineWidth(lineWidth);
+      whiteboardRef.current.setEraserMode(eraserMode);
     }
-  }, [tool, color, lineWidth]);
+  }, [tool, color, lineWidth, eraserMode]);
   useEffect(() => {
     const fetchSlides = async () => {
       if (!user) return;
@@ -456,34 +458,100 @@ export default function SBoard() {
                      <div className="flex items-center gap-1 px-4 relative">
                         {[
                           { id: 'select', icon: Sparkles, iconClass: 'rotate-180 -scale-x-100', title: 'Neon Pointer' },
-                          { id: 'pen', icon: Pen, title: 'Pen' },
-                          { id: 'eraser', icon: Eraser, title: 'Eraser' },
+                          { id: 'pen', icon: Pen, title: 'Pen', hasFlyout: true },
+                          { id: 'eraser', icon: Eraser, title: 'Eraser', hasFlyout: true },
                           { id: 'highlighter', icon: Highlighter, title: 'Highlighter' },
-                          { id: 'line', icon: Minus, title: 'Lines & Arrows' },
-                          { id: 'rect', icon: Square, title: 'Shapes' },
+                          { id: 'line', icon: Minus, title: 'Lines & Arrows', hasFlyout: true },
+                          { id: 'rect', icon: Square, title: 'Shapes', hasFlyout: true },
                           { id: 'pan', icon: Hand, title: 'Pan Canvas' },
                         ].map(t => (
-                          <button 
-                            key={t.id}
-                            onClick={() => {
-                              setTool(t.id);
-                              // We could toggle expandable sub-menus here if needed
-                            }} 
-                            className={`relative p-3 rounded-xl transition-all hover:scale-105 active:scale-95 group ${tool === t.id ? 'bg-white/20 shadow-inner' : 'bg-transparent text-white/70 hover:text-white hover:bg-white/10'}`}
-                            title={t.title}
-                          >
-                             <t.icon className={`w-5 h-5 ${t.iconClass || ''}`} style={{ color: tool === t.id ? color : undefined }} />
-                             {tool === t.id && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ backgroundColor: color }}></div>}
-                          </button>
+                          <div key={t.id} className="relative">
+                            <button 
+                              onClick={() => {
+                                if (tool === t.id && t.hasFlyout) {
+                                  setActiveFlyout(activeFlyout === t.id ? null : t.id);
+                                } else {
+                                  setTool(t.id);
+                                  setActiveFlyout(null);
+                                }
+                              }} 
+                              className={`relative p-3 rounded-xl transition-all hover:scale-105 active:scale-95 group ${tool === t.id ? 'bg-white/20 shadow-inner' : 'bg-transparent text-white/70 hover:text-white hover:bg-white/10'}`}
+                              title={t.title}
+                            >
+                               <t.icon className={`w-5 h-5 ${t.iconClass || ''}`} style={{ color: tool === t.id ? color : undefined }} />
+                               {tool === t.id && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" style={{ backgroundColor: color }}></div>}
+                            </button>
+                            
+                            {/* Flyouts */}
+                            <AnimatePresence>
+                              {activeFlyout === t.id && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                  className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-[#1A1A1A] border border-white/10 p-2 rounded-xl flex flex-col gap-1 shadow-xl z-50 whitespace-nowrap min-w-[120px]"
+                                >
+                                  {t.id === 'eraser' && (
+                                    <>
+                                      <button onClick={() => { setEraserMode('pixel'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors ${eraserMode === 'pixel' ? 'bg-white/20 text-white' : 'text-gray-300'}`}>Pixel (Precision)</button>
+                                      <button onClick={() => { setEraserMode('stroke'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors ${eraserMode === 'stroke' ? 'bg-white/20 text-white' : 'text-gray-300'}`}>Stroke (Whole line)</button>
+                                      <button onClick={() => { setEraserMode('lasso-pixel'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors ${eraserMode === 'lasso-pixel' ? 'bg-white/20 text-white' : 'text-gray-300'}`}>Lasso Pixel</button>
+                                      <button onClick={() => { setEraserMode('lasso-stroke'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors ${eraserMode === 'lasso-stroke' ? 'bg-white/20 text-white' : 'text-gray-300'}`}>Lasso Stroke</button>
+                                      <button onClick={() => { whiteboardRef.current?.clear(); setActiveFlyout(null); }} className="px-3 py-2 rounded-lg text-xs text-left hover:bg-red-500/20 text-red-400 transition-colors">Clear All</button>
+                                    </>
+                                  )}
+                                  {t.id === 'pen' && (
+                                    <>
+                                      <button onClick={() => { setTool('pen'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}>Simple Pen</button>
+                                      <button onClick={() => { setTool('laser'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}>Neon / Laser Pen</button>
+                                    </>
+                                  )}
+                                  {t.id === 'line' && (
+                                    <>
+                                      <button onClick={() => { setTool('line'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}>Straight Line</button>
+                                      <button onClick={() => { setTool('arrow'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}>Arrow</button>
+                                    </>
+                                  )}
+                                  {t.id === 'rect' && (
+                                    <>
+                                      <button onClick={() => { setTool('rect'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}><Square className="inline w-4 h-4 mr-2"/>Rectangle</button>
+                                      <button onClick={() => { setTool('circle'); setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}><Circle className="inline w-4 h-4 mr-2"/>Circle</button>
+                                      <button onClick={() => { setTool('circle'); /* maybe add triangle tool if supported */ setActiveFlyout(null); }} className={`px-3 py-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white`}><Triangle className="inline w-4 h-4 mr-2"/>Triangle</button>
+                                    </>
+                                  )}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
                         ))}
                      </div>
 
-                     {/* Expandable Tools Placeholder */}
-                     <div className="pl-4 border-l border-white/10 flex items-center gap-2">
-                        <button onClick={() => setTool('text')} className={`p-3 rounded-xl transition-all hover:scale-105 ${tool === 'text' ? 'bg-white/20' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}>
-                           <Type className="w-5 h-5" />
+                     {/* Expandable Tools (More) */}
+                     <div className="pl-4 border-l border-white/10 flex items-center gap-2 relative">
+                        <button onClick={() => setActiveFlyout(activeFlyout === 'more' ? null : 'more')} className="p-3 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                          <MoreVertical className="w-5 h-5" />
                         </button>
-                        <button className="p-3 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"><MoreVertical className="w-5 h-5" /></button>
+                        <AnimatePresence>
+                           {activeFlyout === 'more' && (
+                             <motion.div 
+                               initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                               animate={{ opacity: 1, y: 0, scale: 1 }}
+                               exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                               className="absolute bottom-full mb-4 right-0 bg-[#1A1A1A] border border-white/10 p-2 rounded-xl flex flex-col gap-1 shadow-xl z-50 whitespace-nowrap min-w-[150px]"
+                             >
+                                <button onClick={() => { setTool('text'); setActiveFlyout(null); }} className="px-3 py-2 flex items-center gap-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-white">
+                                  <Type className="w-4 h-4" /> Text Box
+                                </button>
+                                <button onClick={() => { alert("AI Object Inserter coming soon!"); setActiveFlyout(null); }} className="px-3 py-2 flex items-center gap-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-gray-400">
+                                  <Sparkles className="w-4 h-4" /> AI Object Inserter
+                                </button>
+                                {/* We can add 'import file' here too, using the Dashboard file upload or hidden input */}
+                                <button onClick={() => setActiveFlyout(null)} className="px-3 py-2 flex items-center gap-2 rounded-lg text-xs text-left hover:bg-white/10 transition-colors text-gray-400">
+                                  <Upload className="w-4 h-4" /> Import Image / PDF
+                                </button>
+                             </motion.div>
+                           )}
+                        </AnimatePresence>
                      </div>
                   </motion.div>
 

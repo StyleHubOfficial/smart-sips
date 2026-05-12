@@ -34,7 +34,7 @@ interface Stroke {
 }
 
 export interface WhiteboardRef {
-  setTool: (t: 'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan') => void;
+  setTool: (t: 'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'pan') => void;
   getTool: () => string;
   setEraserMode: (m: 'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel') => void;
   setColor: (c: string) => void;
@@ -76,7 +76,7 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
 
   const [activePointerId, setActivePointerId] = useState<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'smart-pen' | 'ai-ocr' | 'pan'>('pen');
+  const [tool, setTool] = useState<'select' | 'pen' | 'highlighter' | 'eraser' | 'rect' | 'circle' | 'line' | 'arrow' | 'text' | 'laser' | 'lasso' | 'pan'>('pen');
   const [eraserMode, setEraserMode] = useState<'pixel' | 'stroke' | 'all' | 'lasso-stroke' | 'lasso-pixel'>('pixel');
   
   // Pan and Zoom state
@@ -138,7 +138,12 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
         }
       } catch (e) {
         console.error("Failed to parse initial whiteboard data", e);
+        setHistory([[]]);
+        setHistoryStep(0);
       }
+    } else {
+      setHistory([[]]);
+      setHistoryStep(0);
     }
   }, [initialData]);
 
@@ -593,13 +598,16 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
 
     const imgData = tempCanvas.toDataURL('image/jpeg', 0.95);
     
+    const pdfWidth = tempCanvas.width;
+    const pdfHeight = tempCanvas.height;
+    
     const pdf = new jsPDF({
-      orientation: logicalWidth > logicalHeight ? 'landscape' : 'portrait',
+      orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
       unit: 'px',
-      format: [logicalWidth, logicalHeight]
+      format: [pdfWidth, pdfHeight]
     });
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, logicalWidth, logicalHeight);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     pdf.save(`whiteboard-${Date.now()}.pdf`);
   };
 
@@ -769,149 +777,7 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
     return false;
   };
 
-  const recognizeShape = (points: Point[]): Stroke | null => {
-    if (points.length < 5) return null;
 
-    // Calculate bounding box
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    points.forEach(p => {
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
-    });
-
-    const width = maxX - minX;
-    const height = maxY - minY;
-    const center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-    const start = points[0];
-    const end = points[points.length - 1];
-    const distStartEnd = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
-
-    // Heuristic for Circle
-    const isClosed = distStartEnd < Math.max(width, height) * 0.2;
-    if (isClosed) {
-      const radius = (width + height) / 4;
-      // Check if points are roughly at radius distance from center
-      let avgDist = 0;
-      points.forEach(p => {
-        avgDist += Math.sqrt(Math.pow(p.x - center.x, 2) + Math.pow(p.y - center.y, 2));
-      });
-      avgDist /= points.length;
-      
-      if (Math.abs(avgDist - radius) < radius * 0.3) {
-        return {
-          id: Date.now().toString(),
-          tool: 'circle',
-          type: 'circle',
-          points: [],
-          color,
-          lineWidth,
-          startPos: center,
-          endPos: { x: center.x + radius, y: center.y }
-        };
-      }
-    }
-
-    // Heuristic for Rectangle
-    if (isClosed && width > 20 && height > 20) {
-      return {
-        id: Date.now().toString(),
-        tool: 'rect',
-        type: 'rect',
-        points: [],
-        color,
-        lineWidth,
-        startPos: { x: minX, y: minY },
-        endPos: { x: maxX, y: maxY }
-      };
-    }
-
-    // Heuristic for Arrow
-    if (!isClosed && distStartEnd > 30) {
-      // Check if it's a line or arrow
-      // For now, let's just make it an arrow if it's long enough
-      return {
-        id: Date.now().toString(),
-        tool: 'arrow',
-        type: 'arrow',
-        points: [],
-        color,
-        lineWidth,
-        startPos: start,
-        endPos: end
-      };
-    }
-
-    return null;
-  };
-
-  const performOCR = async (lassoPoints: Point[]) => {
-    const canvas = canvasRef.current;
-    if (!canvas || lassoPoints.length < 3) return;
-
-    setIsOCRProcessing(true);
-    try {
-      // Calculate bounding box of lasso
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      lassoPoints.forEach(p => {
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x);
-        maxY = Math.max(maxY, p.y);
-      });
-
-      const width = maxX - minX;
-      const height = maxY - minY;
-      if (width < 10 || height < 10) return;
-
-      // Create a temporary canvas to capture the area
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = width;
-      tempCanvas.height = height;
-      const tempCtx = tempCanvas.getContext('2d');
-      if (!tempCtx) return;
-
-      // Draw the main canvas onto the temp canvas, offset by minX, minY
-      tempCtx.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
-      const base64Image = tempCanvas.toDataURL('image/png').split(',')[1];
-
-      const apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Missing API Key");
-      
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-lite-preview",
-        contents: [
-          { text: "Extract all text from this image. Return ONLY the text found, nothing else. If no text is found, return an empty string." },
-          { inlineData: { data: base64Image, mimeType: "image/png" } }
-        ]
-      });
-
-      const extractedText = response.text?.trim();
-      if (extractedText) {
-        const newStroke: Stroke = {
-          id: 'ocr-' + Date.now(),
-          tool: 'text',
-          type: 'text',
-          points: [],
-          color,
-          lineWidth: 4,
-          startPos: { x: minX, y: minY + 20 },
-          text: extractedText
-        };
-        const newStrokes = [...strokes, newStroke];
-        setStrokes(newStrokes);
-        saveToHistory(newStrokes);
-      }
-    } catch (error) {
-      console.error("OCR failed:", error);
-    } finally {
-      setIsOCRProcessing(false);
-    }
-  };
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // Only accept primary pointer or first touch to avoid multi-touch chaos
@@ -1142,9 +1008,13 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
       return;
     }
 
-    if (tool === 'lasso' || tool === 'ai-ocr' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
-      if (currentStroke) {
-        setCurrentStroke({ ...currentStroke, points: [...currentStroke.points, pos] });
+    if (tool === 'lasso' || (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel'))) {
+      const currentLassoStroke = activeStrokes[e.pointerId];
+      if (currentLassoStroke) {
+        setActiveStrokes(prev => ({
+          ...prev,
+          [e.pointerId]: { ...currentLassoStroke, points: [...currentLassoStroke.points, pos] }
+        }));
       }
       return;
     }
@@ -1229,14 +1099,6 @@ export const Whiteboard = React.forwardRef<WhiteboardRef, WhiteboardProps>(({ on
         return;
       }
 
-      if (tool === 'ai-ocr') {
-        if (currentStroke.points.length > 3) {
-          performOCR(currentStroke.points);
-        }
-        setActiveStrokes(prev => { const next = {...prev}; delete next[stoppingPointerId]; return next; });
-        setTool('select');
-        return;
-      }
 
       if (tool === 'eraser' && (eraserMode === 'lasso-stroke' || eraserMode === 'lasso-pixel')) {
         if (currentStroke.points.length > 3) {
