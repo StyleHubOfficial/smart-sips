@@ -3,7 +3,9 @@ import { motion } from 'motion/react';
 import { GrammarTextarea } from '../components/GrammarTextarea';
 import { useAuthStore } from '../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
-import { Terminal, Code2, GitPullRequest, Settings, Loader2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Terminal, Code2, GitPullRequest, Settings, Loader2, AlertTriangle, CheckCircle2, XCircle, Shield, ShieldOff } from 'lucide-react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export default function AIDeveloperPanel() {
   const { role } = useAuthStore();
@@ -16,10 +18,45 @@ export default function AIDeveloperPanel() {
   const [repoName, setRepoName] = useState('');
   const [apiKey, setApiKey] = useState('');
   
+  const [isAccessCodeEnabled, setIsAccessCodeEnabled] = useState(true);
+  const [settingLoading, setSettingLoading] = useState(false);
+  
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'processing' | 'validating' | 'committing' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [successData, setSuccessData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'general');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setIsAccessCodeEnabled(docSnap.data().isAccessCodeEnabled !== false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch general settings', err);
+      }
+    };
+    if (role === 'admin' || role === 'developer') {
+      fetchSettings();
+    }
+  }, [role]);
+
+  const handleToggleAccessCode = async () => {
+    setSettingLoading(true);
+    try {
+      const docRef = doc(db, 'settings', 'general');
+      const newState = !isAccessCodeEnabled;
+      await setDoc(docRef, { isAccessCodeEnabled: newState }, { merge: true });
+      setIsAccessCodeEnabled(newState);
+    } catch (err) {
+      console.error('Failed to update access code setting', err);
+      alert('Failed to update setting');
+    } finally {
+      setSettingLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (role !== 'admin' && role !== 'developer') {
@@ -91,6 +128,30 @@ export default function AIDeveloperPanel() {
           <div className="px-4 py-2 rounded-full bg-[#B026FF]/20 border border-[#B026FF]/30 text-[#B026FF] text-sm font-bold tracking-wider uppercase">
             Admin Access
           </div>
+        </div>
+
+        <div className="glass-panel p-6 rounded-2xl border border-white/10 bg-black/40 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isAccessCodeEnabled ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
+              {isAccessCodeEnabled ? <Shield className="w-6 h-6" /> : <ShieldOff className="w-6 h-6" />}
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Website Access Requirement</h3>
+              <p className="text-sm text-gray-400">{isAccessCodeEnabled ? 'Currently Required. Visitors must enter access code.' : 'Currently Disabled. Anyone can access without a code.'}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleToggleAccessCode}
+            disabled={settingLoading}
+            className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
+              isAccessCodeEnabled 
+                ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' 
+                : 'bg-green-500/20 text-green-500 hover:bg-green-500/30'
+            } ${settingLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {settingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {isAccessCodeEnabled ? 'Disable Access Requirement' : 'Enable Access Requirement'}
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -17,6 +17,8 @@ import { AdOverlay } from "./components/AdOverlay";
 import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "./store/useAppStore";
 import { useThemeStore } from "./store/useThemeStore";
+import { db } from "./lib/firebase";
+import { doc, getDocFromServer } from "firebase/firestore";
 
 import Practice from "./pages/Practice";
 import Simulator from "./pages/Simulator";
@@ -164,6 +166,26 @@ export default function App() {
     const isPermanentlySkipped = localStorage.getItem('sunrise_skip_intro') === 'true';
     return isPermanentlySkipped;
   });
+
+  useEffect(() => {
+    const checkAccessRequirement = async () => {
+      try {
+        const settingsDoc = await getDocFromServer(doc(db, 'settings', 'general'));
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          if (data.isAccessCodeEnabled === false) {
+             setIsUnlocked(true);
+             sessionStorage.setItem('sunrise_unlocked_v6', 'true');
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch settings", e);
+      }
+    };
+    if (!isUnlocked) {
+      checkAccessRequirement();
+    }
+  }, [isUnlocked]);
 
   useEffect(() => {
     if (theme === 'light') {
